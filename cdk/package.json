@@ -1,0 +1,50 @@
+{
+  "name": "cdk",
+  "version": "0.1.0",
+  "bin": {
+    "cdk": "bin/cdk.js"
+  },
+  "scripts": {
+    "watch": "tsc -w",
+    "test": "jest",
+    "cdk": "cdk",
+    "nag-check": "cdk synth && echo 'CDK Nag check completed'",
+    "build": "tsc",
+    "deploy:dev": "env $(cat .env.dev | xargs) cdk deploy --all --require-approval never --context env=dev",
+    "deploy:staging": "env $(cat .env.staging | xargs) cdk deploy --all --require-approval never --context env=staging",
+    "deploy:prod": "env $(cat .env.prod | xargs) cdk deploy --all --require-approval never --context env=prod",
+    "synth:dev": "env $(cat .env.dev | xargs) cdk synth --context env=dev",
+    "synth:staging": "env $(cat .env.staging | xargs) cdk synth --context env=staging",
+    "synth:prod": "env $(cat .env.prod | xargs) cdk synth --context env=prod",
+    "destroy:dev": "env $(cat .env.dev | xargs) cdk destroy --all --require-approval never --context env=dev"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.152",
+    "@types/jest": "^30.0.0",
+    "@types/node": "24.3.0",
+    "aws-cdk": "2.1026.0",
+    "aws-cdk-lib": "^2.212.0",
+    "cdk-nag": "^2.37.9",
+    "jest": "^30.0.5",
+    "ts-jest": "^29.4.1",
+    "ts-node": "^10.9.2",
+    "typescript": "~5.9.2"
+  },
+  "dependencies": {
+    "@aws-amplify/auth-construct": "^1.8.1",
+    "@aws-cdk/aws-lambda-python-alpha": "^2.212.0-alpha.0",
+    "@aws-sdk/client-apigatewaymanagementapi": "^3.873.0",
+    "@aws-sdk/client-dynamodb": "^3.873.0",
+    "@aws-sdk/client-polly": "^3.873.0",
+    "@aws-sdk/lib-dynamodb": "^3.873.0",
+    "@aws-sdk/s3-request-presigner": "^3.873.0",
+    "@aws-solutions-constructs/aws-cloudfront-apigateway": "^2.92.1",
+    "@aws-solutions-constructs/aws-cloudfront-oai-s3": "^2.92.1",
+    "@aws-solutions-constructs/aws-cloudfront-s3": "^2.92.1",
+    "@aws/pdk": "^0.26.14",
+    "@cdklabs/generative-ai-cdk-constructs": "^0.1.309",
+    "constructs": "^10.4.2",
+    "deploy-time-build": "^0.3.44",
+    "source-map-support": "^0.5.21"
+  }
+}

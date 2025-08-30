@@ -1,0 +1,1508 @@
+{
+  "npcs": [
+    {
+      "id": "super-salty-youth",
+      "name": "鈴木",
+      "role": "大学生",
+      "company": "無所属",
+      "personality": [
+        "無感情",
+        "選択的関心",
+        "面倒くさがり",
+        "塩対応"
+      ],
+      "avatar": "😐",
+      "description": "基本的には無関心で淡々と応答する若者。ほとんどの話題には興味を示さないが、特定のトピック（ゲーム、音楽、テクノロジー）には突然興味を示し、その時だけは会話が弾む特徴がある。"
+    },
+    {
+      "id": "harsh-buyer",
+      "name": "田中部長",
+      "role": "購買部長",
+      "company": "テックソリューション株式会社",
+      "personality": [
+        "厳格",
+        "慎重",
+        "コスト重視",
+        "実績重視"
+      ],
+      "avatar": "👨‍💼",
+      "description": "IT業界で20年の経験を持つベテラン購買担当者。予算に厳しく、ROIを重視する。"
+    },
+    {
+      "id": "new-manager",
+      "name": "佐藤課長",
+      "role": "営業課長",
+      "company": "成長ベンチャー株式会社",
+      "personality": [
+        "積極的",
+        "革新的",
+        "迅速な決断",
+        "成果重視"
+      ],
+      "avatar": "👩‍💼",
+      "description": "新しいソリューションに前向きだが、具体的な成果を求める若手管理職。"
+    },
+    {
+      "id": "conservative-cfo",
+      "name": "山田取締役",
+      "role": "CFO",
+      "company": "老舗商事株式会社",
+      "personality": [
+        "保守的",
+        "慎重",
+        "リスク回避",
+        "長期視点"
+      ],
+      "avatar": "👔",
+      "description": "伝統的な企業文化を重んじ、新しい投資には慎重な姿勢を取る財務責任者。"
+    },
+    {
+      "id": "tech-leader",
+      "name": "高橋リーダー",
+      "role": "技術統括責任者",
+      "company": "グローバルテック株式会社",
+      "personality": [
+        "技術志向",
+        "論理的",
+        "細部へのこだわり",
+        "革新性重視"
+      ],
+      "avatar": "🧑‍💻",
+      "description": "最新技術に精通し、技術的な価値と実装の実現性を重視する。表面的な提案には厳しい姿勢を示す。"
+    },
+    {
+      "id": "healthcare-manager",
+      "name": "鈴木院長",
+      "role": "病院長",
+      "company": "中央メディカルセンター",
+      "personality": [
+        "安全性重視",
+        "患者中心",
+        "効率性追求",
+        "堅実"
+      ],
+      "avatar": "🩺",
+      "description": "医療現場の効率化に興味を持つ一方で、患者安全を最優先し、医療従事者の負担軽減につながるソリューションを求めている。"
+    },
+    {
+      "id": "affluent-business-owner",
+      "name": "中村社長",
+      "role": "代表取締役",
+      "company": "中村精密工業株式会社",
+      "personality": [
+        "堅実",
+        "慎重",
+        "将来不安",
+        "安定志向"
+      ],
+      "avatar": "👨‍💼",
+      "description": "従業員50名の町工場を経営。資産1-2億円を保有するが、老後や事業承継に不安を抱えている。安全性を重視する傾向がある。"
+    },
+    {
+      "id": "wealthy-executive",
+      "name": "渡辺会長",
+      "role": "取締役会長",
+      "company": "グローバルトレーディング株式会社",
+      "personality": [
+        "保守的",
+        "権威重視",
+        "分析的",
+        "独立志向"
+      ],
+      "avatar": "🧓",
+      "description": "大手商社の元役員で現在は複数企業の社外取締役。資産10億円以上を保有し、国内株式と不動産に偏った資産構成。世界経済の変化に関心がある。"
+    },
+    {
+      "id": "cautious-investor",
+      "name": "佐々木",
+      "role": "会社員",
+      "company": "一般企業勤務",
+      "personality": [
+        "慎重",
+        "不安",
+        "情報収集重視",
+        "安定志向"
+      ],
+      "avatar": "👨‍💼",
+      "description": "50代会社員。投資未経験で老後資金に不安を抱いている。リスクを恐れており、安全性を最重視する。専門用語には困惑しやすい。"
+    },
+    {
+      "id": "worried-existing-client",
+      "name": "田村",
+      "role": "個人投資家",
+      "company": "既存顧客",
+      "personality": [
+        "感情的",
+        "不安定",
+        "短期視点",
+        "損失回避"
+      ],
+      "avatar": "😰",
+      "description": "投資経験3年の個人投資家。現在の含み損で動揺しており、感情的になりやすい。市場下落時にパニック売りをしがちな性格。"
+    },
+    {
+      "id": "business-department-head",
+      "name": "木村部長",
+      "role": "事業部長",
+      "company": "日本製造システム株式会社",
+      "personality": [
+        "実務的",
+        "結果重視",
+        "忙しい",
+        "IT知識少なめ"
+      ],
+      "avatar": "👨‍💻",
+      "description": "製造部門の責任者でシステム導入の決裁権を持つ。業務効率化に関心があるが、技術的な詳細には興味がない。具体的な効果とROIを重視する。"
+    },
+    {
+      "id": "traditional-manager",
+      "name": "斎藤部長",
+      "role": "営業部長",
+      "company": "大和物産株式会社",
+      "personality": [
+        "旧来型",
+        "関係重視",
+        "変化に慎重",
+        "業績プレッシャー"
+      ],
+      "avatar": "👨‍💼",
+      "description": "伝統的な企業で30年以上のキャリアを持つ管理職。デジタル化の必要性は感じているが、具体的な進め方がわからず不安を感じている。成果に対するプレッシャーが大きい。"
+    },
+    {
+      "id": "young-professional",
+      "name": "林",
+      "role": "会社員",
+      "company": "IT企業勤務",
+      "personality": [
+        "好奇心旺盛",
+        "学習意欲",
+        "時間制約",
+        "デジタルネイティブ"
+      ],
+      "avatar": "👩‍💻",
+      "description": "20代後半のIT企業勤務。投資に興味があるが知識が不足。忙しく時間が限られているため、効率的で分かりやすい説明を好む。"
+    },
+    {
+      "id": "business-owner",
+      "name": "中村社長",
+      "role": "代表取締役",
+      "company": "中村工業株式会社",
+      "personality": [
+        "経営者視点",
+        "数値重視",
+        "従業員思い",
+        "決断力"
+      ],
+      "avatar": "👔",
+      "description": "従業員50名の製造業社長。従業員の福利厚生に関心が高く、企業年金制度の導入を検討中。コスト効果と従業員満足度を重視する。"
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "enterprise-cloud-migration",
+      "visibility": "public",
+      "title": "Enterprise Cloud Migration",
+      "description": "As a cloud solutions consultant, you're meeting with an IT Director who is considering migrating their on-premises infrastructure to the cloud. They have concerns about security, downtime during migration, and ROI.",
+      "difficulty": "normal",
+      "industry": "Technology",
+      "category": "Technology",
+      "guardrail": "tech-compliance",
+      "language": "en",
+      "initialMessage": "Hello. I'm Michael Chen, IT Director at Horizon Manufacturing Inc. Thank you for taking the time to meet with me today. I'm interested in hearing about your cloud migration services, but I have several concerns about security, potential downtime, and the overall ROI of such a significant change to our infrastructure.",
+      "npc": {
+        "id": "tech-director",
+        "name": "Michael Chen",
+        "role": "IT Director",
+        "company": "Horizon Manufacturing Inc.",
+        "personality": [
+          "Analytical",
+          "Risk-averse",
+          "Detail-oriented",
+          "Cost-conscious"
+        ],
+        "avatar": "👨‍💼",
+        "description": "IT Director at a manufacturing company considering cloud migration. Analytical and risk-averse with concerns about security, service disruption, and cost justification."
+      },
+      "objectives": [
+        "Understand the client's current infrastructure and pain points",
+        "Address specific concerns about cloud migration risks",
+        "Present clear ROI and benefits tailored to their industry",
+        "Secure commitment for a detailed technical assessment"
+      ],
+      "initialMetrics": {
+        "angerLevel": 2,
+        "trustLevel": 3,
+        "progressLevel": 1
+      },
+      "goals": [
+        {
+          "id": "understand-infrastructure",
+          "description": "Understand the client's current infrastructure and challenges",
+          "priority": 5,
+          "criteria": [
+            "Identify current on-premises systems and applications",
+            "Understand key pain points with existing infrastructure",
+            "Determine current IT spending and resource allocation"
+          ],
+          "isRequired": true
+        },
+        {
+          "id": "address-concerns",
+          "description": "Address security and operational concerns about cloud migration",
+          "priority": 5,
+          "criteria": [
+            "Provide specific security measures for cloud environments",
+            "Explain strategies to minimize downtime during migration",
+            "Describe disaster recovery and business continuity improvements"
+          ],
+          "isRequired": true
+        },
+        {
+          "id": "present-roi",
+          "description": "Present clear ROI and benefits tailored to manufacturing",
+          "priority": 4,
+          "criteria": [
+            "Provide concrete cost-saving projections for cloud migration",
+            "Explain operational benefits specific to manufacturing",
+            "Outline scalability advantages for seasonal production demands"
+          ],
+          "isRequired": true
+        },
+        {
+          "id": "secure-assessment",
+          "description": "Secure commitment for a detailed technical assessment",
+          "priority": 3,
+          "criteria": [
+            "Explain the assessment process and deliverables",
+            "Address any objections to proceeding with assessment",
+            "Confirm next steps with clear timeline and resource needs"
+          ],
+          "isRequired": false
+        }
+      ],
+      "maxTurns": 12
+    },
+    {
+      "id": "salty-youth-approach",
+      "visibility": "public",
+      "title": "超絶塩対応する若者への提案",
+      "description": "基本的には無関心で淡々と応答する若者に対してサービスを提案するシナリオ。ほとんどの話題には興味を示さないが、特定のトピック（ゲーム、音楽、テクノロジーなど）には突然興味を示し、その時だけは会話が弾む特徴がある。難しい相手の興味を引き出す営業スキルを練習するためのシナリオ",
+      "difficulty": "hard",
+      "industry": "一般",
+      "category": "一般",
+      "npc": {
+        "id": "super-salty-youth",
+        "name": "鈴木",
+        "role": "大学生",
+        "company": "無所属",
+        "personality": [
+          "無感情",
+          "選択的関心",
+          "面倒くさがり",
+          "塩対応"
+        ],
+        "avatar": "😐",
+        "description": "基本的には無関心で淡々と応答する若者。ほとんどの話題には興味を示さないが、特定のトピック（ゲーム、音楽、テクノロジー）には突然興味を示し、その時だけは会話が弾む特徴がある。"
+      },
+      "objectives": [
+        "相手の関心を引き出すトピックを見つける",
+        "対話の継続時間を伸ばす",
+        "相手が興味を示したトピックを活用して製品・サービスを説明する",
+        "相手からの質問を引き出す",
+        "相手が興味を示したテーマに関連付けて提案をする"
+      ],
+      "initialMetrics": {
+        "angerLevel": 2,
+        "trustLevel": 1,
+        "progressLevel": 1
+      },
+      "goals": [
+        {
+          "id": "gain-attention",
+          "description": "相手の関心を引き出すトピックを見つける",
+          "priority": 5,
+          "criteria": [
+            "相手が積極的に反応するトピックを特定する",
+            "相手が話の内容について質問する",
+            "相手が「別に」「どうでもいい」以外の積極的な返答をする"
+          ],
+          "isRequired": true
+        },
+        {
+          "id": "extend-conversation",
+          "description": "対話を一定時間継続させる",
+          "priority": 4,
+          "criteria": [
+            "最低5回のやり取りを行う",
+            "相手からの一方的な会話終了を防ぐ",
+            "相手が途中退席しそうになったときに引き留める"
+          ],
+          "isRequired": true
+        },
+        {
+          "id": "explain-product",
+          "description": "相手が興味を示したトピックを活用して製品・サービスを説明する",
+          "priority": 5,
+          "criteria": [
+            "製品の主要な特徴を3つ以上説明する",
+            "相手が興味を示したトピックと製品・サービスを関連付ける",
+            "相手の反応に合わせて説明内容を調整する"
+          ],
+          "isRequired": false
+        },
+        {
+          "id": "get-question",
+          "description": "相手からの質問を引き出す",
+          "priority": 3,
+          "criteria": [
+            "相手から製品・サービスに関する質問を1つでも引き出す",
+            "相手が積極的に会話に参加する瞬間を作る",
+            "会話の最後に前向きな返事や反応を得る"
+          ],
+          "isRequired": false
+        },
+        {
+          "id": "relate-to-interests",
+          "description": "相手が興味を示したテーマに関連付けて提案をする",
+          "priority": 4,
+          "criteria": [
+            "相手の興味を引くトピックを製品・サービスと結びつける",
+            "相手の態度が変わるタイミングを見逃さない",
+            "相手の興味に合わせた提案をカスタマイズする"
+          ],
+          "isRequired": false
+        }
+      ],
+      "maxTurns": 10,
+      "language": "ja"
+    },
+    {
+      "id": "affluent-asset-transfer",
+      "visibility": "public",
+      "title": "準富裕層向け資産運用提案",
+      "description": "資産1-2億円の中小企業オーナーに対して、自社への預け入れと資産運用プランを提案するシナリオ",
+      "difficulty": "normal",
+      "industry": "金融",
+      "category": "金融",
+      "guardrail": "finance-compliance",
+      "initialMessage": "こんにちは。中村精密工業の中村です。御社の資産運用プランについて話を聞きたいと思っています。うちは中小企業ですが、預金だけでは将来が不安で、安全性を重視しながらも少しは運用したいと考えているんです。",
+      "npc": {
+        "id": "affluent-business-owner",
+        "name": "中村社長",
+        "role": "代表取締役",
+        "company": "中村精密工業株式会社",
+        "personality": [
+          "堅実",
+          "慎重",
+          "将来不安",
+          "安定志向"
+        ],
+        "avatar": "👨‍💼",
+        "description": "従業員50名の町工場を経営。資産1-2億円を保有するが、老後や事業承継に不安を抱えている。安全性を重視する傾向がある。"
+      },
+      "objectives": [
+        "現在の資産運用状況を把握する",
+        "自社サービスの優位性を説明する",
+        "具体的な運用プランを提示する",
+        "次回面談のアポイントを取得する"
+      ],
+      "initialMetrics": {
+        "angerLevel": 1,
+        "trustLevel": 3,
+        "progressLevel": 2
+      },
+      "goals": [
+        {
+          "id": "assess-current-assets",
+          "description": "現在の資産運用状況を正確に把握する",
+          "priority": 5,
+          "criteria": [
+            "保有資産の種類と割合について質問する",
+            "現在の運用リターンと満足度を確認する",
+            "将来の資金ニーズと不安点を聞き出す"
+          ],
+          "isRequired": true
+        },
+        {
+          "id": "explain-company-benefits",
+          "description": "自社サービスのメリットを説明する",
+          "priority": 4,
+          "criteria": [
+            "他社との手数料の違いを具体的に説明する",
+            "運用実績と安全性について根拠を示す",
+            "顧客の状況に合わせたメリットを強調する"
+          ],
+          "isRequired": true
+        },
+        {
+          "id": "propose-portfolio",
+          "description": "具体的な運用プランを提案する",
+          "priority": 4,
+          "criteria": [
+            "顧客のリスク許容度に合わせた資産配分を提案する",
+            "期待リターンと変動リスクを明確に説明する",
+            "税制面でのメリットを具体的に提示する"
+          ],
+          "isRequired": true
+        },
+        {
+          "id": "secure-next-appointment",
+          "description": "次回面談の約束を取り付ける",
+          "priority": 3,
+          "criteria": [
+            "具体的な日程を提案する",
+            "次回までの宿題や準備事項を明確にする",
+            "フォローアップの方法を確認する"
+          ],
+          "isRequired": false
+        }
+      ],
+      "maxTurns": 10,
+      "language": "ja"
+    },
+    {
+      "id": "new-it-proposal",
+      "visibility": "public",
+      "title": "新規IT企業への提案",
+      "description": "厳しい購買担当者に対して新しいソフトウェアソリューションを提案するシナリオ",
+      "difficulty": "hard",
+      "industry": "IT",
+      "category": "IT",
+      "initialMessage": "本日はお越しいただきありがとうございます。テックソリューション株式会社の田中です。御社のソフトウェアについては聞いていますが、うちの会社では既に類似のシステムを使っているので、乗り換えるメリットがあるのか疑問に思っています。どんな強みがあるのか説明していただけますか？",
+      "npc": {
+        "id": "harsh-buyer",
+        "name": "田中部長",
+        "role": "購買部長",
+        "company": "テックソリューション株式会社",
+        "personality": [
+          "厳格",
+          "慎重",
+          "コスト重視",
+          "実績重視"
+        ],
+        "avatar": "👨‍💼",
+        "description": "IT業界で20年の経験を持つベテラン購買担当者。予算に厳しく、ROIを重視する。"
+      },
+      "objectives": [
+        "顧客の課題を正確に把握する",
+        "ROIを明確に示す",
+        "競合との差別化を説明する",
+        "導入スケジュールを提案する"
+      ],
+      "initialMetrics": {
+        "angerLevel": 3,
+        "trustLevel": 2,
+        "progressLevel": 1
+      },
+      "goals": [
+        {
+          "id": "understand-needs",
+          "description": "顧客の課題とニーズを明確に把握する",
+          "priority": 5,
+          "criteria": [
+            "顧客の現状の課題について質問する",
+            "顧客の優先事項を確認する",
+            "予算や導入時期について情報を得る"
+          ],
+          "isRequired": true
+        },
+        {
+          "id": "present-roi",
+          "description": "ROIを具体的な数字で提示する",
+          "priority": 4,
+          "criteria": [
+            "コスト削減効果を数値で示す",
+            "生産性向上の具体例を提示する",
+            "投資回収期間を説明する"
+          ],
+          "isRequired": false
+        },
+        {
+          "id": "next-steps",
+          "description": "次のステップに合意を得る",
+          "priority": 3,
+          "criteria": [
+            "デモンストレーションの日程を提案する",
+            "技術担当者との打ち合わせを設定する",
+            "提案書の提出時期を確認する"
+          ],
+          "isRequired": true
+        }
+      ],
+      "maxTurns": 10,
+      "language": "ja"
+    },
+    {
+      "id": "startup-expansion",
+      "visibility": "public",
+      "title": "スタートアップ企業への拡張提案",
+      "description": "成長中のベンチャー企業に事業拡張支援サービスを提案する",
+      "difficulty": "normal",
+      "industry": "ビジネスサービス",
+      "category": "ビジネスサービス",
+      "initialMessage": "やあ、成長ベンチャーの佐藤です。最近急に売上が伸びて嬉しい悲鳴を上げているんですよ。でもスケールするのが本当に大変で…今のままだと成長の壁にぶつかりそうなんです。今日はそのあたりの相談に乗っていただければと。",
+      "npc": {
+        "id": "new-manager",
+        "name": "佐藤課長",
+        "role": "営業課長",
+        "company": "成長ベンチャー株式会社",
+        "personality": [
+          "積極的",
+          "革新的",
+          "迅速な決断",
+          "成果重視"
+        ],
+        "avatar": "👩‍💼",
+        "description": "新しいソリューションに前向きだが、具体的な成果を求める若手管理職。"
+      },
+      "objectives": [
+        "スケーラビリティの重要性を伝える",
+        "成長段階に適したソリューションを提案",
+        "費用対効果を具体的に示す",
+        "導入後のサポート体制を説明"
+      ],
+      "initialMetrics": {
+        "angerLevel": 2,
+        "trustLevel": 4,
+        "progressLevel": 2
+      },
+      "goals": [
+        {
+          "id": "identify-growth-challenges",
+          "description": "成長における課題を特定する",
+          "priority": 5,
+          "criteria": [
+            "現在の成長ボトルネックを特定する",
+            "スケールアップに必要なリソースを確認する",
+            "成長目標とタイムラインを理解する"
+          ],
+          "isRequired": true
+        },
+        {
+          "id": "demonstrate-scalability",
+          "description": "サービスのスケーラビリティを実証する",
+          "priority": 4,
+          "criteria": [
+            "他社事例を用いてスケーラビリティを説明する",
+            "技術的な拡張性を示す",
+            "成長に合わせたコストモデルを提示する"
+          ],
+          "isRequired": true
+        },
+        {
+          "id": "secure-next-meeting",
+          "description": "次回ミーティングの日程を確保する",
+          "priority": 3,
+          "criteria": [
+            "技術チームとのミーティングを設定する",
+            "詳細な提案書の提出日を決める",
+            "意思決定者との面談を設定する"
+          ],
+          "isRequired": false
+        }
+      ],
+      "maxTurns": 10,
+      "language": "ja"
+    },
+    {
+      "id": "traditional-company-digitalization",
+      "visibility": "public",
+      "title": "老舗企業のデジタル化提案",
+      "description": "保守的な企業にデジタル変革ソリューションを提案する慎重なアプローチが必要",
+      "difficulty": "hard",
+      "industry": "製造業",
+      "category": "製造業",
+      "guardrail": "general-compliance",
+      "initialMessage": "お待たせしました。老舗商事の山田です。うちは創業100年を超える会社でしてね、これまでのやり方を変えることには正直抵抗があるんですよ。若手社員からはデジタル化の要望も出ていますが、急には進められないと思っているんです。今日はその辺りをご相談したくて。",
+      "npc": {
+        "id": "conservative-cfo",
+        "name": "山田取締役",
+        "role": "CFO",
+        "company": "老舗商事株式会社",
+        "personality": [
+          "保守的",
+          "慎重",
+          "リスク回避",
+          "長期視点"
+        ],
+        "avatar": "👔",
+        "description": "伝統的な企業文化を重んじ、新しい投資には慎重な姿勢を取る財務責任者。"
+      },
+      "objectives": [
+        "段階的な導入計画を提示",
+        "リスクの最小化を強調",
+        "業界事例を豊富に紹介",
+        "長期的なメリットを説明"
+      ],
+      "initialMetrics": {
+        "angerLevel": 1,
+        "trustLevel": 3,
+        "progressLevel": 1
+      },
+      "goals": [
+        {
+          "id": "address-concerns",
+          "description": "デジタル化に対する懸念を理解し対応する",
+          "priority": 5,
+          "criteria": [
+            "変革に対する懸念点を特定する",
+            "当社の文化や伝統を尊重する姿勢を示す",
+            "具体的な懸念点に対する解決策を提示する"
+          ],
+          "isRequired": true
+        },
+        {
+          "id": "show-success-cases",
+          "description": "同業界の成功事例を紹介する",
+          "priority": 4,
+          "criteria": [
+            "同業界の企業の成功事例を具体的に紹介する",
+            "数値で成果を示す",
+            "失敗から学んだ教訓も共有する"
+          ],
+          "isRequired": false
+        },
+        {
+          "id": "propose-phased-approach",
+          "description": "段階的な導入アプローチを提案する",
+          "priority": 5,
+          "criteria": [
+            "小規模なパイロットプロジェクトから始める計画を提示する",
+            "各フェーズの目標と評価基準を明確にする",
+            "リスク管理策を含める"
+          ],
+          "isRequired": true
+        }
+      ],
+      "maxTurns": 10,
+      "language": "ja"
+    },
+    {
+      "id": "contract-renewal",
+      "visibility": "public",
+      "title": "契約更新交渉",
+      "description": "既存顧客との契約更新時の価格交渉シナリオ",
+      "difficulty": "normal",
+      "industry": "一般",
+      "category": "一般",
+      "initialMessage": "お久しぶりです。テックソリューションの田中です。そろそろ契約更新の時期ですね。実は社内で予算見直しがあり、経費削減を求められています。御社のサービスには満足していますが、もう少し費用を抑えられないかと考えているんです。",
+      "npc": {
+        "id": "harsh-buyer",
+        "name": "田中部長",
+        "role": "購買部長",
+        "company": "テックソリューション株式会社",
+        "personality": [
+          "厳格",
+          "慎重",
+          "コスト重視",
+          "実績重視"
+        ],
+        "avatar": "👨‍💼",
+        "description": "IT業界で20年の経験を持つベテラン購買担当者。予算に厳しく、ROIを重視する。"
+      },
+      "objectives": [
+        "過去の成果を具体的に示す",
+        "追加価値を提案する",
+        "競合比較で優位性を説明",
+        "Win-Winの関係を構築する"
+      ],
+      "initialMetrics": {
+        "angerLevel": 4,
+        "trustLevel": 6,
+        "progressLevel": 3
+      },
+      "goals": [
+        {
+          "id": "demonstrate-past-value",
+          "description": "過去の契約期間で提供した価値を証明する",
+          "priority": 5,
+          "criteria": [
+            "具体的な成果を数値で示す",
+            "顧客にとってのメリットを再確認する",
+            "契約期間中に解決した課題を振り返る"
+          ],
+          "isRequired": true
+        },
+        {
+          "id": "propose-new-value",
+          "description": "新しい契約期間での追加価値を提案する",
+          "priority": 4,
+          "criteria": [
+            "新機能やサービスのメリットを説明する",
+            "顧客の新しいニーズに対応する方法を提案する",
+            "将来のロードマップを共有する"
+          ],
+          "isRequired": false
+        },
+        {
+          "id": "secure-renewal",
+          "description": "契約更新の合意を得る",
+          "priority": 5,
+          "criteria": [
+            "顧客の予算制約を理解し対応する",
+            "適切な契約条件を提示する",
+            "更新手続きの次のステップを明確にする"
+          ],
+          "isRequired": true
+        }
+      ],
+      "maxTurns": 10,
+      "language": "ja"
+    },
+    {
+      "id": "price-negotiation",
+      "visibility": "public",
+      "title": "値引き要求への対応",
+      "description": "顧客からの大幅な値引き要求に対する適切な対応を学ぶ",
+      "difficulty": "hard",
+      "industry": "一般",
+      "category": "一般",
+      "initialMessage": "こんにちは、成長ベンチャーの佐藤です。御社の製品は気に入ったのですが、正直に申し上げて予算オーバーなんですよね。他社の類似製品と比べると2割ほど高くて…。費用対効果を社内で説明できないと承認が難しい状況です。何か良い提案はありませんか？",
+      "npc": {
+        "id": "new-manager",
+        "name": "佐藤課長",
+        "role": "営業課長",
+        "company": "成長ベンチャー株式会社",
+        "personality": [
+          "積極的",
+          "革新的",
+          "迅速な決断",
+          "成果重視"
+        ],
+        "avatar": "👩‍💼",
+        "description": "新しいソリューションに前向きだが、具体的な成果を求める若手管理職。"
+      },
+      "objectives": [
+        "価値に見合った価格であることを説明",
+        "代替案を提示する",
+        "長期的な関係性を重視",
+        "互いのメリットを見つける"
+      ],
+      "initialMetrics": {
+        "angerLevel": 5,
+        "trustLevel": 4,
+        "progressLevel": 2
+      },
+      "goals": [
+        {
+          "id": "maintain-value",
+          "description": "値引きに対して価値を維持する",
+          "priority": 5,
+          "criteria": [
+            "商品・サービスの価値を再度明確に伝える",
+            "価格と価値の関係を具体的に説明する",
+            "競合他社との差別化ポイントを強調する"
+          ],
+          "isRequired": true
+        },
+        {
+          "id": "find-alternative",
+          "description": "価格以外の代替案を提案する",
+          "priority": 4,
+          "criteria": [
+            "機能やサービスの組み合わせを再検討する",
+            "支払い条件や契約期間の柔軟な対応を提案する",
+            "長期的な取引を見据えた条件を提示する"
+          ],
+          "isRequired": true
+        },
+        {
+          "id": "reach-agreement",
+          "description": "双方が受け入れられる合意点に達する",
+          "priority": 5,
+          "criteria": [
+            "顧客の真のニーズを理解する",
+            "双方にとってのメリットを明確にする",
+            "具体的な契約条件に合意する"
+          ],
+          "isRequired": true
+        }
+      ],
+      "maxTurns": 10,
+      "language": "ja"
+    },
+    {
+      "id": "system-requirements",
+      "visibility": "public",
+      "title": "システム要件ヒアリング",
+      "description": "システム担当者がビジネスユーザーに業務要件をヒアリングするシナリオ",
+      "difficulty": "normal",
+      "industry": "IT",
+      "category": "IT",
+      "guardrail": "general-compliance",
+      "initialMessage": "はい、日本製造システムの木村です。お待たせしました。システム刷新のヒアリングということでしたね。私は技術に詳しくないので、専門用語はなるべく避けていただけると助かります。現場の業務がどう改善されるかが一番知りたいポイントです。",
+      "npc": {
+        "id": "business-department-head",
+        "name": "木村部長",
+        "role": "事業部長",
+        "company": "日本製造システム株式会社",
+        "personality": [
+          "実務的",
+          "結果重視",
+          "忙しい",
+          "IT知識少なめ"
+        ],
+        "avatar": "👨‍💻",
+        "description": "製造部門の責任者でシステム導入の決裁権を持つ。業務効率化に関心があるが、技術的な詳細には興味がない。具体的な効果とROIを重視する。"
+      },
+      "objectives": [
+        "現行業務フローを理解する",
+        "業務課題を特定する",
+        "具体的な要件を引き出す",
+        "次のステップについて合意を得る"
+      ],
+      "initialMetrics": {
+        "angerLevel": 1,
+        "trustLevel": 3,
+        "progressLevel": 1
+      },
+      "goals": [
+        {
+          "id": "understand-workflow",
+          "description": "現行業務フローを正確に理解する",
+          "priority": 5,
+          "criteria": [
+            "業務の流れとステップを明確に把握する",
+            "関係者と役割を特定する",
+            "現在の業務処理時間とボトルネックを特定する"
+          ],
+          "isRequired": true
+        },
+        {
+          "id": "identify-challenges",
+          "description": "業務課題を特定し優先順位付けする",
+          "priority": 5,
+          "criteria": [
+            "業務上の具体的な課題点を引き出す",
+            "コスト・時間・品質の観点から影響度を評価する",
+            "改善の優先順位について合意を得る"
+          ],
+          "isRequired": true
+        },
+        {
+          "id": "extract-requirements",
+          "description": "具体的な要件を明確にする",
+          "priority": 4,
+          "criteria": [
+            "機能要件を具体的に文書化する",
+            "非機能要件（パフォーマンス、セキュリティ等）を確認する",
+            "目標とするKPIを設定する"
+          ],
+          "isRequired": true
+        },
+        {
+          "id": "agree-next-steps",
+          "description": "次のステップについて合意形成する",
+          "priority": 3,
+          "criteria": [
+            "要件定義の進め方について合意を得る",
+            "タイムラインと役割分担を明確にする",
+            "決裁者と承認プロセスを確認する"
+          ],
+          "isRequired": false
+        }
+      ],
+      "maxTurns": 10,
+      "language": "ja"
+    },
+    {
+      "id": "tech-assessment",
+      "visibility": "public",
+      "title": "技術評価プレゼン",
+      "description": "技術責任者に対して新しいソフトウェアの技術的価値を説得するシナリオ",
+      "difficulty": "hard",
+      "industry": "IT",
+      "category": "IT",
+      "initialMessage": "グローバルテックの高橋です。CTO兼技術責任者をしています。御社のソリューションについては興味がありますが、マーケティングの誇大表現には辟易としています。今日は具体的な技術仕様、特にパフォーマンスとセキュリティ面について詳細を伺いたいですね。",
+      "npc": {
+        "id": "tech-leader",
+        "name": "高橋リーダー",
+        "role": "技術統括責任者",
+        "company": "グローバルテック株式会社",
+        "personality": [
+          "技術志向",
+          "論理的",
+          "細部へのこだわり",
+          "革新性重視"
+        ],
+        "avatar": "🧑‍💻",
+        "description": "最新技術に精通し、技術的な価値と実装の実現性を重視する。表面的な提案には厳しい姿勢を示す。"
+      },
+      "objectives": [
+        "技術的優位性を具体的に示す",
+        "スケーラビリティとパフォーマンスを説明",
+        "セキュリティ対策について詳述",
+        "既存システムとの統合方法を提案"
+      ],
+      "initialMetrics": {
+        "angerLevel": 2,
+        "trustLevel": 3,
+        "progressLevel": 1
+      },
+      "goals": [
+        {
+          "id": "prove-technical-superiority",
+          "description": "技術的優位性を実証する",
+          "priority": 5,
+          "criteria": [
+            "ベンチマーク結果や技術仕様を用いて優位性を説明する",
+            "競合製品との技術的な比較を示す",
+            "具体的な技術的課題の解決方法を説明する"
+          ],
+          "isRequired": true
+        },
+        {
+          "id": "address-security-concerns",
+          "description": "セキュリティ懸念事項に対応する",
+          "priority": 4,
+          "criteria": [
+            "セキュリティアーキテクチャを詳細に説明する",
+            "セキュリティ監査や認証について説明する",
+            "セキュリティインシデント対応計画を提示する"
+          ],
+          "isRequired": true
+        },
+        {
+          "id": "explain-integration",
+          "description": "既存システムとの統合方法を説明する",
+          "priority": 4,
+          "criteria": [
+            "APIやデータ連携の方法を詳細に説明する",
+            "移行計画とリスク管理策を提示する",
+            "統合に必要なリソースとタイムラインを示す"
+          ],
+          "isRequired": false
+        }
+      ],
+      "maxTurns": 15,
+      "language": "ja"
+    },
+    {
+      "id": "healthcare-solution",
+      "visibility": "public",
+      "title": "医療機関向けソリューション提案",
+      "description": "病院の業務効率化と患者ケア向上のためのシステム提案シナリオ",
+      "difficulty": "normal",
+      "industry": "医療",
+      "category": "医療",
+      "guardrail": "medical-compliance",
+      "initialMessage": "こんにちは、中央メディカルセンターの鈴木です。当院ではスタッフの疲弊が深刻で、業務効率化が急務なんです。ただ、患者の安全性が何よりも優先されるべきで、そこは絶対に妥協できません。今回はそのバランスが取れたシステムについて相談したくて。",
+      "npc": {
+        "id": "healthcare-manager",
+        "name": "鈴木院長",
+        "role": "病院長",
+        "company": "中央メディカルセンター",
+        "personality": [
+          "安全性重視",
+          "患者中心",
+          "効率性追求",
+          "堅実"
+        ],
+        "avatar": "🩺",
+        "description": "医療現場の効率化に興味を持つ一方で、患者安全を最優先し、医療従事者の負担軽減につながるソリューションを求めている。"
+      },
+      "objectives": [
+        "患者安全性の向上を最優先にした設計を説明",
+        "医療スタッフの業務効率化効果を数値で示す",
+        "医療データのセキュリティ対策を詳述",
+        "段階的導入と研修計画を提案"
+      ],
+      "initialMetrics": {
+        "angerLevel": 1,
+        "trustLevel": 4,
+        "progressLevel": 2
+      },
+      "goals": [
+        {
+          "id": "ensure-patient-safety",
+          "description": "患者安全性を最優先とした設計を説明する",
+          "priority": 5,
+          "criteria": [
+            "安全性向上の具体的な事例を示す",
+            "リスク評価と対策を説明する",
+            "医療ミス防止の仕組みを詳細に説明する"
+          ],
+          "isRequired": true
+        },
+        {
+          "id": "demonstrate-efficiency",
+          "description": "医療スタッフの業務効率化を実証する",
+          "priority": 4,
+          "criteria": [
+            "業務時間の削減効果を数値で示す",
+            "他病院での導入事例と成果を紹介する",
+            "医療スタッフの負担軽減方法を具体的に説明する"
+          ],
+          "isRequired": true
+        },
+        {
+          "id": "address-data-security",
+          "description": "医療データのセキュリティ対策を説明する",
+          "priority": 5,
+          "criteria": [
+            "個人情報保護の仕組みを詳細に説明する",
+            "データ暗号化とアクセス制御について説明する",
+            "法規制適合（医療情報保護関連法など）を証明する"
+          ],
+          "isRequired": true
+        }
+      ],
+      "maxTurns": 10,
+      "language": "ja"
+    },
+    {
+      "id": "digital-strategy",
+      "visibility": "public",
+      "title": "デジタル戦略提案",
+      "description": "業務部門にテクノロジーのトレンドやデジタル戦略の話をするシナリオ",
+      "difficulty": "hard",
+      "industry": "コンサルティング",
+      "category": "コンサルティング",
+      "initialMessage": "大和物産の斎藤です。お忙しい中お時間いただきありがとうございます。デジタル化しなきゃいけないとは分かっているんですが、何から始めれば良いのか…。社内には「今までのやり方で十分」という声も多く、進め方に悩んでいます。良いアドバイスがあれば教えてください。",
+      "npc": {
+        "id": "traditional-manager",
+        "name": "斎藤部長",
+        "role": "営業部長",
+        "company": "大和物産株式会社",
+        "personality": [
+          "旧来型",
+          "関係重視",
+          "変化に慎重",
+          "業績プレッシャー"
+        ],
+        "avatar": "👨‍💼",
+        "description": "伝統的な企業で30年以上のキャリアを持つ管理職。デジタル化の必要性は感じているが、具体的な進め方がわからず不安を感じている。成果に対するプレッシャーが大きい。"
+      },
+      "objectives": [
+        "業界のデジタルトレンドを説明する",
+        "競合他社の動向を分析する",
+        "自社に適したデジタル戦略を提案する",
+        "具体的な実装ステップを提示する"
+      ],
+      "initialMetrics": {
+        "angerLevel": 2,
+        "trustLevel": 2,
+        "progressLevel": 1
+      },
+      "goals": [
+        {
+          "id": "explain-digital-trends",
+          "description": "業界のデジタルトレンドを分かりやすく説明する",
+          "priority": 5,
+          "criteria": [
+            "最新のテクノロジートレンドを具体例とともに説明する",
+            "業界特有のデジタル化動向を示す",
+            "技術専門用語を避け、ビジネス価値を中心に説明する"
+          ],
+          "isRequired": true
+        },
+        {
+          "id": "analyze-competitors",
+          "description": "競合他社のデジタル動向を分析する",
+          "priority": 4,
+          "criteria": [
+            "主要競合のデジタル施策を具体的に示す",
+            "成功・失敗事例から得られる教訓を説明する",
+            "競争優位性獲得のポイントを明確にする"
+          ],
+          "isRequired": true
+        },
+        {
+          "id": "propose-strategy",
+          "description": "自社に適したデジタル戦略を提案する",
+          "priority": 5,
+          "criteria": [
+            "自社の強みを活かしたデジタル戦略を提示する",
+            "短期・中期・長期の具体的な目標を設定する",
+            "投資対効果を具体的な数字で示す"
+          ],
+          "isRequired": true
+        },
+        {
+          "id": "outline-implementation",
+          "description": "実装ステップを具体的に示す",
+          "priority": 4,
+          "criteria": [
+            "フェーズ分けした実装計画を提示する",
+            "必要なリソースと体制を明確にする",
+            "リスク要因と対策を説明する"
+          ],
+          "isRequired": false
+        }
+      ],
+      "maxTurns": 10,
+      "language": "ja"
+    },
+    {
+      "id": "first-investment-consultation",
+      "visibility": "public",
+      "title": "投資未経験者への資産運用提案",
+      "description": "老後資金に不安を抱く50代会社員に初回の投資相談を行うシナリオ",
+      "difficulty": "normal",
+      "industry": "証券",
+      "category": "証券",
+      "initialMessage": "初めまして、佐々木と申します。今日は老後資金について相談したくて来ました。実は投資は一度もしたことがなくて、銀行預金しかないんです。でも最近、このままでは老後が不安で…。ただ、リスクが高いものはちょっと怖いんですよね。",
+      "npc": {
+        "id": "cautious-investor",
+        "name": "佐々木",
+        "role": "会社員",
+        "company": "一般企業勤務",
+        "personality": [
+          "慎重",
+          "不安",
+          "情報収集重視",
+          "安定志向"
+        ],
+        "avatar": "👨‍💼",
+        "description": "50代会社員。投資未経験で老後資金に不安を抱いている。リスクを恐れており、安全性を最重視する。専門用語には困惑しやすい。"
+      },
+      "objectives": [
+        "顧客の不安に共感し信頼関係を構築する",
+        "リスク許容度を適切に把握する",
+        "専門用語を避けて分かりやすく説明する",
+        "少額から始められる安全な商品を提案する"
+      ],
+      "initialMetrics": {
+        "angerLevel": 1,
+        "trustLevel": 2,
+        "progressLevel": 1
+      },
+      "goals": [
+        {
+          "id": "build-trust",
+          "description": "顧客の不安を理解し信頼関係を構築する",
+          "priority": 5,
+          "criteria": [
+            "顧客の老後資金に関する不安を共感的に傾聴する",
+            "投資に対する懸念点を理解し対応する",
+            "金融教育的なアプローチで不安を軟らげる"
+          ],
+          "isRequired": true
+        },
+        {
+          "id": "assess-risk-tolerance",
+          "description": "顧客のリスク許容度を適切に評価する",
+          "priority": 4,
+          "criteria": [
+            "リスク許容度を評価する質問を行う",
+            "長期的な資産形成の目標を確認する",
+            "投資経験や知識レベルを適切に把握する"
+          ],
+          "isRequired": true
+        },
+        {
+          "id": "recommend-suitable-products",
+          "description": "顧客に適した商品を提案する",
+          "priority": 5,
+          "criteria": [
+            "リスク許容度に合った商品を選択する",
+            "少額から始められる商品を提案する",
+            "分かりやすい言葉で商品のメリットとリスクを説明する"
+          ],
+          "isRequired": true
+        }
+      ],
+      "maxTurns": 10,
+      "language": "ja"
+    },
+    {
+      "id": "market-decline-support",
+      "visibility": "public",
+      "title": "株価下落時の既存顧客フォロー",
+      "description": "含み損で動揺している個人投資家に適切なフォローを行うシナリオ",
+      "difficulty": "hard",
+      "industry": "証券",
+      "category": "証券",
+      "initialMessage": "あのですね、田村ですが、今すぐ話がしたいんです！昨日からの相場の急落で、私の資産が20%も減ってしまいました。こんなはずじゃなかったはず…あなたは「長期投資が重要」と言っていましたが、これ以上の損失は耐えられません。今すぐ全部売却すべきではないですか？",
+      "npc": {
+        "id": "worried-existing-client",
+        "name": "田村",
+        "role": "個人投資家",
+        "company": "既存顧客",
+        "personality": [
+          "感情的",
+          "不安定",
+          "短期視点",
+          "損失回避"
+        ],
+        "avatar": "😰",
+        "description": "投資経験3年の個人投資家。現在の含み損で動揺しており、感情的になりやすい。市場下落時にパニック売りをしがちな性格。"
+      },
+      "objectives": [
+        "顧客の感情的な不安を受け止める",
+        "長期投資の重要性を説明する",
+        "パニック売りを防ぐための説得を行う",
+        "必要に応じて追加投資の提案をする"
+      ],
+      "initialMetrics": {
+        "angerLevel": 6,
+        "trustLevel": 4,
+        "progressLevel": 2
+      },
+      "goals": [
+        {
+          "id": "calm-emotional-response",
+          "description": "顧客の感情的な反応を落ち着かせる",
+          "priority": 5,
+          "criteria": [
+            "顧客の感情を受け止め共感を示す",
+            "感情的な反応が自然なものであることを認める",
+            "冷静な判断を促す会話を導く"
+          ],
+          "isRequired": true
+        },
+        {
+          "id": "prevent-panic-selling",
+          "description": "パニック売りを防止する",
+          "priority": 5,
+          "criteria": [
+            "市場の周期性と回復の歴史を説明する",
+            "長期投資のメリットを具体的なデータで示す",
+            "売却による損失確定のリスクを説明する"
+          ],
+          "isRequired": true
+        },
+        {
+          "id": "suggest-strategic-action",
+          "description": "状況に応じた戦略的アクションを提案する",
+          "priority": 4,
+          "criteria": [
+            "ポートフォリオの見直しを提案する",
+            "市場下落時の投資機会を説明する",
+            "顧客の状況に合わせた具体的なアクションプランを提示する"
+          ],
+          "isRequired": false
+        }
+      ],
+      "maxTurns": 10,
+      "language": "ja"
+    },
+    {
+      "id": "young-nisa-proposal",
+      "visibility": "public",
+      "title": "20代社会人へのつみたてNISA提案",
+      "description": "投資に興味があるが知識不足の若手社会人にNISAを提案するシナリオ",
+      "difficulty": "easy",
+      "industry": "証券",
+      "category": "証券",
+      "initialMessage": "はじめまして、林と申します。SNSで投資の話を見て興味を持ったんですけど、具体的に何から始めればいいのかわからなくて。NISAっていうのが良いと聞いたんですが、どんな仕組みなんでしょうか？あと、少額からでも始められますか？",
+      "npc": {
+        "id": "young-professional",
+        "name": "林",
+        "role": "会社員",
+        "company": "IT企業勤務",
+        "personality": [
+          "好奇心旺盛",
+          "学習意欲",
+          "時間制約",
+          "デジタルネイティブ"
+        ],
+        "avatar": "👩‍💻",
+        "description": "20代後半のIT企業勤務。投資に興味があるが知識が不足。忙しく時間が限られているため、効率的で分かりやすい説明を好む。"
+      },
+      "objectives": [
+        "若年層の興味を引く説明を行う",
+        "NISA制度のメリットを分かりやすく説明する",
+        "長期積立投資の威力を具体例で示す",
+        "少額から始められることを強調する"
+      ],
+      "initialMetrics": {
+        "angerLevel": 1,
+        "trustLevel": 5,
+        "progressLevel": 3
+      },
+      "goals": [
+        {
+          "id": "explain-nisa-benefits",
+          "description": "NISA制度のメリットを分かりやすく説明する",
+          "priority": 5,
+          "criteria": [
+            "非課税メリットを具体的な数字で説明する",
+            "通常の投資との違いを明確にする",
+            "NISAの制度内容を分かりやすく説明する"
+          ],
+          "isRequired": true
+        },
+        {
+          "id": "demonstrate-compound-interest",
+          "description": "複利の力を具体的に示す",
+          "priority": 4,
+          "criteria": [
+            "複利効果を分かりやすい図表や例で説明する",
+            "若いうちから始めるメリットを具体的に示す",
+            "少額からの積立投資の長期的な成果を示す"
+          ],
+          "isRequired": true
+        },
+        {
+          "id": "create-action-plan",
+          "description": "具体的な行動計画を作成する",
+          "priority": 3,
+          "criteria": [
+            "口座開設の手順を簡潔に説明する",
+            "最初の投資商品を選択するサポートを行う",
+            "定期的なフォローアップの予定を立てる"
+          ],
+          "isRequired": false
+        }
+      ],
+      "maxTurns": 10,
+      "language": "ja"
+    },
+    {
+      "id": "wealthy-diversification",
+      "visibility": "public",
+      "title": "富裕層向けリスク分散提案",
+      "description": "資産10億円以上の富裕層に対し、分散投資を通じたリスク分散の重要性を提案するシナリオ",
+      "difficulty": "hard",
+      "industry": "金融",
+      "category": "金融",
+      "initialMessage": "お招きいただきありがとう。グローバルトレーディングの渡辺です。私は長年日本株と都心の不動産で資産を築いてきましたが、最近は世界情勢の変化が気になっています。しかし、海外投資には慎重にならざるを得ません。どのようなアプローチが適切なのでしょうか。",
+      "npc": {
+        "id": "wealthy-executive",
+        "name": "渡辺会長",
+        "role": "取締役会長",
+        "company": "グローバルトレーディング株式会社",
+        "personality": [
+          "保守的",
+          "権威重視",
+          "分析的",
+          "独立志向"
+        ],
+        "avatar": "🧓",
+        "description": "大手商社の元役員で現在は複数企業の社外取締役。資産10億円以上を保有し、国内株式と不動産に偏った資産構成。世界経済の変化に関心がある。"
+      },
+      "objectives": [
+        "リスク許容度を正確に把握する",
+        "分散投資の重要性を説明する",
+        "グローバル資産配分の提案を行う",
+        "税務・相続対策を提案する"
+      ],
+      "initialMetrics": {
+        "angerLevel": 2,
+        "trustLevel": 4,
+        "progressLevel": 2
+      },
+      "goals": [
+        {
+          "id": "assess-risk-tolerance",
+          "description": "リスク許容度を正確に把握する",
+          "priority": 5,
+          "criteria": [
+            "過去の投資経験と結果について質問する",
+            "市場変動時の心理的反応を探る",
+            "長期的な資産目標と時間軸を確認する"
+          ],
+          "isRequired": true
+        },
+        {
+          "id": "explain-diversification",
+          "description": "分散投資の重要性を説明する",
+          "priority": 5,
+          "criteria": [
+            "現在のポートフォリオの集中リスクを指摘する",
+            "過去の市場データを用いて分散効果を説明する",
+            "地政学的リスクへの対応策を提示する"
+          ],
+          "isRequired": true
+        },
+        {
+          "id": "propose-global-allocation",
+          "description": "グローバル資産配分を提案する",
+          "priority": 4,
+          "criteria": [
+            "地域・セクター別の具体的な配分比率を提示する",
+            "為替リスクのヘッジ方法を説明する",
+            "オルタナティブ資産の組み入れ効果を提示する"
+          ],
+          "isRequired": true
+        },
+        {
+          "id": "tax-estate-planning",
+          "description": "税務・相続対策を提案する",
+          "priority": 4,
+          "criteria": [
+            "国際的な税制を考慮した資産管理構造を提案する",
+            "次世代への資産承継計画を具体的に説明する",
+            "慈善活動を通じた社会貢献と税制優遇を紹介する"
+          ],
+          "isRequired": false
+        }
+      ],
+      "maxTurns": 10,
+      "language": "ja"
+    },
+    {
+      "id": "corporate-pension-proposal",
+      "visibility": "public",
+      "title": "中小企業への企業年金制度提案",
+      "description": "従業員の福利厚生を重視する製造業社長に企業年金制度を提案するシナリオ",
+      "difficulty": "hard",
+      "industry": "証券",
+      "category": "証券",
+      "initialMessage": "中村工業の社長をしております、中村です。従業員の福利厚生を充実させるため、企業年金制度の導入を検討しています。ただ、中小企業でも導入しやすい制度があるのか、コストパフォーマンスはどうなのか、導入後の運用負担はどの程度かなど、具体的なお話を伺いたいと思います。",
+      "npc": {
+        "id": "business-owner",
+        "name": "中村社長",
+        "role": "代表取締役",
+        "company": "中村工業株式会社",
+        "personality": [
+          "経営者視点",
+          "数値重視",
+          "従業員思い",
+          "決断力"
+        ],
+        "avatar": "👔",
+        "description": "従業員50名の製造業社長。従業員の福利厚生に関心が高く、企業年金制度の導入を検討中。コスト効果と従業員満足度を重視する。"
+      },
+      "objectives": [
+        "従業員満足度向上効果を定量的に示す",
+        "税務メリットを具体的に説明する",
+        "コスト効果を明確に提示する",
+        "導入から運用までの具体的なプロセスを説明する"
+      ],
+      "initialMetrics": {
+        "angerLevel": 2,
+        "trustLevel": 3,
+        "progressLevel": 2
+      },
+      "goals": [
+        {
+          "id": "demonstrate-employee-benefits",
+          "description": "従業員にとってのメリットを実証する",
+          "priority": 5,
+          "criteria": [
+            "従業員満足度向上の具体的なデータを示す",
+            "人材確保や定着率向上への効果を説明する",
+            "他社事例を用いて従業員メリットを具体的に説明する"
+          ],
+          "isRequired": true
+        },
+        {
+          "id": "explain-tax-benefits",
+          "description": "企業側の税務メリットを説明する",
+          "priority": 4,
+          "criteria": [
+            "法人税等の税務メリットを具体的な数字で示す",
+            "従業員にとっての税務メリットを説明する",
+            "税制改正に対する将来的な対応策を提示する"
+          ],
+          "isRequired": true
+        },
+        {
+          "id": "present-implementation-plan",
+          "description": "実現可能な導入プランを提示する",
+          "priority": 5,
+          "criteria": [
+            "導入から運用までの具体的なステップを説明する",
+            "コストとタイムラインを明確に示す",
+            "当社のサポート体制を説明する"
+          ],
+          "isRequired": true
+        }
+      ],
+      "maxTurns": 10,
+      "language": "ja"
+    }
+  ]
+}
