@@ -30,7 +30,6 @@ import {
 } from "../utils/goalUtils";
 import VideoManager from "../components/recording/v2/VideoManager";
 
-
 // 分割したコンポーネントをインポート
 import ConversationHeader from "../components/conversation/ConversationHeader";
 import NPCInfoCard from "../components/conversation/NPCInfoCard";
@@ -64,8 +63,6 @@ const ConversationPage: React.FC = () => {
   const [sessionEnded, setSessionEnded] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [sessionId, setSessionId] = useState<string>("");
-  // 動画録画のエラーと鍵は現在VideoManagerコンポーネントで直接処理するため使用していません
-  // 録画関連の状態管理は完全にVideoManagerコンポーネントに移行
   // アバターの表情状態管理用の状態変数
   const [currentEmotion, setCurrentEmotion] = useState<string>("neutral");
   const [audioEnabled, setAudioEnabled] = useState(true);
@@ -85,6 +82,7 @@ const ConversationPage: React.FC = () => {
     useState<ComplianceViolation | null>(null);
   const [showComplianceAlert, setShowComplianceAlert] =
     useState<boolean>(false);
+
 
   // コンポーネントの初期マウント時のフラグ設定
   useEffect(() => {
@@ -547,9 +545,6 @@ const ConversationPage: React.FC = () => {
       console.log("セッション終了処理を開始します");
       setSessionEnded(true);
 
-      // VideoManagerコンポーネントがsessionEndedプロパティによって
-      // 自動的に録画を停止するため、ここでの明示的な停止処理は不要になりました
-
       // 最終的なゴールスコアを計算
       const finalGoalScore = calculateGoalScore(goalStatuses, goals);
       setGoalScore(finalGoalScore);
@@ -581,16 +576,18 @@ const ConversationPage: React.FC = () => {
       // セッションデータをlocalStorageに保存
       localStorage.setItem(`session_${session.id}`, JSON.stringify(session));
 
-      // videoKeyがあればそれも保存
-      const currentVideoKey = localStorage.getItem("lastRecordingKey");
-      if (currentVideoKey) {
-        console.log(
-          `セッション ${sessionId} の録画キー ${currentVideoKey} を保存しています`,
-        );
-        localStorage.setItem(`session_${session.id}_videoKey`, currentVideoKey);
-      } else {
-        console.log("録画キーが見つかりません");
-      }
+      // 録画完了を少し待ってからvideoKeyを確認
+      setTimeout(() => {
+        const currentVideoKey = localStorage.getItem("lastRecordingKey");
+        if (currentVideoKey) {
+          console.log(
+            `セッション ${sessionId} の録画キー ${currentVideoKey} を保存しています`,
+          );
+          localStorage.setItem(`session_${session.id}_videoKey`, currentVideoKey);
+        } else {
+          console.log("録画キーが見つかりません");
+        }
+      }, 500);
 
       // 結果ページに遷移
       setTimeout(() => {

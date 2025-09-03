@@ -1,6 +1,7 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } from "react";
 import { Box, Typography, Alert, Snackbar } from "@mui/material";
 import { useTranslation } from "react-i18next";
+import type { VideoRecorderRef } from "../../../types/components";
 
 interface VideoRecorderProps {
   sessionId: string;
@@ -15,12 +16,12 @@ interface VideoRecorderProps {
  * 商談開始時のアンマウント問題を解決するため、コンポーネント自体はマウントされたままで
  * 内部状態だけを変更することでセッション間の録画を継続します
  */
-const VideoRecorder: React.FC<VideoRecorderProps> = ({
+const VideoRecorder = forwardRef<VideoRecorderRef, VideoRecorderProps>(({
   sessionId,
   isActive,
   onRecordingComplete,
   onError,
-}) => {
+}, ref) => {
   const { t } = useTranslation();
 
   // refs
@@ -322,6 +323,33 @@ const VideoRecorder: React.FC<VideoRecorderProps> = ({
     }
   };
 
+  // 明示的な録画停止のためのメソッドを外部に公開
+  useImperativeHandle(ref, () => ({
+    forceStopRecording: async () => {
+      console.log("VideoRecorder: forceStopRecording呼び出し");
+      return new Promise<void>((resolve) => {
+        if (isRecording && mediaRecorderRef.current) {
+          console.log("VideoRecorder: 録画中のため停止処理を実行");
+          
+          // 録画停止完了を待つためのイベントリスナーを設定
+          const handleStop = () => {
+            console.log("VideoRecorder: 録画停止完了");
+            if (mediaRecorderRef.current) {
+              mediaRecorderRef.current.removeEventListener('stop', handleStop);
+            }
+            resolve();
+          };
+          
+          mediaRecorderRef.current.addEventListener('stop', handleStop);
+          stopRecording();
+        } else {
+          console.log("VideoRecorder: 録画していないため停止処理をスキップ");
+          resolve();
+        }
+      });
+    }
+  }));
+
   // スナックバーを閉じる
   const handleSnackbarClose = () => {
     setSnackbarOpen(false);
@@ -389,6 +417,8 @@ const VideoRecorder: React.FC<VideoRecorderProps> = ({
       </Box>
     </Box>
   );
-};
+});
+
+VideoRecorder.displayName = 'VideoRecorder';
 
 export default VideoRecorder;

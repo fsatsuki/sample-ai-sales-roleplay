@@ -146,3 +146,14 @@ export interface SharingStepProps {
     }>,
   ) => void;
 }
+
+/**
+ * 録画コンポーネント関連の型定義
+ */
+export interface VideoManagerRef {
+  forceStopRecording: () => Promise<void>;
+}
+
+export interface VideoRecorderRef {
+  forceStopRecording: () => Promise<void>;
+}

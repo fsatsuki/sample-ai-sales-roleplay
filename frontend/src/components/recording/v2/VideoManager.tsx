@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useImperativeHandle, forwardRef } from "react";
 import { Box } from "@mui/material";
 import VideoRecorder from "./VideoRecorder";
+import type { VideoManagerRef, VideoRecorderRef } from "../../../types/components";
 
 interface VideoManagerProps {
   sessionId: string;
@@ -14,13 +15,14 @@ interface VideoManagerProps {
  * このコンポーネントは商談ページ内で常に表示され続けるため、
  * 商談開始時のコンポーネント再マウントの問題を回避します。
  */
-const VideoManager: React.FC<VideoManagerProps> = ({
+const VideoManager = forwardRef<VideoManagerRef, VideoManagerProps>(({
   sessionId,
   sessionStarted,
   sessionEnded,
-}) => {
+}, ref) => {
   const [videoKey, setVideoKey] = useState<string>("");
   const [recordingError, setRecordingError] = useState<string>("");
+  const videoRecorderRef = useRef<VideoRecorderRef | null>(null);
 
   // sessionIdの変化をログ出力
   useEffect(() => {
@@ -57,6 +59,32 @@ const VideoManager: React.FC<VideoManagerProps> = ({
     }
   }, [videoKey]);
 
+  // 親コンポーネントから明示的に録画を停止するための関数を公開
+  useImperativeHandle(ref, () => ({
+    forceStopRecording: async () => {
+      console.log("VideoManager: 明示的な録画停止が要求されました");
+      if (videoRecorderRef.current) {
+        return await videoRecorderRef.current.forceStopRecording();
+      }
+      return Promise.resolve();
+    }
+  }));
+
+  // sessionEndedが変化したときの明示的な処理
+  useEffect(() => {
+    if (sessionEnded && sessionStarted && videoRecorderRef.current) {
+      console.log("VideoManager: sessionEnded検知による録画停止処理");
+      // 少し遅延させてから録画停止を確実に実行
+      setTimeout(() => {
+        if (videoRecorderRef.current) {
+          videoRecorderRef.current.forceStopRecording().catch((error) => {
+            console.error("VideoManager: 明示的録画停止でエラー:", error);
+          });
+        }
+      }, 100);
+    }
+  }, [sessionEnded, sessionStarted]);
+
   return (
     <Box>
       {/* 
@@ -64,6 +92,7 @@ const VideoManager: React.FC<VideoManagerProps> = ({
         isActiveプロパティによって録画のON/OFFを制御します
       */}
       <VideoRecorder
+        ref={videoRecorderRef}
         sessionId={sessionId}
         isActive={sessionStarted && !sessionEnded && sessionId !== ""}
         onRecordingComplete={handleRecordingComplete}
@@ -83,6 +112,8 @@ const VideoManager: React.FC<VideoManagerProps> = ({
       )}
     </Box>
   );
-};
+});
+
+VideoManager.displayName = 'VideoManager';
 
 export default VideoManager;
