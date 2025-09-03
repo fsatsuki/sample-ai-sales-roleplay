@@ -152,19 +152,6 @@ const GoalResultsSection: React.FC<GoalResultsSectionProps> = ({
                   <Typography variant="body2" color="text.secondary">
                     {t("results.priority", "優先度")}: {goal.priority}/5
                   </Typography>
-
-                  {status.achievedAt && (
-                    <Typography variant="caption" color="success.main">
-                      {t("results.achievedTime", "達成時間")}:{" "}
-                      {status.achievedAt instanceof Date
-                        ? status.achievedAt.toLocaleTimeString()
-                        : typeof status.achievedAt === "string"
-                          ? new Date(status.achievedAt).toLocaleTimeString()
-                          : typeof status.achievedAt === "number"
-                            ? new Date(status.achievedAt).toLocaleTimeString()
-                            : t("results.unknown", "不明")}
-                    </Typography>
-                  )}
                 </Box>
               </Box>
             </Grid>

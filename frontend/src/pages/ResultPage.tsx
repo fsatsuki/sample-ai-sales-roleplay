@@ -210,8 +210,15 @@ const ResultPage: React.FC = () => {
             (status) => ({
               goalId: status.goalId,
               achieved: status.achieved,
-              achievedAt: status.achievedAt
-                ? new Date(status.achievedAt)
+              achievedAt: status.achievedAt && status.achievedAt !== "null" 
+                ? (() => {
+                    try {
+                      const date = new Date(status.achievedAt);
+                      return isNaN(date.getTime()) ? undefined : date;
+                    } catch {
+                      return undefined;
+                    }
+                  })()
                 : undefined,
               progress: Number(status.progress),
             }),
@@ -239,8 +246,15 @@ const ResultPage: React.FC = () => {
               (status) => ({
                 goalId: status.goalId,
                 achieved: status.achieved,
-                achievedAt: status.achievedAt
-                  ? new Date(status.achievedAt)
+                achievedAt: status.achievedAt && status.achievedAt !== "null"
+                  ? (() => {
+                      try {
+                        const date = new Date(status.achievedAt);
+                        return isNaN(date.getTime()) ? undefined : date;
+                      } catch {
+                        return undefined;
+                      }
+                    })()
                   : undefined,
                 progress: Number(status.progress),
               }),
