@@ -3,7 +3,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Construct } from 'constructs';
 import * as bedrock from 'aws-cdk-lib/aws-bedrock';
-import { NagSuppressions } from 'cdk-nag';
 
 /**
  * GuardrailsConstructの入力プロパティインタフェース

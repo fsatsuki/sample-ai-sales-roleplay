@@ -5,7 +5,6 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import { Construct } from 'constructs';
-import { NagSuppressions } from 'cdk-nag';
 import * as path from 'path';
 
 /**
@@ -118,33 +117,6 @@ export class VideosLambdaConstruct extends Construct {
         ],
         resources: ['*']
       })
-    );
-
-    // CDK Nag抑制
-    NagSuppressions.addResourceSuppressions(
-      [this.function, lambdaExecutionRole],
-      [
-        {
-          id: 'AwsSolutions-IAM4',
-          reason: 'Lambda基本実行ロールはAWSの管理ポリシーを使用',
-        },
-        {
-          id: 'AwsSolutions-L1',
-          reason: '開発環境では特定のLambdaランタイムバージョンを使用',
-        }
-      ],
-      true
-    );
-
-    NagSuppressions.addResourceSuppressions(
-      lambdaExecutionRole,
-      [
-        {
-          id: 'AwsSolutions-IAM5',
-          reason: '動画処理のためのBedrockとS3アクセス権限が必要',
-        }
-      ],
-      true
     );
   }
 }

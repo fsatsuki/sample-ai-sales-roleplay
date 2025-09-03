@@ -4,8 +4,6 @@ import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
-import { NagSuppressions } from 'cdk-nag';
-import { MethodLoggingLevel } from 'aws-cdk-lib/aws-apigateway';
 
 /**
  * API Gateway REST APIを作成するConstruct
@@ -48,28 +46,6 @@ export class ApiGatewayConstruct extends Construct {
       description: 'Unified API for AIRolePlay services including Bedrock, Polly, and scoring',
       deployOptions: {
         stageName: 'api',
-        // アクセスログの有効化
-        accessLogDestination: new apigateway.LogGroupLogDestination(
-          new cdk.aws_logs.LogGroup(this, 'ApiGatewayAccessLogs', {
-            retention: cdk.aws_logs.RetentionDays.ONE_WEEK,
-            removalPolicy: cdk.RemovalPolicy.DESTROY,
-          })
-        ),
-        // アクセスログフォーマットの設定
-        accessLogFormat: apigateway.AccessLogFormat.jsonWithStandardFields({
-          caller: true,
-          httpMethod: true,
-          ip: true,
-          protocol: true,
-          requestTime: true,
-          resourcePath: true,
-          responseLength: true,
-          status: true,
-          user: true,
-        }),
-        // CloudWatch ロギングの有効化（すべてのメソッド）
-        loggingLevel: MethodLoggingLevel.INFO,
-        dataTraceEnabled: true,
       },
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS, // TODO: 本番環境では制限する
@@ -406,27 +382,6 @@ export class ApiGatewayConstruct extends Construct {
     // CloudWatchアクセス権限
     apiGatewayRole.addManagedPolicy(
       iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonAPIGatewayPushToCloudWatchLogs')
-    );
-
-
-    // CDK Nag抑制
-    NagSuppressions.addResourceSuppressions(
-      this.api,
-      [
-        {
-          id: 'AwsSolutions-APIG2',
-          reason: '開発環境ではリクエスト検証を省略',
-        },
-        {
-          id: 'AwsSolutions-APIG4',
-          reason: '開発環境では認証を選択的に適用',
-        },
-        {
-          id: 'AwsSolutions-COG4',
-          reason: 'APIでCognito認証を使用',
-        },
-      ],
-      true
     );
   }
 }

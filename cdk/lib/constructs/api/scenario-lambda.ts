@@ -6,7 +6,6 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import { PythonFunction } from '@aws-cdk/aws-lambda-python-alpha';
 import * as path from 'path';
-import { NagSuppressions } from 'cdk-nag';
 
 /**
  * シナリオ管理Lambda関数を作成するConstructのプロパティ
@@ -85,22 +84,6 @@ export class ScenarioLambdaConstruct extends Construct {
           `arn:aws:bedrock:*:${cdk.Aws.ACCOUNT_ID}:knowledge-base/${props.knowledgeBaseId}/*`,
         ],
       })
-    );
-
-    // CDK Nag抑制
-    NagSuppressions.addResourceSuppressions(
-      this.function,
-      [
-        {
-          id: 'AwsSolutions-IAM4',
-          reason: '必要最小限のDynamoDB操作のみを許可',
-        },
-        {
-          id: 'AwsSolutions-IAM5',
-          reason: '特定のDynamoDBテーブルに対してのみアクセスを許可',
-        },
-      ],
-      true
     );
   }
 }

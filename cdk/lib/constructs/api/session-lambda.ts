@@ -4,7 +4,6 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { PythonFunction } from '@aws-cdk/aws-lambda-python-alpha';
 import * as path from 'path';
-import { NagSuppressions } from 'cdk-nag';
 
 /** Bedrockモデル設定 */
 export interface BedrockModelsConfig {
@@ -209,22 +208,6 @@ export class SessionLambdaConstruct extends Construct {
           `arn:aws:lambda:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:function:*SessionLambdaFunction*`,
         ],
       })
-    );
-
-    // CDK Nag抑制
-    NagSuppressions.addResourceSuppressions(
-      this.function,
-      [
-        {
-          id: 'AwsSolutions-IAM4',
-          reason: '必要最小限のDynamoDB操作のみを許可',
-        },
-        {
-          id: 'AwsSolutions-IAM5',
-          reason: '特定のDynamoDBテーブルとスタック内のSessionLambda関数に対してのみアクセスを許可',
-        },
-      ],
-      true
     );
   }
 }

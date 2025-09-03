@@ -5,7 +5,6 @@ import { Auth } from './constructs/auth';
 import { Api } from './constructs/api';
 import { CommonWebAcl } from './constructs/common-web-acl';
 import { Web } from './constructs/web';
-import { NagSuppressionsHelper } from './nag-suppressions';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import { DatabaseTables } from './constructs/storage/database-tables';
 import { GuardrailsConstruct } from './constructs/guardrails';
@@ -129,12 +128,6 @@ export class InfrastructureStack extends cdk.Stack {
       webAclId: props?.webAclId,
       resourceNamePrefix: resourcePrefix // 環境識別子をリソース名に含める
     });
-
-    // CDK Nag警告の抑制設定を適用
-    NagSuppressionsHelper.addAuthConstructSuppressions(auth);
-    NagSuppressionsHelper.addInfrastructureStackSuppressions(this);
-    NagSuppressionsHelper.addFrontendStackSuppressions(this)
-    NagSuppressionsHelper.addApiStackSuppressions(this)
 
     const prefix = props?.envId ? `${props.envId}-` : '';
 

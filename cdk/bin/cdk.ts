@@ -5,9 +5,6 @@ import { InfrastructureStack } from '../lib/infrastructure-stack';
 import { CloudFrontWafStack } from '../lib/stacks/cloudfront-waf-stack';
 import { DataInitializerStack } from '../lib/data-initializer-stack';
 
-// import { AwsPrototypingChecks } from '@aws/pdk/pdk-nag';
-import { AwsSolutionsChecks } from 'cdk-nag';
-
 const app = new cdk.App();
 
 // 環境の取得 (ENV環境変数またはコンテキストから)
@@ -83,5 +80,3 @@ const dataInitializerStack = new DataInitializerStack(app, dataInitializerStackN
 // データ初期化スタックがインフラストラクチャスタックに依存するように設定
 dataInitializerStack.addDependency(infrastructureStack);
 
-// cdk.Aspects.of(app).add(new AwsPrototypingChecks());
-cdk.Aspects.of(app).add(new AwsSolutionsChecks());

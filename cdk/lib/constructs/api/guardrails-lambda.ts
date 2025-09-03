@@ -4,7 +4,6 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { PythonFunction } from '@aws-cdk/aws-lambda-python-alpha';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
-import { NagSuppressions } from 'cdk-nag';
 import * as path from 'path';
 
 /**
@@ -60,20 +59,5 @@ export class GuardrailsLambdaConstruct extends Construct {
       },
       layers: [powertools_layer],
     });
-
-    // CDK Nag抑制
-    NagSuppressions.addResourceSuppressions(
-      lambdaExecutionRole,
-      [
-        {
-          id: 'AwsSolutions-IAM4',
-          reason: '開発環境での広範なアクセス権限を許可',
-        },
-        {
-          id: 'AwsSolutions-IAM5',
-          reason: 'Bedrockリソースへのワイルドカードアクセスを許可',
-        }
-      ]
-    );
   }
 }

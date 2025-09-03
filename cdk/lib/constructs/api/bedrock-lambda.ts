@@ -4,7 +4,6 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { PythonFunction } from '@aws-cdk/aws-lambda-python-alpha';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
-import { NagSuppressions } from 'cdk-nag';
 import * as path from 'path';
 
 /**
@@ -91,32 +90,5 @@ export class BedrockLambdaConstruct extends Construct {
       },
       layers: [powertools_layer],
     });
-
-    // CDK Nag抑制
-    NagSuppressions.addResourceSuppressions(
-      [this.function, lambdaExecutionRole],
-      [
-        {
-          id: 'AwsSolutions-IAM4',
-          reason: 'Lambda基本実行ロールはAWSの管理ポリシーを使用',
-        },
-        {
-          id: 'AwsSolutions-L1',
-          reason: '開発環境では特定のLambdaランタイムバージョンを使用',
-        }
-      ],
-      true
-    );
-
-    NagSuppressions.addResourceSuppressions(
-      lambdaExecutionRole,
-      [
-        {
-          id: 'AwsSolutions-IAM5',
-          reason: 'Bedrockの特定モデルへのアクセス権限が必要',
-        }
-      ],
-      true
-    );
   }
 }

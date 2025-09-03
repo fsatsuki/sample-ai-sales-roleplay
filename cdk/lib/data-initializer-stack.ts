@@ -2,7 +2,6 @@ import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { ScenarioDataInitializer } from './constructs/storage/database/scenario-data-initializer';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
-import { NagSuppressionsHelper } from './nag-suppressions';
 
 /**
  * データ初期化スタックのプロパティ
@@ -49,7 +48,5 @@ export class DataInitializerStack extends cdk.Stack {
     new ScenarioDataInitializer(this, 'ScenarioDataInitializer', {
       scenariosTable: scenariosTable
     });
-
-    NagSuppressionsHelper.addInfrastructureStackSuppressions(this);
   }
 }

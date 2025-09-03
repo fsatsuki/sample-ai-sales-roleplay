@@ -4,7 +4,6 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as cr from 'aws-cdk-lib/custom-resources';
 import * as path from 'path';
 import { Construct } from 'constructs';
-import { NagSuppressions } from 'cdk-nag';
 
 /**
  * クロスリージョンパラメータ取得コンストラクトのプロパティ
@@ -103,14 +102,6 @@ export class CrossRegionParameter extends Construct {
       actions: ['ssm:GetParameter'],
       resources: [`arn:aws:ssm:${props.region}:${cdk.Stack.of(this).account}:parameter${props.parameterName}`],
     }));
-    
-    // CDK Nagサプレッション（最小権限の原則に従っているため）
-    NagSuppressions.addResourceSuppressions(onEventHandler, [
-      {
-        id: 'AwsSolutions-IAM4',
-        reason: '特定のSSMパラメータへのアクセスのみを許可しています。',
-      },
-    ]);
     
     // カスタムリソースプロバイダーを作成
     const provider = new cr.Provider(this, 'Provider', {

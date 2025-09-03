@@ -5,7 +5,6 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as path from 'path';
 import { PythonFunction } from '@aws-cdk/aws-lambda-python-alpha';
-import { NagSuppressions } from 'cdk-nag';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 
 /**
@@ -98,32 +97,5 @@ export class RankingsLambdaConstruct extends Construct {
       },
       layers: [powertools_layer],
     });
-
-    // CDK Nag抑制
-    NagSuppressions.addResourceSuppressions(
-      [this.function, lambdaExecutionRole],
-      [
-        {
-          id: 'AwsSolutions-IAM4',
-          reason: 'Lambda基本実行ロールはAWSの管理ポリシーを使用',
-        },
-        {
-          id: 'AwsSolutions-L1',
-          reason: '開発環境では特定のLambdaランタイムバージョンを使用',
-        }
-      ],
-      true
-    );
-
-    NagSuppressions.addResourceSuppressions(
-      lambdaExecutionRole,
-      [
-        {
-          id: 'AwsSolutions-IAM5',
-          reason: 'DynamoDBの特定テーブルへのアクセス権限が必要',
-        }
-      ],
-      true
-    );
   }
 }
