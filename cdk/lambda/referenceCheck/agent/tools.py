@@ -52,7 +52,7 @@ def check_single_message_reference(scenario_id: str, query: str) -> str:
         results = response.get("retrievalResults", [])
         logger.debug(f"kb retrieve results: {results}")
         if not results:
-            return "関連するドキュメントが見つかりませんでした。"
+            return "Knowledge Baseで関連するドキュメントが見つかりませんでした。一般的な営業知識に基づいて評価してください。"
 
         # すべての結果を結合
         return json.dumps(results)
