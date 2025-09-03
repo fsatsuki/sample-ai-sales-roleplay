@@ -47,6 +47,7 @@
 
 ### 前提条件
 
+- Docker
 - Node.js 22.x以上
 - Python 3.12以上
 - AWS CLI最新版
@@ -72,53 +73,8 @@ cd ../cdk
 npm install
 ```
 
-3. **AWSインフラのデプロイ**
-```bash
-cd cdk
-npm run cdk deploy
-```
-
-## 開発コマンド
-
-### フロントエンド開発
-```bash
-cd frontend
-
-# 開発サーバー起動
-npm run dev
-
-# ビルド
-npm run build
-
-# リント
-npm run lint
-
-# テスト実行
-npm run test
-
-```
-
-### バックエンド開発
-```bash
-cd cdk
-
-# CDKデプロイ（ビルドは自動実行）
-npm run cdk deploy
-
-# CDKテスト
-npm run test
-
-```
-
-### プロジェクト全体
-```bash
-# Husky準備（Git hooks）
-npm run prepare
-
-# E2Eテスト実行
-npm run test:e2e
-
-```
+3. **環境構築**
+[AI営業ロールプレイの環境構築](./cdk/README.md) を参照
 
 ## ドキュメント
 
