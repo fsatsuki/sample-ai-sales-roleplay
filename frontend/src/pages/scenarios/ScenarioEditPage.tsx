@@ -199,12 +199,22 @@ const ScenarioEditPage: React.FC = () => {
         <NPCInfoStep
           formData={formData}
           updateFormData={(npcData) => {
-            const { initialMessage, ...npcFields } = npcData;
-            setFormData({
-              ...formData,
-              npc: { ...formData.npc, ...npcFields },
-              ...(initialMessage !== undefined && { initialMessage }),
-            });
+            // initialMessageが単独で更新される場合と、NPCフィールドが更新される場合を適切に処理
+            if ('initialMessage' in npcData && Object.keys(npcData).length === 1) {
+              // initialMessageのみの更新の場合
+              setFormData({
+                ...formData,
+                initialMessage: npcData.initialMessage || "",
+              });
+            } else {
+              // NPCフィールドが含まれている場合（従来の処理）
+              const { initialMessage, ...npcFields } = npcData;
+              setFormData({
+                ...formData,
+                npc: { ...formData.npc, ...npcFields },
+                ...(initialMessage !== undefined && { initialMessage }),
+              });
+            }
           }}
         />
       ),
@@ -283,6 +293,7 @@ const ScenarioEditPage: React.FC = () => {
         pdfFiles: formData.pdfFiles?.length > 0 ? formData.pdfFiles : undefined,
         visibility: formData.visibility,
         guardrail: formData.guardrail,
+        initialMessage: formData.initialMessage,
         ...(formData.visibility === "shared"
           ? { sharedWithUsers: formData.sharedWithUsers }
           : {}),
