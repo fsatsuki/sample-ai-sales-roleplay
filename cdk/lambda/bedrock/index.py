@@ -122,6 +122,7 @@ def create_or_update_session(user_id: str, session_id: str = None, scenario_id: 
         
         # セッションが既に存在するかチェック
         existing_session = None
+        is_new_session = False
         try:
             response = sessions_table.get_item(
                 Key={
@@ -179,6 +180,7 @@ def create_or_update_session(user_id: str, session_id: str = None, scenario_id: 
             })
         else:
             # 新規セッションを作成
+            is_new_session = True
             # セッションタイトルのデフォルト設定
             if not title and npc_info:
                 title = f"{npc_info.get('name', 'NPC')}との会話"
@@ -204,6 +206,17 @@ def create_or_update_session(user_id: str, session_id: str = None, scenario_id: 
                 "session_id": session_id,
                 "user_id": user_id
             })
+            
+            # 新規セッション作成時：シナリオの初期メッセージを保存
+            if is_new_session and scenario_id:
+                try:
+                    save_initial_message_for_session(user_id, session_id, scenario_id)
+                except Exception as e:
+                    logger.warning("初期メッセージの保存に失敗しましたが、セッションは正常に作成されました", extra={
+                        "error": str(e),
+                        "session_id": session_id,
+                        "scenario_id": scenario_id
+                    })
         
         return session_id
         
@@ -238,6 +251,100 @@ def calculate_expiration_time(days: int = None) -> int:
     
     expiry_date = datetime.now() + timedelta(days=days)
     return int(expiry_date.timestamp())
+
+def save_initial_message_for_session(user_id: str, session_id: str, scenario_id: str):
+    """
+    シナリオの初期メッセージをセッションに保存します
+    
+    Args:
+        user_id (str): ユーザーID
+        session_id (str): セッションID
+        scenario_id (str): シナリオID
+        
+    Raises:
+        Exception: シナリオ取得やメッセージ保存でエラーが発生した場合
+    """
+    try:
+        # シナリオテーブルが未定義の場合はスキップ
+        if not scenarios_table:
+            logger.warning("シナリオテーブルが未定義のため初期メッセージ保存をスキップします")
+            return
+        
+        # シナリオ情報を取得
+        try:
+            response = scenarios_table.get_item(
+                Key={'scenarioId': scenario_id}
+            )
+            
+            if 'Item' not in response:
+                logger.warning("指定されたシナリオが見つかりません", extra={
+                    "scenario_id": scenario_id,
+                    "session_id": session_id
+                })
+                return
+            
+            scenario = response['Item']
+        except Exception as e:
+            logger.error("シナリオ情報の取得に失敗しました", extra={
+                "error": str(e),
+                "scenario_id": scenario_id,
+                "session_id": session_id
+            })
+            raise
+        
+        # 初期メッセージを取得
+        initial_message = scenario.get('initialMessage')
+        
+        if not initial_message:
+            logger.info("シナリオに初期メッセージが定義されていません", extra={
+                "scenario_id": scenario_id,
+                "session_id": session_id
+            })
+            return
+        
+        # セッション作成時刻を取得（メッセージのタイムスタンプ用）- 10秒前に設定して重複を回避
+        session_start_time = int(datetime.now().timestamp()) - 10
+        
+        # 初期メッセージをメッセージテーブルに保存
+        message_id = str(uuid.uuid4())
+        
+        message_item = {
+            'sessionId': session_id,
+            'messageId': message_id,
+            'userId': user_id,
+            'timestamp': session_start_time,  # セッション開始時刻
+            'sender': 'npc',  # NPCからのメッセージ
+            'content': initial_message,
+            'expireAt': calculate_expiration_time(),  # TTL設定
+            'isInitialMessage': True  # 初期メッセージであることを示すフラグ
+        }
+        
+        # メッセージテーブルが未定義の場合はスキップ
+        if not messages_table:
+            logger.warning("メッセージテーブルが未定義のため初期メッセージ保存をスキップします")
+            return
+        
+        logger.debug(f"message_item: {message_item}")
+        
+        # DynamoDBに保存
+        messages_table.put_item(Item=message_item)
+        
+        logger.info("シナリオの初期メッセージを保存しました", extra={
+            "message_id": message_id,
+            "session_id": session_id,
+            "scenario_id": scenario_id,
+            "message_length": len(initial_message)
+        })
+        
+    except Exception as e:
+        logger.exception("初期メッセージの保存中にエラーが発生しました", extra={
+            "error": str(e),
+            "session_id": session_id,
+            "scenario_id": scenario_id
+        })
+        # エラーをre-raiseして呼び出し元に通知
+        raise
+
 
 def save_message(user_id: str, session_id: str, sender: str, content: str, metrics: Dict = None):
     """
