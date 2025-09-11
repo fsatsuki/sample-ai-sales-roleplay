@@ -7,6 +7,7 @@ interface VideoManagerProps {
   sessionId: string;
   sessionStarted: boolean;
   sessionEnded: boolean;
+  onCameraInitialized?: (initialized: boolean) => void; // カメラ初期化状態の通知
 }
 
 /**
@@ -19,12 +20,13 @@ const VideoManager = forwardRef<VideoManagerRef, VideoManagerProps>(({
   sessionId,
   sessionStarted,
   sessionEnded,
+  onCameraInitialized,
 }, ref) => {
   const [videoKey, setVideoKey] = useState<string>("");
   const [recordingError, setRecordingError] = useState<string>("");
   const videoRecorderRef = useRef<VideoRecorderRef | null>(null);
 
-  // sessionIdの変化をログ出力
+  // sessionIdの変化をログ出力（詳細版）
   useEffect(() => {
     console.log(
       "VideoManager: sessionId変更:",
@@ -33,6 +35,8 @@ const VideoManager = forwardRef<VideoManagerRef, VideoManagerProps>(({
       sessionStarted,
       "sessionEnded:",
       sessionEnded,
+      "isActive計算結果:",
+      sessionStarted && !sessionEnded && sessionId !== "",
     );
   }, [sessionId, sessionStarted, sessionEnded]);
 
@@ -74,13 +78,39 @@ const VideoManager = forwardRef<VideoManagerRef, VideoManagerProps>(({
   useEffect(() => {
     if (sessionEnded && sessionStarted && videoRecorderRef.current) {
       console.log("VideoManager: sessionEnded検知による録画停止処理");
+      
+      // 録画停止処理を確実に実行
+      const forceStopWithRetry = async () => {
+        let attempts = 0;
+        const maxAttempts = 3;
+        
+        while (attempts < maxAttempts) {
+          try {
+            console.log(`VideoManager: 録画停止試行 ${attempts + 1}/${maxAttempts}`);
+            if (videoRecorderRef.current) {
+              await videoRecorderRef.current.forceStopRecording();
+              console.log("VideoManager: 録画停止完了");
+              break;
+            }
+          } catch (error) {
+            console.error(`VideoManager: 録画停止試行 ${attempts + 1} でエラー:`, error);
+            attempts++;
+            
+            if (attempts < maxAttempts) {
+              // 1秒待ってリトライ
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+          }
+        }
+        
+        if (attempts >= maxAttempts) {
+          console.error("VideoManager: 録画停止が最大試行回数に達しました");
+        }
+      };
+      
       // 少し遅延させてから録画停止を確実に実行
       setTimeout(() => {
-        if (videoRecorderRef.current) {
-          videoRecorderRef.current.forceStopRecording().catch((error) => {
-            console.error("VideoManager: 明示的録画停止でエラー:", error);
-          });
-        }
+        forceStopWithRetry();
       }, 100);
     }
   }, [sessionEnded, sessionStarted]);
@@ -97,6 +127,7 @@ const VideoManager = forwardRef<VideoManagerRef, VideoManagerProps>(({
         isActive={sessionStarted && !sessionEnded && sessionId !== ""}
         onRecordingComplete={handleRecordingComplete}
         onError={handleRecordingError}
+        onCameraInitialized={onCameraInitialized}
       />
 
       {recordingError && (

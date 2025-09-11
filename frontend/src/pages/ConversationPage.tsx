@@ -82,6 +82,8 @@ const ConversationPage: React.FC = () => {
     useState<ComplianceViolation | null>(null);
   const [showComplianceAlert, setShowComplianceAlert] =
     useState<boolean>(false);
+  // カメラ初期化状態管理
+  const [isCameraInitialized, setIsCameraInitialized] = useState<boolean>(false);
 
 
   // コンポーネントの初期マウント時のフラグ設定
@@ -277,11 +279,16 @@ const ConversationPage: React.FC = () => {
 
     // フロントエンド側でセッションIDを生成
     const newSessionId = crypto.randomUUID();
-    setSessionId(newSessionId);
     console.log("新しいセッションIDを生成:", newSessionId);
 
-    // 先にセッション状態を更新して、後続の処理でレンダリングが安定するようにする
-    setSessionStarted(true);
+    // セッションIDを先に設定し、状態更新を確実に行う
+    setSessionId(newSessionId);
+
+    // 短い遅延を入れてセッションIDの状態更新を確実に反映させる
+    setTimeout(() => {
+      console.log("セッション開始状態を更新 - sessionId:", newSessionId);
+      setSessionStarted(true);
+    }, 50);
 
     // シナリオに定義された初期メッセージがある場合はそれを使用、なければデフォルトメッセージを表示
     const initialContent =
@@ -514,8 +521,8 @@ const ConversationPage: React.FC = () => {
               scenario,
             )
           ) {
-            setTimeout(() => {
-              endSession(finalMessages, newMetrics);
+            setTimeout(async () => {
+              await endSession(finalMessages, newMetrics);
             }, 2000);
           }
         } catch (error) {
@@ -541,7 +548,7 @@ const ConversationPage: React.FC = () => {
    * @param finalMetrics 最終的なメトリクス
    */
   const endSession = useCallback(
-    (finalMessages: Message[], finalMetrics: Metrics) => {
+    async (finalMessages: Message[], finalMetrics: Metrics) => {
       console.log("セッション終了処理を開始します");
       setSessionEnded(true);
 
@@ -560,13 +567,13 @@ const ConversationPage: React.FC = () => {
 
       // セッションデータを作成
       const session: Session = {
-        id: sessionId, // バックエンドから取得したsessionIdを使用
+        id: sessionId,
         scenarioId: scenario!.id,
-        startTime: new Date(Date.now() - finalMessages.length * 30000), // 仮の開始時間
+        startTime: new Date(Date.now() - finalMessages.length * 30000),
         endTime: new Date(),
         messages: finalMessages,
         finalMetrics,
-        finalScore: 0, // スコアはResultPageでBedrockにより計算される
+        finalScore: 0,
         feedback: [],
         goalStatuses: goalStatuses,
         goalScore: goalScore,
@@ -576,23 +583,48 @@ const ConversationPage: React.FC = () => {
       // セッションデータをlocalStorageに保存
       localStorage.setItem(`session_${session.id}`, JSON.stringify(session));
 
-      // 録画完了を少し待ってからvideoKeyを確認
-      setTimeout(() => {
-        const currentVideoKey = localStorage.getItem("lastRecordingKey");
-        if (currentVideoKey) {
-          console.log(
-            `セッション ${sessionId} の録画キー ${currentVideoKey} を保存しています`,
-          );
-          localStorage.setItem(`session_${session.id}_videoKey`, currentVideoKey);
-        } else {
-          console.log("録画キーが見つかりません");
-        }
-      }, 500);
+      // 録画完了を確実に待つ処理を改善
+      const waitForRecordingUpload = () => {
+        return new Promise<void>((resolve) => {
+          let uploadCompleted = false;
+          
+          // 60秒でタイムアウト（大きなファイル対応）
+          const timeoutId = setTimeout(() => {
+            console.warn("録画アップロード待機がタイムアウトしました");
+            window.removeEventListener('recordingComplete', handleRecordingComplete as EventListener);
+            resolve();
+          }, 60000);
 
-      // 結果ページに遷移
+          const checkUploadComplete = () => {
+            const videoKey = localStorage.getItem("lastRecordingKey");
+            if (videoKey && !uploadCompleted) {
+              uploadCompleted = true;
+              console.log(`録画アップロード完了: ${videoKey}`);
+              localStorage.setItem(`session_${session.id}_videoKey`, videoKey);
+              clearTimeout(timeoutId);
+              resolve();
+            }
+          };
+
+          // 録画完了イベントリスナー
+          const handleRecordingComplete = (event: CustomEvent) => {
+            console.log("録画完了イベント受信:", event.detail);
+            checkUploadComplete();
+          };
+
+          window.addEventListener('recordingComplete', handleRecordingComplete as EventListener);
+
+          // 既に完了している場合もチェック
+          checkUploadComplete();
+        });
+      };
+
+      // 録画アップロード完了を待ってから遷移
+      await waitForRecordingUpload();
+      
       setTimeout(() => {
         navigate(`/result/${session.id}`);
-      }, 2000);
+      }, 1000);
     },
     [
       goals,
@@ -607,9 +639,9 @@ const ConversationPage: React.FC = () => {
   );
 
   // 手動終了
-  const handleManualEnd = () => {
+  const handleManualEnd = async () => {
     if (messages.length > 0) {
-      endSession(messages, currentMetrics);
+      await endSession(messages, currentMetrics);
     } else {
       navigate("/scenarios");
     }
@@ -717,6 +749,12 @@ const ConversationPage: React.FC = () => {
     setCurrentEmotion(emotion);
   }, []);
 
+  // カメラ初期化状態のハンドラー
+  const handleCameraInitialized = useCallback((initialized: boolean) => {
+    console.log("カメラ初期化状態変更:", initialized);
+    setIsCameraInitialized(initialized);
+  }, []);
+
   // ゴール達成時の通知表示
   useEffect(() => {
     // 前回のゴール状態と比較して新たに達成されたゴールを検出
@@ -742,9 +780,9 @@ const ConversationPage: React.FC = () => {
 
         // 必須ゴールがすべて達成された場合、セッションを終了
         if (areAllRequiredGoalsAchieved(goalStatuses, goals)) {
-          setTimeout(() => {
+          setTimeout(async () => {
             if (!sessionEnded && messages.length > 0) {
-              endSession(messages, currentMetrics);
+              await endSession(messages, currentMetrics);
             }
           }, 2000);
         }
@@ -824,6 +862,7 @@ const ConversationPage: React.FC = () => {
                 sessionId={sessionId}
                 sessionStarted={sessionStarted}
                 sessionEnded={sessionEnded}
+                onCameraInitialized={handleCameraInitialized}
               />
             </Box>
           </Box>
@@ -837,6 +876,7 @@ const ConversationPage: React.FC = () => {
             currentMetrics={currentMetrics}
             scenario={scenario}
             onStartConversation={startConversation}
+            isCameraInitialized={isCameraInitialized}
           />
 
           {/* メッセージ入力エリア */}
