@@ -945,15 +945,15 @@ export class ApiService {
     scenarioData: Partial<ScenarioInfo>,
   ): Promise<{ scenarioId: string; scenario: ScenarioInfo }> {
     try {
-      // goals フィールドを削除
-      const { goals, ...scenarioDataWithoutGoals } = scenarioData;
+      // objectives フィールドを削除
+      const { objectives, ...scenarioDataWithoutObjectives } = scenarioData;
       
       // API呼び出し
       const response = await this.apiPost<{
         message: string;
         scenarioId: string;
         scenario: ScenarioInfo;
-      }>("/scenarios", scenarioDataWithoutGoals);
+      }>("/scenarios", scenarioDataWithoutObjectives);
 
       return {
         scenarioId: response.scenarioId,
@@ -981,14 +981,14 @@ export class ApiService {
     scenarioData: Partial<ScenarioInfo>,
   ): Promise<{ scenario: ScenarioInfo }> {
     try {
-      // goals フィールドを削除
-      const { goals, ...scenarioDataWithoutGoals } = scenarioData;
+      // objectives フィールドを削除
+      const { objectives, ...scenarioDataWithoutObjectives } = scenarioData;
       
       // API呼び出し
       const response = await this.apiPut<{
         message: string;
         scenario: ScenarioInfo;
-      }>(`/scenarios/${scenarioId}`, scenarioDataWithoutGoals);
+      }>(`/scenarios/${scenarioId}`, scenarioDataWithoutObjectives);
 
       return {
         scenario: response.scenario,

@@ -25,6 +25,20 @@ ANALYSIS_PROMPT_JA = """あなたはセールストレーニング用AIシステ
     "会話から得られた重要な気づき（複数）"
   ],
   "nextSteps": "次回の会話に向けた具体的な提案",
+  "goalFeedback": {{
+    "achievedGoals": [
+      "達成したゴールの具体的説明"
+    ],
+    "partiallyAchievedGoals": [
+      "部分的に達成したゴールの説明"
+    ],
+    "missedGoals": [
+      "未達成ゴールの説明"
+    ],
+    "recommendations": [
+      "ゴール達成のための具体的な改善提案"
+    ]
+  }},
   "scores": {{
     "overall": 0-100の整数値,
     "communication": 0-10の整数値,
@@ -36,7 +50,8 @@ ANALYSIS_PROMPT_JA = """あなたはセールストレーニング用AIシステ
     "closingSkill": 0-10の整数値,
     "listeningSkill": 0-10の整数値,
     "productKnowledge": 0-10の整数値,
-    "customerFocus": 0-10の整数値
+    "customerFocus": 0-10の整数値,
+    "goalAchievement": 0-10の整数値
   }},
   "detailedAnalysis": {{
     "communicationPatterns": {{
@@ -111,6 +126,20 @@ Please output the following content in JSON format:
     "Important insights gained from the conversation (multiple)"
   ],
   "nextSteps": "Specific suggestions for the next conversation",
+  "goalFeedback": {{
+    "achievedGoals": [
+      "Specific explanation of achieved goals"
+    ],
+    "partiallyAchievedGoals": [
+      "Description of partially achieved goals"
+    ],
+    "missedGoals": [
+      "Description of unachieved goals"
+    ],
+    "recommendations": [
+      "Specific improvement suggestions for goal achievement"
+    ]
+  }},
   "scores": {{
     "overall": integer value from 0-100,
     "communication": integer value from 0-10,
@@ -122,7 +151,8 @@ Please output the following content in JSON format:
     "closingSkill": integer value from 0-10,
     "listeningSkill": integer value from 0-10,
     "productKnowledge": integer value from 0-10,
-    "customerFocus": integer value from 0-10
+    "customerFocus": integer value from 0-10,
+    "goalAchievement": integer value from 0-10
   }},
   "detailedAnalysis": {{
     "communicationPatterns": {{
@@ -242,6 +272,69 @@ Please respond in the following JSON format:
 
 Note: Please respond only in the JSON format above without any additional explanation. All scores must be integer values from 1 to 10."""
 
+# ゴール評価用プロンプトテンプレート - 日本語
+GOAL_EVALUATION_PROMPT_JA = """あなたは営業会話のゴール達成度を評価するシステムです。以下の会話とゴール情報を分析し、各ゴールの進捗度と達成状況を評価してください。
+
+## 会話履歴
+{conversation_text}
+
+## 評価対象のゴール
+{goals_json}
+
+## 評価のポイント
+1. 各ゴールの進捗度を0-100%で評価してください
+2. 進捗度が100%に達した場合、ゴールは達成されたと判断します
+3. 不適切な発言や否定的な反応がある場合は、進捗度を下げるか現状維持してください
+4. ゴールの優先度や必須性を考慮して評価してください
+
+## 出力形式
+以下のJSON形式で回答してください：
+```json
+[
+  {{
+    "goalId": "<ゴールID>",
+    "progress": <0-100の整数値>,
+    "achieved": <trueまたはfalse>,
+    "reason": "<評価理由の簡潔な説明>"
+  }},
+  ...
+]
+```
+
+注意：必ずJSON形式のみで回答し、他の説明は含めないでください。"""
+
+# ゴール評価用プロンプトテンプレート - 英語
+GOAL_EVALUATION_PROMPT_EN = """You are a system for evaluating goal achievement in sales conversations. Please analyze the following conversation and goal information to evaluate the progress and achievement status of each goal.
+
+## Conversation History
+{conversation_text}
+
+## Goals to Evaluate
+{goals_json}
+
+## Evaluation Points
+1. Please evaluate the progress of each goal as a percentage from 0-100%
+2. When progress reaches 100%, the goal is considered achieved
+3. If there are inappropriate statements or negative reactions, lower the progress or maintain the current status
+4. Consider the priority and importance of goals in your evaluation
+
+## Output Format
+Please respond in the following JSON format:
+```json
+[
+  {{
+    "goalId": "<Goal ID>",
+    "progress": <integer value from 0-100>,
+    "achieved": <true or false>,
+    "reason": "<brief explanation of evaluation rationale>"
+  }},
+  ...
+]
+```
+
+Note: Please respond only in JSON format without any other explanations."""
+
 # Default templates to maintain backward compatibility
 ANALYSIS_PROMPT_TEMPLATE = ANALYSIS_PROMPT_JA
 REALTIME_SCORING_PROMPT_TEMPLATE = REALTIME_SCORING_PROMPT_JA
+GOAL_EVALUATION_PROMPT_TEMPLATE = GOAL_EVALUATION_PROMPT_JA
