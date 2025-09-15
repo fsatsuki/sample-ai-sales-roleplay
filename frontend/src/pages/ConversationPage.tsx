@@ -194,7 +194,6 @@ const ConversationPage: React.FC = () => {
             const initialGoalStatuses =
               initializeGoalStatuses(convertedScenario);
             setGoalStatuses(initialGoalStatuses);
-            }
 
             // AudioServiceの初期設定
             const audioSvc = AudioService.getInstance();
