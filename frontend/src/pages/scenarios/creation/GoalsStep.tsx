@@ -32,10 +32,6 @@ const GoalsStep: React.FC<GoalsStepProps> = ({ formData, updateFormData }) => {
   const [newGoalCriteria, setNewGoalCriteria] = useState("");
   const [goalCriteriaList, setGoalCriteriaList] = useState<string[]>([]);
 
-  // 削除: 目標の追加機能
-
-  // 削除: 目標の削除機能
-
   // メトリクスの変更
   const handleMetricChange =
     (metric: keyof typeof formData.initialMetrics) =>
