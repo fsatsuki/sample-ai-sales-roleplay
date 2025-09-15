@@ -146,7 +146,6 @@ const ConversationPage: React.FC = () => {
                 scenarioInfo.maxTurns !== undefined
                   ? Number(scenarioInfo.maxTurns)
                   : undefined,
-              objectives: scenarioInfo.objectives || [],
               goals: (scenarioInfo.goals || []).map((goal) => {
                 // goalが文字列の場合はオブジェクトに変換
                 if (typeof goal === "string") {
@@ -187,20 +186,10 @@ const ConversationPage: React.FC = () => {
             setCurrentMetrics(convertedScenario.initialMetrics);
 
             // ゴール情報の初期化
-            if (
-              convertedScenario.objectives &&
-              convertedScenario.objectives.length > 0
-            ) {
-              // goalsが空の場合は、objectivesからgoalsを生成
-              setGoals(
-                convertedScenario.goals && convertedScenario.goals.length > 0
-                  ? convertedScenario.goals
-                  : (convertedScenario.objectives || []).map((obj, index) => ({
-                      id: `goal-${index}`,
-                      description: obj,
-                      priority: 3,
-                      criteria: [],
-                      isRequired: index === 0, // 最初の目標は必須とする
+            setGoals(
+              convertedScenario.goals && convertedScenario.goals.length > 0
+                ? convertedScenario.goals
+                : []
                     })),
               );
               const initialGoalStatuses =
@@ -916,7 +905,6 @@ const ConversationPage: React.FC = () => {
             currentMetrics={currentMetrics}
             prevMetrics={prevMetrics}
             metricsUpdating={metricsUpdating}
-            objectives={scenario.objectives}
             goals={goals}
             goalStatuses={goalStatuses}
           />

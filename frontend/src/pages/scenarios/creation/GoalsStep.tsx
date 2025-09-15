@@ -23,9 +23,6 @@ import { GoalsStepProps, GoalFormData } from "../../../types";
 const GoalsStep: React.FC<GoalsStepProps> = ({ formData, updateFormData }) => {
   const { t } = useTranslation();
 
-  // 目標管理
-  const [newObjective, setNewObjective] = useState("");
-
   // 新しいゴール編集用
   const [editingGoal, setEditingGoal] = useState<GoalFormData | null>(null);
   const [isCreatingNewGoal, setIsCreatingNewGoal] = useState(false);
@@ -35,25 +32,9 @@ const GoalsStep: React.FC<GoalsStepProps> = ({ formData, updateFormData }) => {
   const [newGoalCriteria, setNewGoalCriteria] = useState("");
   const [goalCriteriaList, setGoalCriteriaList] = useState<string[]>([]);
 
-  // 目標の追加
-  const handleAddObjective = () => {
-    if (
-      newObjective.trim() &&
-      !formData.objectives.includes(newObjective.trim())
-    ) {
-      updateFormData({
-        objectives: [...formData.objectives, newObjective.trim()],
-      });
-      setNewObjective("");
-    }
-  };
+  // 削除: 目標の追加機能
 
-  // 目標の削除
-  const handleDeleteObjective = (index: number) => {
-    const updatedObjectives = [...formData.objectives];
-    updatedObjectives.splice(index, 1);
-    updateFormData({ objectives: updatedObjectives });
-  };
+  // 削除: 目標の削除機能
 
   // メトリクスの変更
   const handleMetricChange =
@@ -228,62 +209,9 @@ const GoalsStep: React.FC<GoalsStepProps> = ({ formData, updateFormData }) => {
         </Box>
       </Paper>
 
-      {/* 目標設定 */}
-      <Paper sx={{ p: 3, mt: 3 }}>
-        <Typography variant="subtitle1" gutterBottom>
-          {t("scenarios.fields.objectives")}
-        </Typography>
+      {/* 削除：目標設定 */}
 
-        <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-          <TextField
-            fullWidth
-            label={t("scenarios.create.addObjective")}
-            value={newObjective}
-            onChange={(e) => setNewObjective(e.target.value)}
-            onKeyPress={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                handleAddObjective();
-              }
-            }}
-          />
-          <Button
-            startIcon={<AddIcon />}
-            variant="contained"
-            onClick={handleAddObjective}
-            sx={{ ml: 1, height: "56px" }}
-          >
-            {t("common.add")}
-          </Button>
-        </Box>
-
-        {formData.objectives.length > 0 ? (
-          <Stack spacing={1}>
-            {formData.objectives.map((objective, index) => (
-              <Box key={index} sx={{ display: "flex", alignItems: "center" }}>
-                <Paper variant="outlined" sx={{ p: 1, flexGrow: 1 }}>
-                  {objective}
-                </Paper>
-                <IconButton
-                  color="error"
-                  onClick={() => handleDeleteObjective(index)}
-                  aria-label={t("common.delete")}
-                >
-                  <DeleteIcon />
-                </IconButton>
-              </Box>
-            ))}
-          </Stack>
-        ) : (
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            align="center"
-            sx={{ py: 2 }}
-          >
-            {t("scenarios.create.noObjectivesAdded")}
-          </Typography>
-        )}
+        {/* 削除：目標一覧表示 */}
       </Paper>
 
       {/* ゴール設定 */}
