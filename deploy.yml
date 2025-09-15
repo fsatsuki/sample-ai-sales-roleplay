@@ -136,7 +136,9 @@ Resources:
                 },
                 "on-failure": "ABORT",
                 "commands": [
-                  "echo 'Installing dependencies...'"
+                  "echo 'Installing dependencies...'",
+                  "yum update -y",
+                  "yum install -y python3 jq"
                 ]
               },
               "build": {
