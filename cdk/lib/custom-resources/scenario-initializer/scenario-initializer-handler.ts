@@ -87,6 +87,9 @@ export async function handler(event: CloudFormationEvent): Promise<void> {
             
             // データ変換（transformScenarioData関数と同等の処理を行う）
             scenarioData = scenarioData.map((scenario: any) => {
+              // 目標データを整形
+              const goals = scenario.goals || [];
+              
               // NPCデータを整形（関連するNPCを抽出）
               const npc = scenario.npc || {}; // scenarioからnpcを参照
               
@@ -124,6 +127,13 @@ export async function handler(event: CloudFormationEvent): Promise<void> {
                   trustLevel: scenario.initialMetrics?.trustLevel || 0,
                   progressLevel: scenario.initialMetrics?.progressLevel || 0
                 },
+                goals: goals.map((goal: any) => ({
+                  id: goal.id,
+                  description: goal.description || '',
+                  priority: goal.priority || 0,
+                  criteria: goal.criteria || [],
+                  isRequired: goal.isRequired || false
+                })),
 
                 visibility: scenario.visibility || 'public', // デフォルトは公開
                 createdBy: scenario.createdBy || 'system', // システムによって作成されたデータ
