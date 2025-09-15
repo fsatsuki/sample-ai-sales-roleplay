@@ -209,11 +209,6 @@ const GoalsStep: React.FC<GoalsStepProps> = ({ formData, updateFormData }) => {
         </Box>
       </Paper>
 
-      {/* 削除：目標設定 */}
-
-        {/* 削除：目標一覧表示 */}
-      </Paper>
-
       {/* ゴール設定 */}
       <Paper sx={{ p: 3, mt: 3 }}>
         <Box

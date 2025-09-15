@@ -946,7 +946,7 @@ export class ApiService {
   ): Promise<{ scenarioId: string; scenario: ScenarioInfo }> {
     try {
       // objectives フィールドを削除
-      const { objectives, ...scenarioDataWithoutObjectives } = scenarioData;
+      const scenarioDataWithoutObjectives = scenarioData;
       
       // API呼び出し
       const response = await this.apiPost<{
@@ -982,7 +982,7 @@ export class ApiService {
   ): Promise<{ scenario: ScenarioInfo }> {
     try {
       // objectives フィールドを削除
-      const { objectives, ...scenarioDataWithoutObjectives } = scenarioData;
+      const scenarioDataWithoutObjectives = scenarioData;
       
       // API呼び出し
       const response = await this.apiPut<{
