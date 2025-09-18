@@ -138,10 +138,10 @@ if [[ "$buildStatus" == "SUCCEEDED" ]]; then
     
     # CDKアプリケーションのURLを抽出
     logs=$(aws logs get-log-events --log-group-name $logGroupName --log-stream-name $logStreamName)
-    frontendUrl=$(echo "$logs" | grep -o 'FrontendURL = [^ ]*' | cut -d' ' -f3 | tr -d '\n,')
+    CloudFrontURL=$(echo "$logs" | grep -o 'CloudFrontURL = [^ ]*' | cut -d' ' -f3 | tr -d '\n,')
     
-    if [[ -n "$frontendUrl" ]]; then
-        echo -e "\n🌐 アプリケーションURL: $frontendUrl"
+    if [[ -n "$CloudFrontURL" ]]; then
+        echo -e "\n🌐 アプリケーションURL: $CloudFrontURL"
     else
         echo -e "\nアプリケーションURLが見つかりませんでした。ログを確認してください。"
     fi
