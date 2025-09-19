@@ -11,17 +11,15 @@ import type {
 } from "../types/index";
 import type { 
   ComplianceViolation, 
-  DifficultyLevel, 
-  SpeechRecognitionEvent, 
-  SpeechRecognitionErrorEvent 
+  DifficultyLevel
 } from "../types/api";
 import type { CompositionEventType } from "../types/components";
-import { shouldEndSession, getSessionEndReason } from "../utils/dialogueEngine";
+import { getSessionEndReason } from "../utils/dialogueEngine";
 import { ApiService } from "../services/ApiService";
 import { AudioService } from "../services/AudioService";
 import { LanguageService } from "../services/LanguageService";
 import { PollyService } from "../services/PollyService";
-import { getSpeechRecognitionLanguage } from "../i18n/utils/languageUtils";
+import { TranscribeService } from "../services/TranscribeService";
 import type { EmotionState } from "../types/index";
 import {
   initializeGoalStatuses,
@@ -70,15 +68,27 @@ const ConversationPage: React.FC = () => {
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [audioVolume, setAudioVolume] = useState<number>(80);
   const [speechRate, setSpeechRate] = useState<number>(1.15);
+  const [silenceThreshold, setSilenceThreshold] = useState<number>(1500); // 無音検出時間（ミリ秒）
   const [isListening, setIsListening] = useState(false);
+  const [continuousListening, setContinuousListening] = useState(false); // 常時マイク入力モード
   const [speechRecognitionError, setSpeechRecognitionError] = useState<
-    string | null
+    "permission" | "no-speech" | "network" | "not-supported" | "unknown" | null
   >(null);
   const [metricsUpdating, setMetricsUpdating] = useState(false);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [goalStatuses, setGoalStatuses] = useState<GoalStatus[]>([]);
+  
+  // Transcribe音声認識サービスへの参照
+  const transcribeServiceRef = useRef<TranscribeService | null>(null);
+  // 最新のuserInputを参照するためのRef
+  const userInputRef = useRef<string>("");
   // ゴールの達成スコア（セッション終了時に使用）
   const [goalScore, setGoalScore] = useState<number>(0);
+
+  // userInputの変更をrefに同期
+  useEffect(() => {
+    userInputRef.current = userInput;
+  }, [userInput]);
   // コンプライアンス違反の通知管理
   const [activeViolation, setActiveViolation] =
     useState<ComplianceViolation | null>(null);
@@ -93,6 +103,25 @@ const ConversationPage: React.FC = () => {
     hasComponentMounted.current = true;
     // コンポーネントのマウント状態をログ出力
     console.log("ConversationPageコンポーネントがマウントされました");
+    
+    // TranscribeServiceの初期化
+    transcribeServiceRef.current = TranscribeService.getInstance();
+    
+    // 環境変数からWebSocketエンドポイントを取得
+    const websocketEndpoint = import.meta.env.VITE_TRANSCRIBE_WEBSOCKET_URL;
+    if (websocketEndpoint) {
+      console.log("Transcribe WebSocketエンドポイントを設定:", websocketEndpoint);
+      transcribeServiceRef.current.setWebSocketEndpoint(websocketEndpoint);
+    } else {
+      console.warn("Transcribe WebSocketエンドポイントが設定されていません");
+    }
+    
+    return () => {
+      // コンポーネントのアンマウント時にリソース解放
+      if (transcribeServiceRef.current) {
+        transcribeServiceRef.current.dispose();
+      }
+    };
   }, []);
 
   // 初期化
@@ -235,6 +264,13 @@ const ConversationPage: React.FC = () => {
     pollySvc.setSpeechRate(speechRate);
   }, [speechRate]);
 
+  // 無音検出時間変更時の処理
+  useEffect(() => {
+    if (transcribeServiceRef.current) {
+      transcribeServiceRef.current.setSilenceThreshold(silenceThreshold);
+    }
+  }, [silenceThreshold]);
+
   // シナリオ言語に応じたUI言語の設定
   useEffect(() => {
     if (scenario?.language) {
@@ -272,6 +308,15 @@ const ConversationPage: React.FC = () => {
 
     // セッションIDを先に設定し、状態更新を確実に行う
     setSessionId(newSessionId);
+    
+    // Transcribe WebSocketの初期化
+    if (transcribeServiceRef.current) {
+      transcribeServiceRef.current.initializeConnection(newSessionId)
+        .catch(error => {
+          console.error("Transcribe WebSocket接続エラー:", error);
+          // エラーがあっても通常の会話は続行できるようにする
+        });
+    }
 
     // 短い遅延を入れてセッションIDの状態更新を確実に反映させる
     setTimeout(() => {
@@ -332,8 +377,10 @@ const ConversationPage: React.FC = () => {
   };
 
   // メッセージ送信
-  const sendMessage = async () => {
-    if (!userInput.trim() || !scenario || isProcessing) return;
+  const sendMessage = useCallback(async (inputText?: string) => {
+    // 引数で渡されたテキストまたは現在のuserInputを使用
+    const messageText = inputText || userInput.trim();
+    if (!messageText || !scenario || isProcessing) return;
 
     // 入力フィールドを無効化（API処理中）
     setIsProcessing(true);
@@ -342,7 +389,7 @@ const ConversationPage: React.FC = () => {
     const userMessage: Message = {
       id: crypto.randomUUID(),
       sender: "user",
-      content: userInput.trim(),
+      content: messageText,
       timestamp: new Date(),
     };
 
@@ -371,7 +418,7 @@ const ConversationPage: React.FC = () => {
 
           // /bedrock/conversation エンドポイントからメトリクス出力を廃止したため、デフォルトのメトリクスを使用
           const result = await apiService.chatWithNPC(
-            userInput.trim(),
+            messageText, // 引数化されたmessageTextを使用
             scenario.npc,
             updatedMessages,
             currentSessionId,
@@ -453,7 +500,7 @@ const ConversationPage: React.FC = () => {
                 activeSessionId,
               );
               const evaluationResult = await apiService.getRealtimeEvaluation(
-                userInput.trim(),
+                messageText, // 引数化されたmessageTextを使用
                 finalMessages,
                 activeSessionId, // 正しいセッションIDを使用
                 goalStatuses,
@@ -537,21 +584,6 @@ const ConversationPage: React.FC = () => {
           // クリーンアップ関数
           return () => clearTimeout(fallbackTimerId);
 
-          // セッション終了の判定
-          if (
-            scenario &&
-            shouldEndSession(
-              newMetrics,
-              finalMessages.length,
-              goalStatuses,
-              goals,
-              scenario,
-            )
-          ) {
-            setTimeout(async () => {
-              await endSession(finalMessages, newMetrics);
-            }, 2000);
-          }
         } catch (error) {
           console.error("=== ConversationPage: API呼び出しエラー ===");
           console.error("エラー詳細:", error);
@@ -564,7 +596,7 @@ const ConversationPage: React.FC = () => {
       },
       1000 + Math.random() * 1000,
     ); // 1-2秒の遅延でリアル感を演出
-  };
+  }, [userInput, scenario, isProcessing, messages, currentMetrics, sessionId, audioEnabled, isSpeaking, goalStatuses, goals]);
 
   /**
    * セッション終了処理
@@ -689,86 +721,110 @@ const ConversationPage: React.FC = () => {
   };
 
   // 音声入力を開始
-  const startSpeechRecognition = () => {
-    if (
-      !("webkitSpeechRecognition" in window) &&
-      !("SpeechRecognition" in window)
-    ) {
-      setSpeechRecognitionError("not-supported");
+  const startSpeechRecognition = useCallback(async () => {
+    // すでにリスニング中なら停止（トグル動作）
+    if (isListening && transcribeServiceRef.current) {
+      transcribeServiceRef.current.stopListening();
+      setIsListening(false);
+      setContinuousListening(false);
       return;
     }
 
     try {
-      const SpeechRecognition =
-        window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SpeechRecognition) {
-        setSpeechRecognitionError("not-supported");
-        return;
+      if (!transcribeServiceRef.current) {
+        throw new Error("TranscribeServiceが初期化されていません");
       }
-      const recognition = new SpeechRecognition();
-
-      // シナリオの言語に基づいて音声認識の言語を設定
-      const languageCode = scenario?.language || "ja";
-      const speechRecognitionLang = getSpeechRecognitionLanguage(languageCode);
-      console.log(
-        `音声認識言語を設定: ${speechRecognitionLang} (シナリオ言語: ${languageCode})`,
-      );
-      recognition.lang = speechRecognitionLang;
-      recognition.continuous = false;
-      recognition.interimResults = false;
-
-      recognition.onstart = () => {
-        setIsListening(true);
-        setSpeechRecognitionError(null);
-      };
-
-      recognition.onresult = (event: SpeechRecognitionEvent) => {
-        const transcript = event.results[0][0].transcript;
-        // 既存のテキストに追加する（既にテキストがある場合はスペースを挿入）
-        setUserInput((prevInput) => {
-          if (prevInput && prevInput.trim()) {
-            return `${prevInput} ${transcript}`;
-          }
-          return transcript;
-        });
-      };
-
-      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-        console.error("音声認識エラー:", event.error);
-        setIsListening(false);
-
-        switch (event.error) {
-          case "not-allowed":
-            setSpeechRecognitionError("permission");
-            break;
-          case "no-speech":
-            setSpeechRecognitionError("no-speech");
-            break;
-          case "network":
-            setSpeechRecognitionError("network");
-            break;
-          default:
-            setSpeechRecognitionError("unknown");
+      
+      // WebSocketが接続されていなければ再接続を試みる
+      if (!transcribeServiceRef.current.isConnected() && sessionId) {
+        try {
+          await transcribeServiceRef.current.initializeConnection(sessionId);
+        } catch (error) {
+          console.error("Transcribe WebSocket接続エラー:", error);
+          setSpeechRecognitionError("network");
+          return;
         }
-      };
-
-      recognition.onend = () => {
-        setIsListening(false);
-        // 音声認識が終了しても、テキストはクリアせず保持する
-      };
-
-      recognition.start();
+      }
+      
+      // Amazon Transcribeを使った常時マイク入力を開始
+      await transcribeServiceRef.current.startListening(
+        // 文字起こしコールバック（音声認識結果の蓄積）
+        (text, isFinal) => {
+          // console.log(`音声認識結果: "${text}", isFinal: ${isFinal}`);
+          
+          if (isFinal) {
+            // 確定結果：既存のテキストに追加（改行または空白で区切り）
+            setUserInput((prevInput) => {
+              const trimmedText = text.trim();
+              if (!trimmedText) return prevInput;
+              
+              if (prevInput && prevInput.trim()) {
+                // 既存テキストがある場合は改行で区切って追加
+                const newInput = `${prevInput}\n${trimmedText}`;
+                // console.log(`isFinal=true: 新しい入力設定 = "${newInput}"`);
+                return newInput;
+              } else {
+                // 既存テキストがない場合は新規設定
+                // console.log(`isFinal=true: 初期入力設定 = "${trimmedText}"`);
+                return trimmedText;
+              }
+            });
+          } else {
+            // 途中結果：現在の認識結果のみを表示（蓄積しない）
+            setUserInput((prevInput) => {
+              const existingLines = prevInput.split('\n');
+              const confirmedLines = existingLines.slice(0, -1); // 最後の行以外は確定済み
+              const currentRecognition = text.trim();
+              
+              if (confirmedLines.length > 0) {
+                return `${confirmedLines.join('\n')}\n${currentRecognition}`;
+              } else {
+                return currentRecognition;
+              }
+            });
+          }
+        },
+        // 無音検出コールバック（引数化されたsendMessage関数を使用）
+        () => {
+          // console.log(`🔇 無音検出コールバック実行: userInputRef="${userInputRef.current}"`);
+          if (userInputRef.current.trim()) {
+            // console.log(`📤 無音検出による自動送信実行`);
+            // 引数付きでsendMessage関数を呼び出し（完全な送信処理を実行）
+            sendMessage(userInputRef.current.trim());
+          } else {
+            // console.log(`⚠️ 無音検出: userInputが空のため送信をスキップ`);
+          }
+        },
+        // エラーコールバック
+        (error) => {
+          console.error("音声認識エラー:", error);
+          setIsListening(false);
+          setContinuousListening(false);
+          setSpeechRecognitionError("network");
+        }
+      );
+      
+      setIsListening(true);
+      setContinuousListening(true);
+      setSpeechRecognitionError(null);
     } catch (error) {
-      console.error("音声認識の開始エラー:", error);
-      setSpeechRecognitionError("unknown");
+      console.error("音声認識の開始に失敗:", error);
+      setSpeechRecognitionError("not-supported");
+      setIsListening(false);
     }
-  };
+  }, [isListening, sessionId, sendMessage]);
 
-  // テキスト入力モードに切り替え
-  const switchToTextInput = () => {
+  // 音声認識を停止し、テキスト入力モードに切り替え
+  const switchToTextInput = useCallback(() => {
     setSpeechRecognitionError(null);
     setIsListening(false);
-  };
+    setContinuousListening(false);
+    
+    // Transcribeサービスの停止
+    if (transcribeServiceRef.current && transcribeServiceRef.current.isListening()) {
+      transcribeServiceRef.current.stopListening();
+    }
+  }, []);
 
   // 感情状態変化のハンドラー
   const handleEmotionChange = useCallback((emotion: EmotionState) => {
@@ -928,6 +984,7 @@ const ConversationPage: React.FC = () => {
             handleKeyDown={handleKeyDown}
             sessionStarted={sessionStarted}
             sessionEnded={sessionEnded}
+            continuousListening={continuousListening}
           />
         </Box>
 
@@ -940,6 +997,8 @@ const ConversationPage: React.FC = () => {
             setAudioVolume={setAudioVolume}
             speechRate={speechRate}
             setSpeechRate={setSpeechRate}
+            silenceThreshold={silenceThreshold}
+            setSilenceThreshold={setSilenceThreshold}
             currentMetrics={currentMetrics}
             prevMetrics={prevMetrics}
             metricsUpdating={metricsUpdating}
