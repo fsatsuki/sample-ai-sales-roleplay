@@ -29,6 +29,7 @@ export class Web extends Construct {
       removalPolicy: RemovalPolicy.DESTROY,
       objectOwnership: s3.ObjectOwnership.OBJECT_WRITER,
       enforceSSL: true,
+      versioned: false,
     };
 
     const { cloudFrontWebDistribution, s3BucketInterface } = new CloudFrontToS3(
