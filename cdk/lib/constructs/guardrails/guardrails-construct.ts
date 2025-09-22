@@ -102,10 +102,13 @@ export class GuardrailsConstruct extends Construct {
     // 設定ファイルから各Guardrailをデプロイ
     for (const guardrailConfig of guardrailsConfig.guardrails) {
       const guardrailName = guardrailConfig.name;
+
+      // 環境プレフィックスを適用したGuardrail名を生成
+      const prefixedguardrail = this.resourceNamePrefix ? `${this.resourceNamePrefix}${guardrailName}` : guardrailName;
       
       // CDK公式のCfnGuardrailを使用してGuardrailをデプロイ
       const guardrailResource = this.deployGuardrail(
-        guardrailName,
+        prefixedguardrail,
         guardrailConfig
       );
       
