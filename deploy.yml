@@ -115,6 +115,8 @@ Resources:
             Value: !Ref AllowSelfRegister
           - Name: BEDROCK_REGION
             Value: !Ref BedrockRegion
+          - Name: CDK_DEFAULT_REGION
+            Value: !Ref BedrockRegion
           - Name: CDK_JSON_OVERRIDE
             Value: !Ref CdkJsonOverride
           - Name: REPO_URL
@@ -147,7 +149,6 @@ Resources:
                   "git clone --branch $VERSION $REPO_URL ai-sales-roleplay",
                   "cd ai-sales-roleplay",
                   "if [ \"$ALLOW_SELF_REGISTER\" = \"false\" ]; then sed -i 's/\"selfSignUpEnabled\": true/\"selfSignUpEnabled\": false/' cdk/cdk.json; fi",
-                  "sed -i \"s/\\\"bedrockRegion\\\": \\\"[^\\\"]*\\\"/\\\"bedrockRegion\\\": \\\"${BEDROCK_REGION}\\\"/\" cdk/cdk.json",
                   "echo \"$CDK_JSON_OVERRIDE\" | jq '.' && jq --argjson override \"$CDK_JSON_OVERRIDE\" '. * $override' cdk/cdk.json > temp.json && mv temp.json cdk/cdk.json",
                   "cd frontend",
                   "npm ci",

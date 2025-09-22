@@ -20,11 +20,11 @@ export class VectorKB extends Construct {
     // 埋め込みモデルを定義
     const embeddingModel = bedrock.BedrockFoundationModel.COHERE_EMBED_MULTILINGUAL_V3;
 
-    // クロスリージョン推論プロファイルを定義
-    const cris = bedrock.CrossRegionInferenceProfile.fromConfig({
-      geoRegion: bedrock.CrossRegionInferenceProfileRegion.US,
-      model: bedrock.BedrockFoundationModel.ANTHROPIC_CLAUDE_3_5_HAIKU_V1_0,
-    });
+    // // クロスリージョン推論プロファイルを定義
+    // const cris = bedrock.CrossRegionInferenceProfile.fromConfig({
+    //   geoRegion: bedrock.CrossRegionInferenceProfileRegion.US,
+    //   model: bedrock.BedrockFoundationModel.ANTHROPIC_CLAUDE_3_5_HAIKU_V1_0,
+    // });
 
     // ナレッジベースを作成（循環依存を避けるため依存関係は設定しない）
     this.knowledgeBase = new bedrock.VectorKnowledgeBase(this, 'KnowledgeBase', {
