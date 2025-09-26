@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import {
   Box,
   Typography,
@@ -31,15 +31,17 @@ const SharingStep: React.FC<SharingStepProps> = ({
   const [newUser, setNewUser] = useState("");
 
   // Selectコンポーネントの制御された状態を確保するため、常に文字列値を提供
-  // guardrailから接頭辞を除いた部分を取得（例: "dev-MedicalCompliance" → "MedicalCompliance"）
-  const guardrailValue = useMemo(() => {
-    const currentValue = formData.guardrail ?? "";
-    if (!currentValue) return "";
+  const guardrailValue = formData.guardrail ?? "";
 
-    // 接頭辞を除いた部分を取得
-    const parts = currentValue.split("-");
-    return parts.length > 1 ? parts.slice(1).join("-") : currentValue;
-  }, [formData.guardrail]);
+  // 表示用の名前を生成（任意のプレフィックス除去）
+  const getDisplayName = (fullName: string): string => {
+    // 最初のハイフンまでをプレフィックスとして除去
+    // 例: "dev-FinanceCompliance" → "FinanceCompliance"
+    // 例: "my-company-FinanceCompliance" → "FinanceCompliance"
+    const hyphenIndex = fullName.indexOf('-');
+    return hyphenIndex !== -1 ? fullName.substring(hyphenIndex + 1) : fullName;
+  };
+
 
   // 公開設定の変更ハンドラー
   const handleVisibilityChange = (
@@ -210,11 +212,17 @@ const SharingStep: React.FC<SharingStepProps> = ({
             value={guardrailValue}
             label={t("scenarios.fields.selectGuardrail")}
             onChange={handleGuardrailChange}
+            displayEmpty
+            renderValue={(selected) => {
+              // 選択された値のプレフィックスを除去して表示
+              return selected ? getDisplayName(selected as string) : "";
+            }}
           >
             {guardrailsList.map((guardrail) => {
-              const displayName = guardrail.name;
+              const fullName = guardrail.name;
+              const displayName = getDisplayName(fullName);
               return (
-                <MenuItem key={guardrail.id} value={displayName}>
+                <MenuItem key={guardrail.id} value={fullName}>
                   {displayName}
                 </MenuItem>
               );
