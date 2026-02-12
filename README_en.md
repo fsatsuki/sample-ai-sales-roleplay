@@ -43,7 +43,7 @@ This system is designed for junior sales representatives, helping them improve t
 - AWS CDK 2.x (Infrastructure as Code)
 - Amazon Bedrock AgentCore Runtime (AI agent execution platform)
 - AWS Lambda (Python 3.9 / TypeScript) + API Gateway (REST + WebSocket)
-- Amazon Bedrock (Claude 3.5 Haiku)
+- Amazon Bedrock (Claude 4.5 Haiku)
 - Amazon Nova Premiere (Video analysis)
 - Amazon Polly (Text-to-speech with SSML)
 - Amazon Transcribe Streaming (Real-time speech recognition via WebSocket)

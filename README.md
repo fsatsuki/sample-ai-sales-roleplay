@@ -44,7 +44,7 @@
 - AWS CDK 2.x（インフラストラクチャ）
 - Amazon Bedrock AgentCore Runtime（AIエージェント実行基盤）
 - AWS Lambda (Python 3.9 / TypeScript) + API Gateway (REST + WebSocket)
-- Amazon Bedrock (Claude 3.5 Haiku)
+- Amazon Bedrock (Claude 4.5 Haiku)
 - Amazon Nova Premiere（動画分析）
 - Amazon Polly（音声合成、SSML対応）
 - Amazon Transcribe Streaming（リアルタイム音声認識、WebSocket）
