@@ -56,7 +56,7 @@ This system is designed for junior sales representatives, helping them improve t
 - CDK Nag (Security checks)
 
 ### Architecture
-![](./docs/image/Architecture_en.png)
+![](./docs/image/Architecture.png)
 
 ## Setup
 
