@@ -8,11 +8,13 @@ import {
   Stack,
   Button,
   FormControl,
+  FormControlLabel,
   InputLabel,
   Select,
   MenuItem,
   FormHelperText,
   Alert,
+  Switch,
 } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import AddIcon from "@mui/icons-material/Add";
@@ -31,6 +33,8 @@ const NPCInfoStep: React.FC<NPCInfoStepProps> = ({
   onAvatarFileChange,
   voiceId,
   onVoiceIdChange,
+  enableAvatar,
+  onEnableAvatarChange,
 }) => {
   const { t } = useTranslation();
   const [newPersonality, setNewPersonality] = useState("");
@@ -198,55 +202,76 @@ const NPCInfoStep: React.FC<NPCInfoStepProps> = ({
           </FormHelperText>
         </FormControl>
 
-        {/* VRMアバターアップロード */}
-        <Typography variant="subtitle1" sx={{ mt: 3, mb: 1 }}>
-          {t("scenarios.create.avatar.label")}
+        {/* アバター表示On/Offトグル */}
+        <FormControlLabel
+          control={
+            <Switch
+              checked={enableAvatar ?? true}
+              onChange={(e) => onEnableAvatarChange?.(e.target.checked)}
+              aria-label={t("scenarios.create.avatar.enableToggle")}
+              data-testid="enable-avatar-toggle"
+            />
+          }
+          label={t("scenarios.create.avatar.enableToggle")}
+          sx={{ mt: 3, mb: 1 }}
+        />
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block", ml: 4, mb: 1 }}>
+          {t("scenarios.create.avatar.enableToggleHelp")}
         </Typography>
-        <Paper variant="outlined" sx={{ p: 2 }}>
-          {fileError && (
-            <Alert severity="error" sx={{ mb: 1 }} onClose={() => setFileError("")}>
-              {fileError}
-            </Alert>
-          )}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".vrm"
-            onChange={handleFileSelect}
-            style={{ display: "none" }}
-            id="vrm-file-input"
-            aria-label={t("scenarios.create.avatar.selectFile")}
-          />
-          {avatarFile || avatarFileName ? (
-            <Stack direction="row" alignItems="center" spacing={1}>
-              <InsertDriveFileIcon color="primary" />
-              <Typography variant="body2" sx={{ flex: 1 }}>
-                {avatarFile?.name || avatarFileName}
+
+        {/* VRMアバターアップロード（アバター有効時のみ表示） */}
+        {enableAvatar && (
+          <>
+            <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
+              {t("scenarios.create.avatar.label")}
+            </Typography>
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              {fileError && (
+                <Alert severity="error" sx={{ mb: 1 }} onClose={() => setFileError("")}>
+                  {fileError}
+                </Alert>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".vrm"
+                onChange={handleFileSelect}
+                style={{ display: "none" }}
+                id="vrm-file-input"
+                aria-label={t("scenarios.create.avatar.selectFile")}
+              />
+              {avatarFile || avatarFileName ? (
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  <InsertDriveFileIcon color="primary" />
+                  <Typography variant="body2" sx={{ flex: 1 }}>
+                    {avatarFile?.name || avatarFileName}
+                  </Typography>
+                  <Button
+                    size="small"
+                    color="error"
+                    startIcon={<DeleteIcon />}
+                    onClick={handleFileRemove}
+                    aria-label={t("scenarios.create.avatar.remove")}
+                  >
+                    {t("common.delete")}
+                  </Button>
+                </Stack>
+              ) : (
+                <Button
+                  variant="outlined"
+                  startIcon={<UploadFileIcon />}
+                  onClick={() => fileInputRef.current?.click()}
+                  fullWidth
+                >
+                  {t("scenarios.create.avatar.selectFile")}
+                </Button>
+              )}
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
+                {t("scenarios.create.avatar.help")}
               </Typography>
-              <Button
-                size="small"
-                color="error"
-                startIcon={<DeleteIcon />}
-                onClick={handleFileRemove}
-                aria-label={t("scenarios.create.avatar.remove")}
-              >
-                {t("common.delete")}
-              </Button>
-            </Stack>
-          ) : (
-            <Button
-              variant="outlined"
-              startIcon={<UploadFileIcon />}
-              onClick={() => fileInputRef.current?.click()}
-              fullWidth
-            >
-              {t("scenarios.create.avatar.selectFile")}
-            </Button>
-          )}
-          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
-            {t("scenarios.create.avatar.help")}
-          </Typography>
-        </Paper>
+            </Paper>
+          </>
+        )}
 
         {/* 性格特性 */}
         <Typography variant="subtitle1" sx={{ mt: 3, mb: 1 }}>

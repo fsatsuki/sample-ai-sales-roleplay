@@ -70,6 +70,7 @@ const ScenarioCreatePage: React.FC = () => {
   // アバター・音声モデル管理
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [voiceId, setVoiceId] = useState<string>("");
+  const [enableAvatar, setEnableAvatar] = useState<boolean>(true);
 
   // フォームデータ
   const [formData, setFormData] = useState({
@@ -260,6 +261,7 @@ const ScenarioCreatePage: React.FC = () => {
         language: formData.language,
         initialMessage: formData.initialMessage,
         maxTurns: formData.maxTurns,
+        enableAvatar,
         ...(avatarId ? { avatarId } : {}),
         ...(formData.visibility === "shared"
           ? { sharedWithUsers: formData.sharedWithUsers }
@@ -352,6 +354,8 @@ const ScenarioCreatePage: React.FC = () => {
               onAvatarFileChange={setAvatarFile}
               voiceId={voiceId}
               onVoiceIdChange={setVoiceId}
+              enableAvatar={enableAvatar}
+              onEnableAvatarChange={setEnableAvatar}
             />
           )}
           {activeStep === 2 && (

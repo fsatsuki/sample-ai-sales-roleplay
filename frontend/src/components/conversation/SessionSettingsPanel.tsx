@@ -11,10 +11,12 @@ import {
 import {
   VolumeUp as VolumeUpIcon,
   VolumeOff as VolumeOffIcon,
+  Person as PersonIcon,
+  PersonOff as PersonOffIcon,
 } from "@mui/icons-material";
 import { useTranslation } from "react-i18next";
 
-interface AudioSettingsPanelProps {
+interface SessionSettingsPanelProps {
   audioEnabled: boolean;
   setAudioEnabled: (enabled: boolean) => void;
   audioVolume: number;
@@ -23,13 +25,17 @@ interface AudioSettingsPanelProps {
   setSpeechRate: (rate: number) => void;
   silenceThreshold: number;
   setSilenceThreshold: (threshold: number) => void;
+  // アバター表示トグル（セッション中のランタイム切替）
+  avatarVisible?: boolean;
+  setAvatarVisible?: (visible: boolean) => void;
+  avatarEnabled?: boolean;
 }
 
 /**
- * 音声設定パネルコンポーネント
- * 翻訳が正しく読み込まれるように特別な処理を追加
+ * セッション設定パネルコンポーネント
+ * 音声設定とアバター表示切替を統合
  */
-const AudioSettingsPanel: React.FC<AudioSettingsPanelProps> = ({
+const SessionSettingsPanel: React.FC<SessionSettingsPanelProps> = ({
   audioEnabled,
   setAudioEnabled,
   audioVolume,
@@ -38,6 +44,9 @@ const AudioSettingsPanel: React.FC<AudioSettingsPanelProps> = ({
   setSpeechRate,
   silenceThreshold,
   setSilenceThreshold,
+  avatarVisible,
+  setAvatarVisible,
+  avatarEnabled,
 }) => {
   const { t, i18n } = useTranslation();
   const [ready, setReady] = useState<boolean>(i18n.isInitialized);
@@ -69,6 +78,9 @@ const AudioSettingsPanel: React.FC<AudioSettingsPanelProps> = ({
         "※ NPCの応答が音声で再生されます",
       "conversation.audioSettings.silenceNote":
         "※ この時間無音が続くと自動送信されます",
+      "conversation.settings.title": "設定",
+      "conversation.settings.avatarOn": "3Dアバター表示 ON",
+      "conversation.settings.avatarOff": "3Dアバター表示 OFF",
     };
     return defaults[key] || key;
   };
@@ -85,9 +97,36 @@ const AudioSettingsPanel: React.FC<AudioSettingsPanelProps> = ({
   return (
     <Card sx={{ mb: 2 }}>
       <CardContent>
-        <Typography variant="h6" gutterBottom>
-          {translate("conversation.audioSettings.title")}
-        </Typography>
+        {/* アバター表示トグル（シナリオでアバターが有効な場合のみ表示） */}
+        {avatarEnabled && setAvatarVisible && (
+          <Box sx={{ mb: 2 }}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={avatarVisible ?? false}
+                  onChange={(e) => setAvatarVisible(e.target.checked)}
+                  color="primary"
+                />
+              }
+              label={
+                <Box display="flex" alignItems="center">
+                  {avatarVisible ? (
+                    <PersonIcon fontSize="small" sx={{ mr: 1 }} />
+                  ) : (
+                    <PersonOffIcon fontSize="small" sx={{ mr: 1 }} />
+                  )}
+                  <Typography variant="body2">
+                    {avatarVisible
+                      ? translate("conversation.settings.avatarOn")
+                      : translate("conversation.settings.avatarOff")}
+                  </Typography>
+                </Box>
+              }
+            />
+          </Box>
+        )}
+
+        {/* 音声出力トグル */}
         <FormControlLabel
           control={
             <Switch
@@ -202,4 +241,4 @@ const AudioSettingsPanel: React.FC<AudioSettingsPanelProps> = ({
   );
 };
 
-export default AudioSettingsPanel;
+export default SessionSettingsPanel;

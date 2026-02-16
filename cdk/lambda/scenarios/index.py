@@ -767,6 +767,12 @@ def create_scenario():
             if field in body and body[field]:
                 scenario_data[field] = body[field]
         
+        # boolean型フィールドの追加（False値も保存する必要があるため別処理）
+        boolean_fields = ["enableAvatar"]
+        for field in boolean_fields:
+            if field in body and isinstance(body[field], bool):
+                scenario_data[field] = body[field]
+        
         # 共有設定の処理
         if scenario_data["visibility"] == "shared" and "sharedWithUsers" in body:
             scenario_data["sharedWithUsers"] = body["sharedWithUsers"]
@@ -875,7 +881,8 @@ def update_scenario(scenario_id: str):
                 "initialMessage": "initialMessage",
                 "pdfFiles": "pdfFiles",  # PDF資料情報
                 "maxTurns": "maxTurns",  # 最大ターン数
-                "avatarId": "avatarId"  # アバターID
+                "avatarId": "avatarId",  # アバターID
+                "enableAvatar": "enableAvatar"  # アバター表示On/Off
             }
             
             for request_field, db_field in field_mappings.items():

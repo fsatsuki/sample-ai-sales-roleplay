@@ -28,3 +28,4 @@ memory-bank
 *.pyc
 frontend/.env.test
 reviewed/
+docs/image/Architecture_new.pptx

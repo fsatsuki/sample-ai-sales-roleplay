@@ -1,64 +1,50 @@
-# ビルド手順 - 会話画面UI/UXリデザイン
+# Build Instructions - アバター表示On/Off機能
 
-## 前提条件
+## Prerequisites
 - Node.js 18.x以上
-- npm 9.x以上
-- 環境変数: `.env` ファイルが `frontend/` に配置済み
+- Python 3.9以上
+- npm（フロントエンド依存関係管理）
 
-## ビルドステップ
+## Build Steps
 
-### 1. 依存関係のインストール
+### 1. フロントエンド依存関係インストール
 ```bash
 cd frontend
 npm install
 ```
 
-### 2. 型チェック
-```bash
-cd frontend
-npx tsc --noEmit
-```
-
-### 3. リントチェック
-```bash
-cd frontend
-npm run lint
-```
-
-### 4. プロダクションビルド（型チェック付き）
+### 2. フロントエンドビルド（型チェック付き）
 ```bash
 cd frontend
 npm run build:full
 ```
 
-### 5. ビルド成功の確認
-- `frontend/dist/` ディレクトリにビルド成果物が生成される
-- コンソールにエラーが表示されないこと
-- ビルドサイズが妥当であること
+### 3. フロントエンドリント
+```bash
+cd frontend
+npm run lint
+```
 
-## 変更ファイル一覧
+### 4. ビルド成功の確認
+- `frontend/dist/` ディレクトリにビルド成果物が生成されること
+- TypeScript型エラーが0件であること
+- ESLintエラーが0件であること
 
-### 新規作成
-- `frontend/src/components/conversation/MetricsOverlay.tsx`
-- `frontend/src/components/conversation/ScenarioPanel.tsx`
-- `frontend/src/components/conversation/PersonaPanel.tsx`
-- `frontend/src/components/conversation/RightPanelContainer.tsx`
-- `frontend/src/components/conversation/CoachingHintBar.tsx`
-- `frontend/src/components/conversation/AvatarStage.tsx`
+## バックエンド（Lambda）
+- Lambda関数はPythonで記述されており、CDKデプロイ時に自動的にパッケージングされる
+- `cdk/lambda/scenarios/index.py` の変更はCDKデプロイで反映される
 
-### 改修
-- `frontend/src/components/conversation/ConversationHeader.tsx`
-- `frontend/src/components/compliance/ComplianceAlert.tsx`
-- `frontend/src/pages/ConversationPage.tsx`
-- `frontend/src/i18n/locales/ja.json`
-- `frontend/src/i18n/locales/en.json`
+### CDKデプロイ（開発環境）
+```bash
+cd cdk
+npm run deploy:dev
+```
 
-## トラブルシューティング
+## Troubleshooting
 
-### 型エラーが発生する場合
-- `npx tsc --noEmit` で詳細なエラー箇所を確認
-- 新規コンポーネントのProps型定義を確認
+### TypeScript型エラー
+- `enableAvatar?: boolean` が `ScenarioInfo` と `Scenario` 型に追加されていることを確認
+- `NPCInfoStepProps` に `enableAvatar` と `onEnableAvatarChange` が追加されていることを確認
 
-### リントエラーが発生する場合
-- `npm run lint -- --fix` で自動修正可能なエラーを修正
-- i18nキーの不足がないか `npm run validate-i18n` で確認
+### i18nキー未定義エラー
+- `frontend/src/i18n/locales/ja.json` と `en.json` に `enableToggle` と `enableToggleHelp` キーが追加されていることを確認

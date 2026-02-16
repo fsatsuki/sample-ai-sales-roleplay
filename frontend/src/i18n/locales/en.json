@@ -211,8 +211,13 @@
     "header": {
       "toggleRightPanels": "Toggle info panels",
       "toggleMetrics": "Toggle metrics",
-      "openAudioSettings": "Open audio settings",
+      "openSettings": "Open settings",
       "endSession": "End Session"
+    },
+    "settings": {
+      "title": "Settings",
+      "avatarOn": "3D Avatar ON",
+      "avatarOff": "3D Avatar OFF"
     }
   },
   "metrics": {
@@ -471,7 +476,9 @@
         "remove": "Remove Avatar",
         "help": "Upload a VRM avatar file (max 50MB)",
         "invalidFormat": "Only VRM files can be uploaded (.vrm)",
-        "fileTooLarge": "File size exceeds 50MB limit"
+        "fileTooLarge": "File size exceeds 50MB limit",
+        "enableToggle": "3D Avatar Display",
+        "enableToggleHelp": "When enabled, a 3D avatar will be displayed on the conversation screen"
       },
       "error": {
         "guardrailsLoad": "Failed to load guardrails",

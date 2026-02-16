@@ -1663,3 +1663,171 @@
 **Context**: Build and Test - E2Eテスト完了、全テストパス
 
 ---
+
+
+---
+
+## New Workflow Session: アバター表示のシナリオ別On/Off機能
+**Timestamp**: 2026-02-12T10:00:00Z
+
+---
+
+## Workspace Detection
+**Timestamp**: 2026-02-12T10:00:01Z
+**User Input**: "ai-dlc inceptionを開始アバターの機能を実装しましたが、シナリオごとにOn/Offできるようにしたいです。"
+**AI Response**: ワークスペース検出を開始。既存のBrownfieldプロジェクトを確認。IDLE状態から新しいワークフローセッションを開始。
+**Context**: 新規Inceptionフェーズ開始、アバター表示On/Off機能リクエスト
+
+### 検出結果:
+- **プロジェクトタイプ**: Brownfield
+- **既存コード**: あり（React + TypeScript フロントエンド、AWS CDK バックエンド）
+- **アバター実装**: Phase 1〜3 + VRMアップロード完了済み
+- **リバースエンジニアリング成果物**: 存在（前回のワークフローで作成済み）
+- **前回の作業**: AgentCore Runtime移行完了、全フェーズ完了済み
+
+---
+
+## INCEPTION - Requirements Analysis (開始)
+**Timestamp**: 2026-02-12T10:01:00Z
+**User Input**: "ai-dlc inceptionを開始アバターの機能を実装しましたが、シナリオごとにOn/Offできるようにしたいです。"
+**AI Response**: 要件分析を開始。コードベース調査を実施し、現在のアバター実装とシナリオデータモデルを確認。
+
+### Intent Analysis:
+- **Request Type**: Enhancement（既存機能の拡張）
+- **Request Clarity**: Clear（明確な目標）
+- **Scope Estimate**: Multiple Components（DynamoDB、Lambda、フロントエンドUI、ConversationPage）
+- **Complexity Estimate**: Simple（既存のデータモデルにフラグ追加、条件分岐追加）
+
+### コードベース調査結果:
+- シナリオデータモデル: `avatarId`フィールドは既存（オプション）
+- ConversationPage: AvatarStageは常に表示（条件分岐なし）
+- シナリオ作成/編集UI: VRMファイルアップロード機能あり
+- Lambda: `avatarId`はオプションフィールドとして処理済み
+- `enableAvatar`フラグは未実装
+
+
+## INCEPTION - Requirements Analysis (回答受領)
+**Timestamp**: 2026-02-12T10:05:00Z
+**User Input**: "回答しました"
+**AI Response**: 要件確認質問書の回答を確認し、要件定義書を生成。
+**Context**: Requirements Analysis stage - Answer collection and requirements document generation
+
+### User Answers Summary:
+- Q1: アバターエリアを非表示にし、チャットログを広く使う（選択肢Bに相当）
+- Q2: A（シナリオ作成・編集画面のNPC設定セクション内にトグルスイッチを追加）
+- Q3: A（デフォルトON）
+- Q4: A（アバターOFF時はVRMアップロードUIを非表示）
+- Q5: B（シナリオ一覧画面には表示しない）
+
+### 矛盾・曖昧さチェック: なし
+
+### Generated Artifacts:
+- `aidlc-docs/inception/requirements/requirements.md` - 要件定義書（FR-001〜FR-005、NFR-001〜NFR-004）
+
+---
+
+## INCEPTION - Requirements Analysis (変更リクエスト)
+**Timestamp**: 2026-02-12T10:10:00Z
+**User Input**: "既存シナリオは `enableAvatar` 未設定の場合 `true` として扱う（後方互換性）→ falseにします"
+**AI Response**: 要件定義書を更新。既存シナリオの `enableAvatar` 未設定時のデフォルト値を `true` → `false` に変更。
+**Context**: Requirements Analysis stage - User requested change to backward compatibility behavior
+
+---
+
+## INCEPTION - Requirements Analysis Approval
+**Timestamp**: 2026-02-12T10:12:00Z
+**User Input**: "approve"
+**AI Response**: 要件定義書を承認。Workflow Planningステージに進む。
+**Status**: Approved
+**Context**: Requirements Analysis完了、Workflow Planningへ遷移
+
+---
+
+## INCEPTION - Workflow Planning
+**Timestamp**: 2026-02-12T10:13:00Z
+**User Input**: N/A (Requirements Analysis承認後に自動実行)
+**AI Response**: 実行計画書を作成。10ステージスキップ、2ステージ実行（Code Generation + Build and Test）を推奨。
+
+### 実行計画サマリー:
+- **実行ステージ**: Code Generation, Build and Test
+- **スキップステージ**: User Stories, Application Design, Units Generation, Functional Design, NFR Requirements, NFR Design, Infrastructure Design
+- **リスクレベル**: Low
+- **推定期間**: 1-2時間
+
+### スキップ理由:
+- Application Design: 既存コンポーネントへのフラグ追加のみ、新規コンポーネント不要
+- Infrastructure Design: 既存パターン踏襲、DynamoDBフィールド追加のみ
+- NFR Requirements/Design: 既存NFR設定で十分
+- Functional Design: 単純なboolean条件分岐
+
+### Generated Artifacts:
+- `aidlc-docs/inception/plans/execution-plan.md` - 実行計画書
+
+---
+
+## INCEPTION - Workflow Planning Approval
+**Timestamp**: 2026-02-12T10:15:00Z
+**User Input**: "approve"
+**AI Response**: 実行計画を承認。CONSTRUCTION PHASEのCode Generationステージに進む。
+**Status**: Approved
+**Context**: Workflow Planning完了、Code Generation Part 1 (Planning)へ遷移
+
+---
+
+## CONSTRUCTION - Code Generation Part 1: Planning
+**Timestamp**: 2026-02-12T10:20:00Z
+**User Input**: N/A (Workflow Planning承認後に自動実行)
+**AI Response**: コード生成プランを作成。8ステップの実装計画。
+
+### 実装ステップ:
+1. バックエンド - Lambda scenarios/index.py（enableAvatarフィールド追加）
+2. フロントエンド型定義（ScenarioInfo, Scenario, NPCInfoStepProps）
+3. NPCInfoStep - アバターOn/Offトグル追加
+4. ScenarioCreatePage - enableAvatar状態管理
+5. ScenarioEditPage - enableAvatar状態管理
+6. ConversationPage - アバター表示条件分岐
+7. i18n - 翻訳キー追加
+8. リント・型チェック
+
+### Generated Artifacts:
+- `aidlc-docs/construction/plans/avatar-toggle-code-generation-plan.md`
+
+---
+
+## CONSTRUCTION - Code Generation Plan Approval
+**Timestamp**: 2026-02-12T10:22:00Z
+**User Input**: "approve"
+**AI Response**: コード生成プランを承認。Part 2 (Generation) を開始。Step 1から実装開始。
+**Status**: Approved
+**Context**: Code Generation Part 2開始
+
+---
+
+## Code Generation - Step 3〜8 実行
+**Timestamp**: 2026-02-12T10:00:00Z
+**User Input**: "approve" (コード生成開始承認、コンテキスト転送後の継続)
+**AI Response**: Step 3〜8を実行完了
+**Context**: CONSTRUCTION - Code Generation Part 2
+
+### 実行内容:
+- **Step 3**: NPCInfoStep.tsx - Switch/FormControlLabelインポート追加、enableAvatar/onEnableAvatarChangeプロパティ受け取り、アバターOn/Offトグル追加、VRMアップロードUIを条件表示（enableAvatar時のみ）、aria-label設定
+- **Step 4**: ScenarioCreatePage.tsx - enableAvatar state追加（デフォルト: true）、NPCInfoStepにenableAvatar/onEnableAvatarChange渡し、APIリクエストにenableAvatar含める
+- **Step 5**: ScenarioEditPage.tsx - enableAvatar state追加（デフォルト: false）、シナリオ読み込み時にenableAvatar復元（未設定時false）、NPCInfoStepにenableAvatar/onEnableAvatarChange渡し、アバターOFF時にavatarFile/existingAvatarFileNameクリア、APIリクエストにenableAvatar含める
+- **Step 6**: ConversationPage.tsx - enableAvatar state追加（デフォルト: false）、シナリオ取得時にenableAvatar読み込み（未設定時false）、AvatarProvider/AvatarStageをenableAvatar条件で表示、アバター非表示時のチャットログmaxHeight制限解除
+- **Step 7**: ja.json/en.json - enableToggle/enableToggleHelpキー追加
+- **Step 8**: getDiagnosticsで全変更ファイルの型エラー確認 → エラーなし
+
+---
+
+## Build and Test Stage
+**Timestamp**: 2026-02-12T10:05:00Z
+**Build Status**: Success（getDiagnostics: 全変更ファイルでエラー0件）
+**Test Status**: 型チェック通過、ユニットテスト・E2Eテスト実行待ち
+**Files Generated**:
+- build-instructions.md（更新）
+- unit-test-instructions.md（更新）
+- integration-test-instructions.md（更新）
+- performance-test-instructions.md（更新）
+- build-and-test-summary.md（更新）
+
+---

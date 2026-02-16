@@ -43,7 +43,7 @@ import MetricsOverlay from "../components/conversation/MetricsOverlay";
 import RightPanelContainer from "../components/conversation/RightPanelContainer";
 import CoachingHintBar from "../components/conversation/CoachingHintBar";
 import AvatarStage from "../components/conversation/AvatarStage";
-import AudioSettingsPanel from "../components/conversation/AudioSettingsPanel";
+import SessionSettingsPanel from "../components/conversation/SessionSettingsPanel";
 import { Dialog, DialogTitle, DialogContent } from "@mui/material";
 
 /**
@@ -98,6 +98,10 @@ const ConversationPage: React.FC = () => {
   const [scenarioAvatarS3Key, setScenarioAvatarS3Key] = useState<string | undefined>(undefined);
   // シナリオNPCの音声モデルID
   const [scenarioVoiceId, setScenarioVoiceId] = useState<string | undefined>(undefined);
+  // シナリオのアバター表示On/Off
+  const [enableAvatar, setEnableAvatar] = useState<boolean>(false);
+  // セッション中のアバター表示切替（ランタイムトグル）
+  const [avatarVisible, setAvatarVisible] = useState<boolean>(false);
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [audioVolume, setAudioVolume] = useState<number>(80);
   const [speechRate, setSpeechRate] = useState<number>(1.15);
@@ -148,7 +152,7 @@ const ConversationPage: React.FC = () => {
   const [rightPanelsVisible, setRightPanelsVisible] = useState<boolean>(true);
   const [metricsVisible, setMetricsVisible] = useState<boolean>(true);
   const [chatLogExpanded] = useState<boolean>(false);
-  const [showAudioSettings, setShowAudioSettings] = useState<boolean>(false);
+  const [showSettings, setShowSettings] = useState<boolean>(false);
 
 
   // コンポーネントの初期マウント時のフラグ設定
@@ -283,6 +287,11 @@ const ConversationPage: React.FC = () => {
 
             setScenario(convertedScenario);
             setCurrentMetrics(convertedScenario.initialMetrics);
+
+            // シナリオのアバター表示On/Off設定を読み込み（未設定時はfalse）
+            setEnableAvatar(scenarioInfo.enableAvatar ?? false);
+            // ランタイムトグルの初期値もシナリオ設定に合わせる
+            setAvatarVisible(scenarioInfo.enableAvatar ?? false);
 
             // シナリオNPCの音声モデルIDを設定（アバターAPI取得前に即座に設定）
             // アバター詳細APIの完了を待つとvoiceId設定が遅延し、
@@ -1204,7 +1213,7 @@ const ConversationPage: React.FC = () => {
         messageCount={messages.length}
         onToggleRightPanels={() => setRightPanelsVisible((v) => !v)}
         onToggleMetrics={() => setMetricsVisible((v) => !v)}
-        onOpenAudioSettings={() => setShowAudioSettings(true)}
+        onOpenSettings={() => setShowSettings(true)}
         rightPanelsVisible={rightPanelsVisible}
         metricsVisible={metricsVisible}
       />
@@ -1276,28 +1285,30 @@ const ConversationPage: React.FC = () => {
         </Box>
 
         {/* アバターステージ（中央） — CR-009: AvatarProviderを条件分岐外に配置し再マウント防止 */}
-        <AvatarProvider>
-          <Box sx={{
-            flex: sessionStarted ? "1 1 0" : "0 0 0",
-            minHeight: 0,
-            maxHeight: sessionStarted ? "40vh" : 0,
-            visibility: sessionStarted ? 'visible' : 'hidden',
-            overflow: 'hidden',
-          }}>
-            <AvatarStage
-              avatarId={scenarioAvatarId}
-              avatarS3Key={scenarioAvatarS3Key}
-              angerLevel={currentMetrics.angerLevel}
-              trustLevel={currentMetrics.trustLevel}
-              progressLevel={currentMetrics.progressLevel}
-              isSpeaking={isSpeaking}
-              directEmotion={npcDirectEmotion}
-              gesture={npcGesture}
-              onEmotionChange={handleEmotionChange}
-              npcName={scenario.npc.name}
-            />
-          </Box>
-        </AvatarProvider>
+        {avatarVisible && (
+          <AvatarProvider>
+            <Box sx={{
+              flex: sessionStarted ? "1 1 0" : "0 0 0",
+              minHeight: 0,
+              maxHeight: sessionStarted ? "40vh" : 0,
+              visibility: sessionStarted ? 'visible' : 'hidden',
+              overflow: 'hidden',
+            }}>
+              <AvatarStage
+                avatarId={scenarioAvatarId}
+                avatarS3Key={scenarioAvatarS3Key}
+                angerLevel={currentMetrics.angerLevel}
+                trustLevel={currentMetrics.trustLevel}
+                progressLevel={currentMetrics.progressLevel}
+                isSpeaking={isSpeaking}
+                directEmotion={npcDirectEmotion}
+                gesture={npcGesture}
+                onEmotionChange={handleEmotionChange}
+                npcName={scenario.npc.name}
+              />
+            </Box>
+          </AvatarProvider>
+        )}
 
 
         {/* チャットログ（下部） */}
@@ -1308,9 +1319,12 @@ const ConversationPage: React.FC = () => {
               ? {
                 flex: "1 1 auto",
                 minHeight: 100,
-                maxHeight: "30vh",
+                // アバター非表示時はmaxHeight制限を解除してチャットログを拡張
+                ...(avatarVisible ? { maxHeight: "30vh" } : {}),
                 // 右パネルと重ならないようにマージンを追加
                 mr: rightPanelsVisible ? "280px" : 0,
+                // アバター非表示時はメトリクス・カメラとの重なりを防ぐため左パディング追加
+                ...(!avatarVisible ? { pl: "200px" } : {}),
                 display: "flex",
                 flexDirection: "column",
               }
@@ -1369,19 +1383,19 @@ const ConversationPage: React.FC = () => {
         continuousListening={continuousListening}
       />
 
-      {/* 音声設定モーダル */}
+      {/* 設定モーダル（音声設定 + アバター表示切替） */}
       <Dialog
-        open={showAudioSettings}
-        onClose={() => setShowAudioSettings(false)}
-        aria-labelledby="audio-settings-dialog-title"
+        open={showSettings}
+        onClose={() => setShowSettings(false)}
+        aria-labelledby="settings-dialog-title"
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle id="audio-settings-dialog-title">
-          {t("conversation.audioSettings.title")}
+        <DialogTitle id="settings-dialog-title">
+          {t("conversation.settings.title")}
         </DialogTitle>
         <DialogContent>
-          <AudioSettingsPanel
+          <SessionSettingsPanel
             audioEnabled={audioEnabled}
             setAudioEnabled={setAudioEnabled}
             audioVolume={audioVolume}
@@ -1390,6 +1404,9 @@ const ConversationPage: React.FC = () => {
             setSpeechRate={setSpeechRate}
             silenceThreshold={silenceThreshold}
             setSilenceThreshold={setSilenceThreshold}
+            avatarVisible={avatarVisible}
+            setAvatarVisible={setAvatarVisible}
+            avatarEnabled={enableAvatar}
           />
         </DialogContent>
       </Dialog>

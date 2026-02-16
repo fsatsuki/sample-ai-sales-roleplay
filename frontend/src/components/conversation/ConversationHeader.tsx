@@ -18,7 +18,7 @@ interface ConversationHeaderProps {
   // 新規Props: ヘッダーアクションボタン
   onToggleRightPanels?: () => void;
   onToggleMetrics?: () => void;
-  onOpenAudioSettings?: () => void;
+  onOpenSettings?: () => void;
   rightPanelsVisible?: boolean;
   metricsVisible?: boolean;
 }
@@ -35,7 +35,7 @@ const ConversationHeader: React.FC<ConversationHeaderProps> = ({
   messageCount,
   onToggleRightPanels,
   onToggleMetrics,
-  onOpenAudioSettings,
+  onOpenSettings,
   rightPanelsVisible,
   metricsVisible,
 }) => {
@@ -149,11 +149,11 @@ const ConversationHeader: React.FC<ConversationHeaderProps> = ({
             </IconButton>
           </Tooltip>
         )}
-        {onOpenAudioSettings && (
-          <Tooltip title={t("conversation.header.openAudioSettings")}>
+        {onOpenSettings && (
+          <Tooltip title={t("conversation.header.openSettings")}>
             <IconButton
-              onClick={onOpenAudioSettings}
-              aria-label={t("conversation.header.openAudioSettings")}
+              onClick={onOpenSettings}
+              aria-label={t("conversation.header.openSettings")}
               size="small"
               sx={{
                 width: 36,
@@ -162,7 +162,7 @@ const ConversationHeader: React.FC<ConversationHeaderProps> = ({
                 "&:hover": { backgroundColor: "#f3f4f6" },
               }}
             >
-              🔊
+              ⚙️
             </IconButton>
           </Tooltip>
         )}

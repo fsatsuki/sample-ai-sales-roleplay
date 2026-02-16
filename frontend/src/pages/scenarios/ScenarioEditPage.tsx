@@ -50,6 +50,7 @@ const ScenarioEditPage: React.FC = () => {
   // アバター・音声モデル管理
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [voiceId, setVoiceId] = useState<string>("");
+  const [enableAvatar, setEnableAvatar] = useState<boolean>(false);
   const [existingAvatarId, setExistingAvatarId] = useState<string | undefined>(undefined);
   const [existingAvatarFileName, setExistingAvatarFileName] = useState<string | undefined>(undefined);
   // CR-010: フィールドレベルバリデーションエラー
@@ -176,6 +177,8 @@ const ScenarioEditPage: React.FC = () => {
         // voiceIdとavatarIdを復元
         const loadedVoiceId = scenarioData.npc?.voiceId || scenarioData.npcInfo?.voiceId || "";
         setVoiceId(loadedVoiceId);
+        // enableAvatar値を復元（未設定時はfalse）
+        setEnableAvatar(scenarioData.enableAvatar ?? false);
         if (scenarioData.avatarId) {
           setExistingAvatarId(scenarioData.avatarId);
           // ファイル名はアバターIDから推定（表示用）
@@ -244,6 +247,15 @@ const ScenarioEditPage: React.FC = () => {
           }}
           voiceId={voiceId}
           onVoiceIdChange={setVoiceId}
+          enableAvatar={enableAvatar}
+          onEnableAvatarChange={(enabled) => {
+            setEnableAvatar(enabled);
+            // アバターOFF時はアバターファイル情報をクリア
+            if (!enabled) {
+              setAvatarFile(null);
+              setExistingAvatarFileName(undefined);
+            }
+          }}
         />
       ),
     },
@@ -369,6 +381,7 @@ const ScenarioEditPage: React.FC = () => {
         visibility: formData.visibility,
         guardrail: formData.guardrail,
         initialMessage: formData.initialMessage,
+        enableAvatar,
         ...(avatarId !== undefined ? { avatarId } : {}),
         ...(formData.visibility === "shared"
           ? { sharedWithUsers: formData.sharedWithUsers }

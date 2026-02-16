@@ -1,54 +1,46 @@
-# 統合テスト手順
+# Integration Test Instructions - アバター表示On/Off機能
 
 ## 目的
-会話画面の新レイアウトが既存のAPIサービス・状態管理と正しく連携することを確認する。
+フロントエンドとバックエンド間の `enableAvatar` フィールドの連携を検証する。
 
 ## テストシナリオ
 
-### シナリオ1: セッション開始フロー
-- ConversationPage → startConversation → API呼び出し → AvatarStage表示
-- MetricsOverlay・RightPanelContainer が sessionStarted 後に表示されること
-- VideoManager がセッション開始後に録画を開始すること
+### シナリオ1: シナリオ作成 → 会話画面（アバターON）
+1. シナリオ作成画面でアバタートグルをONにする
+2. VRMファイルをアップロードする
+3. シナリオを保存する
+4. 作成したシナリオの会話画面を開く
+5. **期待結果**: AvatarStageが表示され、アップロードしたVRMアバターが表示される
 
-### シナリオ2: メッセージ送受信フロー
-- MessageInput → sendMessage → API応答 → MessageList更新
-- CoachingHintBar が currentMetrics.analysis を表示すること
-- MetricsOverlay がリアルタイム評価結果を反映すること
+### シナリオ2: シナリオ作成 → 会話画面（アバターOFF）
+1. シナリオ作成画面でアバタートグルをOFFにする
+2. シナリオを保存する
+3. 作成したシナリオの会話画面を開く
+4. **期待結果**: AvatarStageが非表示、チャットログが全画面に拡張される
 
-### シナリオ3: パネルトグル操作
-- 📋ボタン → RightPanelContainer の表示/非表示切り替え
-- 📊ボタン → MetricsOverlay の表示/非表示切り替え
-- 🔊ボタン → AudioSettingsPanel モーダル表示
+### シナリオ3: シナリオ編集でアバターON→OFF切り替え
+1. アバターONのシナリオを編集画面で開く
+2. アバタートグルをOFFに切り替える
+3. **期待結果**: VRMアップロードUIが非表示になり、アバターファイル情報がクリアされる
+4. シナリオを保存する
+5. 会話画面を開く
+6. **期待結果**: AvatarStageが非表示
 
-### シナリオ4: コンプライアンス違反通知
-- API評価結果に違反情報 → ComplianceAlert がヘッダー下にスライドイン
-- 8秒後に自動非表示 or 閉じるボタンで非表示
+### シナリオ4: 既存シナリオ（enableAvatar未設定）の後方互換性
+1. `enableAvatar` フィールドが未設定の既存シナリオを会話画面で開く
+2. **期待結果**: アバターが非表示（`false` として扱われる）
+3. 同シナリオを編集画面で開く
+4. **期待結果**: アバタートグルがOFF状態で表示される
 
-### シナリオ5: セッション終了フロー
-- セッション終了ボタン → endSession → 録画アップロード待機 → 結果ページ遷移
-- セッション終了ボタンが sessionStarted 時に常に表示されること
+## API連携テスト
 
-## 手動統合テスト手順
-
-### 1. 開発サーバー起動
+### DynamoDB保存確認
 ```bash
-cd frontend
-npm run dev
+# シナリオ作成後にDynamoDBのenableAvatarフィールドを確認
+aws dynamodb get-item --table-name [テーブル名] --key '{"scenarioId": {"S": "[シナリオID]"}}' --query 'Item.enableAvatar'
 ```
 
-### 2. テスト実行
-1. シナリオ選択画面からシナリオを選択
-2. カメラ許可 → 「商談を開始」ボタンクリック
-3. アバターが中央に大きく表示されることを確認
-4. チャットログが下部にコンパクト表示されることを確認
-5. メトリクスオーバーレイが左上に表示されることを確認
-6. 右側パネル（ゴール・シナリオ・ペルソナ）が表示されることを確認
-7. メッセージを送信し、NPC応答を確認
-8. 📋📊🔊ボタンの動作を確認
-9. チャットログクリックで展開/折りたたみを確認
-10. セッション終了ボタンで結果ページに遷移することを確認
-
-## 注意事項
-- バックエンドAPI（Lambda）が稼働している環境で実行すること
-- Cognito認証が必要なため、テストユーザーでログインすること
-- WebSocket接続（Transcribe）はオプション（接続失敗しても会話は続行可能）
+### API レスポンス確認
+- GET `/scenarios/{id}` のレスポンスに `enableAvatar` フィールドが含まれること
+- POST `/scenarios` のリクエストボディに `enableAvatar` が正しく送信されること
+- PUT `/scenarios/{id}` のリクエストボディに `enableAvatar` が正しく送信されること

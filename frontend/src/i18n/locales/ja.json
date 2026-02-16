@@ -211,8 +211,13 @@
     "header": {
       "toggleRightPanels": "情報パネル表示切替",
       "toggleMetrics": "メトリクス表示切替",
-      "openAudioSettings": "音声設定を開く",
+      "openSettings": "設定を開く",
       "endSession": "セッション終了"
+    },
+    "settings": {
+      "title": "設定",
+      "avatarOn": "3Dアバター表示 ON",
+      "avatarOff": "3Dアバター表示 OFF"
     }
   },
   "metrics": {
@@ -471,7 +476,9 @@
         "remove": "アバターを削除",
         "help": "VRM形式のアバターファイルをアップロードできます（最大50MB）",
         "invalidFormat": "VRM形式のファイルのみアップロードできます（.vrm）",
-        "fileTooLarge": "ファイルサイズが50MBを超えています"
+        "fileTooLarge": "ファイルサイズが50MBを超えています",
+        "enableToggle": "3Dアバター表示",
+        "enableToggleHelp": "ONにすると会話画面で3Dアバターが表示されます"
       },
       "error": {
         "guardrailsLoad": "ガードレールの読み込みに失敗しました",

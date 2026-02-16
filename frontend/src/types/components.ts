@@ -126,6 +126,9 @@ export interface NPCInfoStepProps {
   // 音声モデル選択
   voiceId?: string;
   onVoiceIdChange?: (voiceId: string) => void;
+  // アバター表示On/Off
+  enableAvatar?: boolean;
+  onEnableAvatarChange?: (enabled: boolean) => void;
 }
 
 /**

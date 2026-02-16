@@ -1,49 +1,28 @@
-# パフォーマンステスト手順
+# Performance Test Instructions - アバター表示On/Off機能
 
 ## 目的
-新レイアウトがパフォーマンス要件（NFR-1）を満たすことを確認する。
+アバター表示On/Off機能がパフォーマンスに悪影響を与えないことを確認する。
 
 ## パフォーマンス要件
-- レイアウト遷移: CSS transition 0.5s以内
-- メトリクス更新: 画面反映 100ms以内
-- チャットログ展開/折りたたみ: 300ms以内
-- パネルトグル: 即座に反映（16ms以内）
-- 不要な再レンダリング: なし
+- アバターOFF時の会話画面初期表示: 既存と同等以下
+- アバターON時の会話画面初期表示: 既存と同等（変更なし）
+- トグル切り替え時のUI応答: 100ms以内
 
-## テスト項目
+## テスト観点
 
-### 1. レンダリングパフォーマンス
-- React DevTools Profiler でコンポーネントのレンダリング時間を計測
-- ConversationPage の再レンダリング回数を確認
-- メトリクス更新時に AvatarStage が不要に再レンダリングされないこと
+### 1. アバターOFF時のリソース節約
+- AvatarProvider/AvatarStageがレンダリングされないこと
+- three.js関連のリソース（WebGLコンテキスト等）が確保されないこと
+- メモリ使用量がアバターON時より低いこと
 
-### 2. CSS アニメーションパフォーマンス
-- Chrome DevTools Performance タブで以下を確認:
-  - MetricsOverlay のプログレスバー transition
-  - CoachingHintBar のフェードインアニメーション
-  - ComplianceAlert のスライドダウンアニメーション
-  - チャットログの max-height transition
-- Layout Shift が発生しないこと
+### 2. 条件分岐のレンダリングパフォーマンス
+- `enableAvatar` の条件分岐による追加のレンダリングコストが無視できるレベルであること
+- React DevToolsのProfilerで不要な再レンダリングが発生していないこと
 
-### 3. prefers-reduced-motion 対応
-- OS設定で「視差効果を減らす」を有効にした状態で確認
-- すべてのアニメーションが無効化されること
+## 確認方法
+- Chrome DevToolsのPerformanceタブで会話画面の初期表示時間を計測
+- React DevToolsのProfilerでコンポーネントのレンダリング回数を確認
+- Chrome DevToolsのMemoryタブでアバターON/OFF時のメモリ使用量を比較
 
-## テスト手順
-
-### React DevTools Profiler
-1. React DevTools をインストール
-2. Profiler タブを開く
-3. 録画開始 → メッセージ送受信 → 録画停止
-4. コンポーネントごとのレンダリング時間を確認
-
-### Chrome Performance
-1. DevTools → Performance タブ
-2. 録画開始 → パネルトグル・チャットログ展開 → 録画停止
-3. フレームレートが60fps を維持していることを確認
-4. Long Task（50ms超）がないことを確認
-
-## 合格基準
-- 全コンポーネントのレンダリング: 16ms以内
-- CSS transition: ジャンクなし（60fps維持）
-- prefers-reduced-motion: 全アニメーション無効化
+## 備考
+本機能は既存のアバター表示を条件分岐で制御するのみであり、新たなパフォーマンスリスクは低い。アバターOFF時はむしろリソース節約が期待される。

@@ -55,11 +55,26 @@
 - NFR要件・設計・インフラ設計
 - CDKコンストラクト・エージェントコード・フロントエンド変更
 
+### アバター表示On/Off機能 ✅ 完了
+- INCEPTION - Workspace Detection: 完了
+- INCEPTION - Requirements Analysis: 完了
+- INCEPTION - User Stories: スキップ（技術的な設定追加、ユーザーストーリー不要）
+- INCEPTION - Workflow Planning: 完了
+- INCEPTION - Application Design: スキップ（既存コンポーネントへのフラグ追加のみ）
+- INCEPTION - Units Generation: スキップ（単一ユニット）
+- CONSTRUCTION - Functional Design: スキップ（単純なboolean条件分岐）
+- CONSTRUCTION - NFR Requirements: スキップ（既存NFR設定で十分）
+- CONSTRUCTION - NFR Design: スキップ
+- CONSTRUCTION - Infrastructure Design: スキップ（既存パターン踏襲）
+- CONSTRUCTION - Code Generation: 完了
+- CONSTRUCTION - Build and Test: 完了
+
 ## Current Status
-- **Lifecycle Phase**: IDLE
-- **Current Stage**: なし
-- **Next Stage**: 次のユーザーリクエスト待ち
-- **Status**: 全作業完了、新しい作業の開始待ち
+- **Lifecycle Phase**: CONSTRUCTION
+- **Current Stage**: Build and Test 完了
+- **Next Stage**: Operations（プレースホルダー）
+- **Feature**: アバター表示のシナリオ別On/Off機能
+- **Status**: 全ステージ完了
 
 ## Notes
 - AI営業ロールプレイアプリケーション

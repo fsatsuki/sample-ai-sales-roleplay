@@ -1,81 +1,66 @@
-# ビルド・テストサマリー - VRMアップロード + Polly音声モデル選択
+# Build and Test Summary - アバター表示On/Off機能
 
-## ビルドステータス
-- ビルドツール: Vite 7.2.7 + TypeScript 5.9.2
-- ビルドステータス: ✅ 成功（型エラー0件）
-- ビルド成果物: `frontend/dist/`（2,417KB gzip: 686KB）
-- ビルド時間: 7.61s
+## Build Status
+- **Build Tool**: Vite 7.1.3 + TypeScript 5.9.2
+- **Build Status**: 型チェック通過（getDiagnostics: エラー0件）
+- **Build Artifacts**: frontend/dist/
+- **変更ファイル数**: 9ファイル
 
-## テスト実行サマリー
+## 変更ファイル一覧
 
-### リント
-- ツール: ESLint
-- ステータス: ✅ エラー0件
+### バックエンド
+| ファイル | 変更内容 |
+|---------|---------|
+| `cdk/lambda/scenarios/index.py` | enableAvatar フィールドの作成・更新API対応 |
 
-### ユニットテスト
-- テストスイート: 16 passed / 16 total
-- テストケース: 115 passed / 115 total
-- 実行時間: 8.79s
-- ステータス: ✅ 全テストパス
+### フロントエンド - 型定義
+| ファイル | 変更内容 |
+|---------|---------|
+| `frontend/src/types/api.ts` | ScenarioInfo に enableAvatar 追加 |
+| `frontend/src/types/index.ts` | Scenario に enableAvatar 追加 |
+| `frontend/src/types/components.ts` | NPCInfoStepProps に enableAvatar/onEnableAvatarChange 追加 |
 
-### i18nバリデーション
-- ja.json: ✅ 構文チェック通過
-- en.json: ✅ 構文チェック通過
-- 言語間整合性: ✅ キー整合性OK
+### フロントエンド - ページコンポーネント
+| ファイル | 変更内容 |
+|---------|---------|
+| `frontend/src/pages/scenarios/creation/NPCInfoStep.tsx` | アバターOn/Offトグル追加、VRMアップロード条件表示 |
+| `frontend/src/pages/scenarios/ScenarioCreatePage.tsx` | enableAvatar state追加（デフォルト: true）、API送信 |
+| `frontend/src/pages/scenarios/ScenarioEditPage.tsx` | enableAvatar state追加、復元、アバターOFF時クリア |
+| `frontend/src/pages/ConversationPage.tsx` | enableAvatar条件分岐、チャットログレイアウト調整 |
 
-### CDKテスト
-- ステータス: テストファイルなし（既存状態）
-- CDKデプロイ: ユーザーが別途実施中
+### i18n
+| ファイル | 変更内容 |
+|---------|---------|
+| `frontend/src/i18n/locales/ja.json` | enableToggle/enableToggleHelp キー追加 |
+| `frontend/src/i18n/locales/en.json` | enableToggle/enableToggleHelp キー追加 |
 
-## ビルド時に修正した型エラー（26件 → 0件）
+## Test Execution Summary
 
-| ファイル | 問題 | 修正内容 |
-|---------|------|---------|
-| AvatarManagement.tsx | `listAvatars`メソッド未定義 | `getAvatarList`メソッドをAvatarServiceに追加 |
-| LipSyncController.ts | Uint8Array型不一致 | 型アサーション追加 |
-| VRMAvatar.tsx | useRef引数不足 | `undefined`初期値を明示 |
-| Header.tsx (6件) | MUI v7 ListItem `button` prop廃止 | `ListItemButton`に置き換え |
-| LanguageSettings.tsx (4件) | useState重複宣言 | 重複を削除 |
-| PreviewStep.tsx (6件) | `objectives`プロパティ未定義 | レガシーobjectivesセクション削除（goalsに統合済み） |
-| AudioAnalysisService.ts | 型不一致 | 型アサーション追加 |
-| goalUtils.ts (4件) | `objectives`プロパティ未定義 | 型アサーションで後方互換性維持 |
-| validation.ts | `objectives`プロパティ未定義 | 空配列を渡すように修正 |
+### 型チェック
+- **Status**: ✅ Pass（getDiagnostics: 全変更ファイルでエラー0件）
 
-### テスト修正
-| ファイル | 問題 | 修正内容 |
-|---------|------|---------|
-| ScenarioCreatePage.test.tsx | AvatarServiceの`import.meta.env`がJest非対応 | AvatarServiceモック追加 |
+### Unit Tests
+- **Status**: 実行待ち
+- **コマンド**: `cd frontend && npm run test`
 
-## 全体ステータス
-- リント: ✅ 成功
-- 型チェック: ✅ 成功（26件修正済み）
-- ユニットテスト: ✅ 全115テストパス
-- ビルド: ✅ 成功
-- i18n: ✅ 整合性OK
-- CDKデプロイ: 🔄 ユーザー実施中
+### Integration Tests
+- **Status**: 実行待ち（手動テスト推奨）
+- **テストシナリオ**: 4シナリオ（作成ON/OFF、編集切り替え、後方互換性）
 
-## 次のステップ
-Build and Test完了。Operationsフェーズ（プレースホルダー）に進む準備完了。
+### E2E Tests
+- **Status**: 実行待ち
+- **コマンド**: `cd frontend && npx playwright test --project=chromium`
 
-## E2Eテスト結果
+### Performance Tests
+- **Status**: N/A（条件分岐のみの変更、パフォーマンスリスク低）
 
-### 実行環境
-- ツール: Playwright 1.55.0
-- ブラウザ: Chromium（ヘッドレス）
-- 対象環境: ステージング（CloudFront経由）
+## Overall Status
+- **Build**: ✅ Success（型チェック通過）
+- **Ready for Manual Testing**: Yes
 
-### 結果サマリー
-- テスト総数: 38
-- パス: 36
-- スキップ: 2（username.test.ts - ステージング環境でAmplify認証モック未対応）
-- 失敗: 0
-
-### E2Eテスト修正内容
-
-| ファイル | 問題 | 修正内容 |
-|---------|------|---------|
-| avatar-emotion-test.spec.ts | canvas width=0でtoBeVisible失敗 | toBeAttachedに変更 |
-| avatar-phase3.spec.ts (2箇所) | 同上 | toBeAttached / count > 0に変更 |
-| scenario-execution.spec.ts (5.1, 5.2) | テストタイムアウト120秒で不足 | 300秒に延長 |
-| scenario-execution.spec.ts (Phase 6: 7件) | テストタイムアウト180秒で不足 | 300秒に延長 |
-| username.test.ts (2件) | ステージング環境でモック未対応 | test.skipでスキップ |
+## 推奨テスト手順
+1. `cd frontend && npm run lint` でリントチェック
+2. `cd frontend && npm run test` でユニットテスト実行
+3. `cd cdk && npm run deploy:dev` でバックエンドデプロイ
+4. 開発環境で手動テスト（シナリオ作成/編集/会話画面）
+5. 必要に応じてE2Eテスト実行
