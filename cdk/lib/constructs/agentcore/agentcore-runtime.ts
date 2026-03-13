@@ -3,7 +3,6 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as agentcore from '@aws-cdk/aws-bedrock-agentcore-alpha';
 import * as ecr_assets from 'aws-cdk-lib/aws-ecr-assets';
-import * as path from 'path';
 import { Construct } from 'constructs';
 
 export interface AgentCoreRuntimeProps {
@@ -67,12 +66,28 @@ export class AgentCoreRuntime extends Construct {
     // Runtime Endpointを追加
     runtime.addEndpoint('DefaultEndpoint', {});
 
-    // Bedrock InvokeModel権限を付与
+    // Bedrock InvokeModel権限を付与（Cross-region inference profile対応）
     runtime.addToRolePolicy(new iam.PolicyStatement({
       sid: 'BedrockModelInvocation',
       effect: iam.Effect.ALLOW,
       actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream', 'bedrock:InvokeModelWithBidirectionalStream'],
-      resources: ['arn:aws:bedrock:*::foundation-model/*', `arn:aws:bedrock:${region}:${account}:*`],
+      resources: [
+        'arn:aws:bedrock:*::foundation-model/*',
+        `arn:aws:bedrock:*:${account}:inference-profile/*`,
+        `arn:aws:bedrock:${region}:${account}:*`,
+      ],
+    }));
+
+    // AWS Marketplace権限（サードパーティモデルの自動サブスクリプションに必要）
+    runtime.addToRolePolicy(new iam.PolicyStatement({
+      sid: 'MarketplaceModelAccess',
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'aws-marketplace:Subscribe',
+        'aws-marketplace:Unsubscribe',
+        'aws-marketplace:ViewSubscriptions',
+      ],
+      resources: ['*'],
     }));
 
     // AgentCore Memory権限を付与（Memory IDが指定されている場合）
