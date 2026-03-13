@@ -81,7 +81,6 @@ const ScenarioCreatePage: React.FC = () => {
     difficulty: "normal" as DifficultyLevel,
     category: "",
     language: "ja", // デフォルトは日本語
-    maxTurns: undefined as number | undefined, // 最大ターン数（任意）
 
     // NPC情報
     npc: {
@@ -170,7 +169,6 @@ const ScenarioCreatePage: React.FC = () => {
         formData.category,
         formData.language,
         formData.scenarioId,
-        formData.maxTurns,
       );
       isValid = Object.values(errors).every((error) => error === null);
       currentErrors.basicInfo = errors;
@@ -260,7 +258,6 @@ const ScenarioCreatePage: React.FC = () => {
         guardrail: formData.guardrail,
         language: formData.language,
         initialMessage: formData.initialMessage,
-        maxTurns: formData.maxTurns,
         enableAvatar,
         ...(avatarId ? { avatarId } : {}),
         ...(formData.visibility === "shared"

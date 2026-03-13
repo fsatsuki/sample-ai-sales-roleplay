@@ -164,9 +164,7 @@
       "outputOff": "Audio Output OFF",
       "volume": "Volume: {{volume}}%",
       "speechRate": "Speech Rate: {{rate}}x",
-      "silenceThreshold": "Silence Detection: {{threshold}}s",
-      "npcResponseNote": "※ NPC responses will be played as audio",
-      "silenceNote": "※ Auto-send after this duration of silence"
+      "npcResponseNote": "※ NPC responses will be played as audio"
     },
     "npcRole": "{{role}}",
     "endConversation": "End Conversation",
@@ -181,6 +179,8 @@
       "continueVoice": "Continue voice input (existing text will be preserved)"
     },
     "turn": "Turn",
+    "remainingTime": "Remaining: {{time}}",
+    "elapsedTime": "Elapsed: {{time}}",
     "emoji": {
       "emotionState": "Emotion State",
       "description": "Displays the current emotional state of the NPC"
@@ -204,6 +204,9 @@
     "voiceOutput": "Voice Output",
     "npcVoicePlayback": "* NPC responses will be played as voice",
     "expandSettings": "Expand to show settings",
+    "defaultInitialMessage": "Hello. I'm {{name}} from {{company}}. Thank you for taking the time today. What would you like to propose?",
+    "sessionTitle": "Conversation with {{name}}",
+    "settingsDescription": "Change session settings such as voice output and avatar display.",
     "chatLog": {
       "expand": "Expand chat log",
       "collapse": "Collapse chat log"
@@ -217,7 +220,12 @@
     "settings": {
       "title": "Settings",
       "avatarOn": "3D Avatar ON",
-      "avatarOff": "3D Avatar OFF"
+      "avatarOff": "3D Avatar OFF",
+      "endpointingSensitivity": "Turn Detection Sensitivity",
+      "endpointingSensitivityHigh": "High (detect end of speech quickly)",
+      "endpointingSensitivityMedium": "Medium (standard)",
+      "endpointingSensitivityLow": "Low (allow longer pauses)",
+      "endpointingSensitivityNote": "* Changes take effect at next session start"
     }
   },
   "metrics": {

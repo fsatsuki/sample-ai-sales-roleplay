@@ -7,7 +7,6 @@ import {
 import { useNavigate } from "react-router-dom";
 import { Scenario } from "../../types/index";
 import { useTranslation } from "react-i18next";
-import { calculateCurrentTurns } from "../../utils/dialogueEngine";
 
 interface ConversationHeaderProps {
   scenario: Scenario;
@@ -15,7 +14,10 @@ interface ConversationHeaderProps {
   sessionEnded: boolean;
   onManualEnd: () => void;
   messageCount: number;
-  // 新規Props: ヘッダーアクションボタン
+  /** セッション経過時間（秒） */
+  sessionRemainingSeconds?: number | null;
+  /** 時間制限警告中かどうか（未使用、後方互換性のため残す） */
+  sessionTimeWarning?: boolean;
   onToggleRightPanels?: () => void;
   onToggleMetrics?: () => void;
   onOpenSettings?: () => void;
@@ -32,17 +34,24 @@ const ConversationHeader: React.FC<ConversationHeaderProps> = ({
   sessionStarted,
   sessionEnded,
   onManualEnd,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   messageCount,
+  sessionRemainingSeconds,
   onToggleRightPanels,
   onToggleMetrics,
   onOpenSettings,
   rightPanelsVisible,
   metricsVisible,
 }) => {
-  const currentTurns = sessionStarted ? calculateCurrentTurns(messageCount) : 0;
-  const maxTurns = scenario.maxTurns || 10;
   const navigate = useNavigate();
   const { t } = useTranslation();
+
+  // 経過時間のフォーマット（mm:ss）
+  const formatElapsedTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   return (
     <Box
@@ -99,13 +108,14 @@ const ConversationHeader: React.FC<ConversationHeaderProps> = ({
         </Typography>
       </Box>
 
-      {/* ターン数表示 */}
-      {sessionStarted && !sessionEnded && (
+      {/* 経過時間表示 */}
+      {sessionStarted && !sessionEnded && sessionRemainingSeconds != null && (
         <Chip
-          label={`${t("conversation.turn")}: ${currentTurns} / ${maxTurns}`}
-          color={currentTurns >= maxTurns - 2 ? "warning" : "default"}
+          label={`⏱ ${formatElapsedTime(sessionRemainingSeconds)}`}
+          color="default"
           variant="outlined"
           size="small"
+          aria-label={t("conversation.elapsedTime", { time: formatElapsedTime(sessionRemainingSeconds) })}
         />
       )}
 

@@ -34,18 +34,18 @@
 - [x] NFR Requirements - COMPLETED
 - [x] NFR Design - COMPLETED
 - [x] Infrastructure Design - COMPLETED
-- [ ] Code Planning - EXECUTE
-- [ ] Code Generation - EXECUTE
-- [ ] Build and Test - EXECUTE
+- [x] Code Planning - COMPLETED
+- [x] Code Generation - COMPLETED (Step 1-12)
+- [x] Build and Test - COMPLETED
 
 ### 🟡 OPERATIONS PHASE
 - [ ] Operations - PLACEHOLDER
 
 ## Current Status
-- **Lifecycle Phase**: INCEPTION
-- **Current Stage**: Infrastructure Design
-- **Next Stage**: Code Planning
-- **Status**: NFR Design承認済み、Infrastructure Designへ遷移
+- **Lifecycle Phase**: CONSTRUCTION - COMPLETED
+- **Current Stage**: Build and Test - COMPLETED
+- **Next Stage**: Operations (PLACEHOLDER)
+- **Status**: Nova 2 Sonic移行の全ステージ完了（INCEPTION + CONSTRUCTION）
 
 ## 完了済み作業一覧
 
@@ -56,11 +56,12 @@
 ### 会話画面UI/UXリデザイン ✅ 完了
 ### AgentCore Runtime移行 ✅ 完了
 ### アバター表示On/Off機能 ✅ 完了
+### Nova 2 Sonic移行 ✅ 完了
 
 ## Notes
 - AI営業ロールプレイアプリケーション
 - フロントエンド: React 19 + TypeScript + Material UI + Vite
 - バックエンド: AWS CDK + Lambda (Python/TypeScript) + DynamoDB + S3
-- AI/ML: Amazon Bedrock, Amazon Nova Premiere, Amazon Polly, Amazon Transcribe
+- AI/ML: Amazon Bedrock, Amazon Nova 2 Sonic, Amazon Nova Premiere, Amazon Polly, Amazon Transcribe
 - 3Dアバター: three.js + @pixiv/three-vrm
-- 全フェーズ（Phase 1〜3 + VRMアップロード + 音声選択 + 会話UI + AgentCore移行 + アバターOn/Off）完了済み
+- 全フェーズ（Phase 1〜3 + VRMアップロード + 音声選択 + 会話UI + AgentCore移行 + アバターOn/Off + Nova 2 Sonic移行）完了済み

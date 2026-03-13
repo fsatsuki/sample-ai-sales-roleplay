@@ -8,7 +8,7 @@
  * https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-oauth.html
  */
 import { getCurrentUser, fetchAuthSession } from "aws-amplify/auth";
-import type { Message, NPC, Goal, GoalStatus } from "../types/index";
+import type { Message, Goal, GoalStatus } from "../types/index";
 import type { ComplianceCheck } from "../types/api";
 
 // 環境変数からAgentCore Runtime設定を取得
@@ -16,9 +16,8 @@ const AGENTCORE_ENABLED = import.meta.env.VITE_AGENTCORE_ENABLED === 'true';
 const AWS_REGION = import.meta.env.VITE_AWS_REGION || 'us-west-2';
 
 // AgentCore Runtime ARNs
-// CDKデプロイ時: VITE_AGENTCORE_NPC_CONVERSATION_ARN / VITE_AGENTCORE_REALTIME_SCORING_ARN
-// ローカル開発時: VITE_NPC_CONVERSATION_RUNTIME_ARN / VITE_REALTIME_SCORING_RUNTIME_ARN
-const NPC_CONVERSATION_RUNTIME_ARN = import.meta.env.VITE_AGENTCORE_NPC_CONVERSATION_ARN || import.meta.env.VITE_NPC_CONVERSATION_RUNTIME_ARN || '';
+// CDKデプロイ時: VITE_AGENTCORE_REALTIME_SCORING_ARN
+// ローカル開発時: VITE_REALTIME_SCORING_RUNTIME_ARN
 const REALTIME_SCORING_RUNTIME_ARN = import.meta.env.VITE_AGENTCORE_REALTIME_SCORING_ARN || import.meta.env.VITE_REALTIME_SCORING_RUNTIME_ARN || '';
 
 // AgentCore Data Plane エンドポイント
@@ -71,7 +70,7 @@ export class AgentCoreService {
    * AgentCore Runtimeが利用可能かチェック
    */
   public isAvailable(): boolean {
-    return AGENTCORE_ENABLED && !!NPC_CONVERSATION_RUNTIME_ARN && !!REALTIME_SCORING_RUNTIME_ARN;
+    return AGENTCORE_ENABLED && !!REALTIME_SCORING_RUNTIME_ARN;
   }
 
   /**
@@ -197,96 +196,6 @@ export class AgentCoreService {
       }
     } finally {
       reader.releaseLock();
-    }
-  }
-
-  /**
-   * NPC会話エージェントを呼び出す（直接呼び出し）
-   * 
-   * 注意: 会話履歴はAgentCore Memoryで管理されるため、previousMessagesは不要です。
-   * Session Managerがセッションごとの会話履歴を自動的に復元・永続化します。
-   */
-  public async chatWithNPC(
-    message: string,
-    npc: NPC,
-    _previousMessages: Message[], // AgentCore Memoryで管理されるため未使用（互換性のため残す）
-    sessionId?: string,
-    messageId?: string,
-    emotionParams?: {
-      angerLevel?: number;
-      trustLevel?: number;
-      progressLevel?: number;
-    },
-    scenarioId?: string,
-    language?: string
-  ): Promise<{ response: string; sessionId: string; messageId: string }> {
-    if (!this.isAvailable()) {
-      throw new Error('AgentCore Runtimeが利用できません');
-    }
-
-    const currentSessionId = sessionId || crypto.randomUUID();
-    const currentMessageId = messageId || crypto.randomUUID();
-
-    // ユーザーIDを取得（AgentCore Memoryでのデータ分離用）
-    let userId: string;
-    try {
-      const currentUser = await getCurrentUser();
-      userId = currentUser.userId;
-    } catch (error) {
-      console.error('ユーザーID取得エラー:', error);
-      throw new Error('ユーザーが認証されていません');
-    }
-
-    // 会話履歴はAgentCore Memoryで管理されるため、previousMessagesは送信しない
-    const payload = {
-      action: 'conversation',
-      message,
-      userId: userId, // ユーザーIDを追加（AgentCore MemoryのactorIdとして使用）
-      npcInfo: {
-        name: npc.name,
-        role: npc.role,
-        company: npc.company,
-        personality: npc.personality,
-        description: npc.description,
-      },
-      sessionId: currentSessionId,
-      messageId: currentMessageId,
-      ...(scenarioId ? { scenarioId } : {}),
-      ...(emotionParams ? {
-        emotionParams: {
-          angerLevel: emotionParams.angerLevel || 1,
-          trustLevel: emotionParams.trustLevel || 1,
-          progressLevel: emotionParams.progressLevel || 1,
-        },
-      } : {}),
-      ...(language ? { language } : {}),
-    };
-
-    try {
-      const result = await this.invokeAgentCoreRuntime<{
-        message?: string;
-        response?: string;
-        sessionId?: string;
-        messageId?: string;
-        error?: string;
-      }>(NPC_CONVERSATION_RUNTIME_ARN, currentSessionId, payload);
-
-      if (result.error) {
-        throw new Error(result.error);
-      }
-
-      return {
-        response: result.message || result.response || '',
-        sessionId: result.sessionId || currentSessionId,
-        messageId: result.messageId || currentMessageId,
-      };
-    } catch (error) {
-      console.error("NPC会話エージェント呼び出しエラー:", error);
-      return {
-        response: "申し訳ありません、応答の生成中にエラーが発生しました。少し経ってからもう一度お試しください。",
-        sessionId: currentSessionId,
-        messageId: currentMessageId,
-      };
     }
   }
 

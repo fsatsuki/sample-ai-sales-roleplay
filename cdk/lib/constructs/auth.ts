@@ -1,4 +1,4 @@
-import { Duration, RemovalPolicy } from 'aws-cdk-lib';
+import { Duration, RemovalPolicy, Stack } from 'aws-cdk-lib';
 import {
   UserPool,
   UserPoolClient,
@@ -147,6 +147,22 @@ export class Auth extends Construct {
               'polly:GetSpeechSynthesisTask'
             ],
             resources: ['*'],
+          }),
+        ],
+      })
+    );
+
+    // Grant permissions for AgentCore Runtime WebSocket (Nova 2 Sonic SigV4認証)
+    idPool.authenticatedRole.attachInlinePolicy(
+      new Policy(this, 'GrantAccessAgentCoreWebSocket', {
+        statements: [
+          new PolicyStatement({
+            actions: [
+              'bedrock-agentcore:InvokeAgentRuntimeWithWebSocketStream',
+            ],
+            resources: [
+              `arn:aws:bedrock-agentcore:*:${Stack.of(this).account}:runtime/*`,
+            ],
           }),
         ],
       })

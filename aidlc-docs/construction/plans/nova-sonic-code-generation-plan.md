@@ -35,155 +35,157 @@ Nova 2 Sonic移行のコード生成プランです。全設計成果物（NFR R
 ### Step 1: バックエンド - nova-sonic BidiAgentコンテナコード作成
 `cdk/agents/nova-sonic-bidi/` ディレクトリに以下のファイルを作成:
 
-- [ ] `Dockerfile` - コンテナイメージ定義（linux/arm64、Python 3.12、FastAPI + uvicorn）
-- [ ] `requirements.txt` - Python依存関係（strands-agents, strands-agents-bedrock, bedrock-agentcore-memory, fastapi, uvicorn）
-- [ ] `agent.py` - BidiAgentエントリーポイント（FastAPI /ws WebSocketエンドポイント + /ping ヘルスチェック）
+- [x] `Dockerfile` - コンテナイメージ定義（linux/arm64、Python 3.12、FastAPI + uvicorn）
+- [x] `requirements.txt` - Python依存関係（strands-agents, strands-agents-bedrock, bedrock-agentcore-memory, fastapi, uvicorn）
+- [x] `agent.py` - BidiAgentエントリーポイント（FastAPI /ws WebSocketエンドポイント + /ping ヘルスチェック）
   - BidiNovaSonicModel初期化
   - BidiAgent初期化
   - WebSocket接続ハンドラ（session_start, audio, text, session_end）
   - Nova 2 Sonicイベント処理（ASR転写、NPC応答、音声出力のフロントエンド転送）
   - AgentCore Memory連携（会話履歴保存）
-- [ ] `session_transition_manager.py` - Session Continuation管理
+- [x] `session_transition_manager.py` - Session Continuation管理
   - 6分経過でMONITORING状態遷移
   - アシスタントAUDIO contentStart検出
   - 10秒リングバッファ音声バッファリング
   - バックグラウンド次セッション作成
   - ハンドオフ実行
   - 失敗時Conversation Resumptionフォールバック
-- [ ] `conversation_resumption.py` - Conversation Resumptionリカバリ
+- [x] `conversation_resumption.py` - Conversation Resumptionリカバリ
   - AgentCore Memory ListEvents APIで会話履歴取得
   - 新セッション作成 + 履歴テキスト再送信
   - 最大1回リトライ
-- [ ] `event_handler.py` - Nova 2 Sonicイベント処理
+- [x] `event_handler.py` - Nova 2 Sonicイベント処理
   - contentStart/contentEnd/textOutput/audioOutput/usageEventの処理
   - ASR転写テキスト（USER, FINAL/SPECULATIVE）の抽出
   - NPC応答テキスト（ASSISTANT, FINAL/SPECULATIVE）の抽出
   - 音声出力データ（LPCM 24kHz Base64）の転送
-- [ ] `memory_manager.py` - AgentCore Memory連携
+- [x] `memory_manager.py` - AgentCore Memory連携
   - 会話履歴保存（ASR転写 + NPC応答テキスト）
   - メトリクス保存
   - セッションメタデータ保存（nova_sonic_session_count, endpointing_sensitivity）
   - ListEvents APIによる履歴取得（Conversation Resumption用）
-- [ ] `prompts.py` - システムプロンプト管理
+- [x] `prompts.py` - システムプロンプト管理
   - 日本語/英語対応のNPCシステムプロンプト
   - 既存npc-conversation/prompts.pyをベースに移行
-- [ ] `models.py` - データモデル定義
+- [x] `models.py` - データモデル定義
   - WebSocketメッセージ型（session_start, audio, text, session_end）
   - レスポンスイベント型（asr_transcript, npc_response, audio_output, session_status, error）
   - SessionTransitionConfig
 
 ### Step 2: バックエンド - nova-sonic BidiAgentコードサマリー
-- [ ] Step 1で生成したコードの概要を記録
+- [x] Step 1で生成したコードの概要を記録
 
 ### Step 3: CDKインフラ - AgentCore Runtimeコンストラクト修正 + nova-sonic BidiAgentインスタンス化
-- [ ] `cdk/lib/constructs/agentcore/agentcore-runtime.ts` 修正
+- [x] `cdk/lib/constructs/agentcore/agentcore-runtime.ts` 修正
   - `bedrock:InvokeModelWithBidirectionalStream` を標準Bedrock権限に追加
-- [ ] `cdk/lib/constructs/auth.ts` 修正
+- [x] `cdk/lib/constructs/auth.ts` 修正
   - Cognito Identity Pool認証済みロールに `bedrock-agentcore:InvokeAgentRuntimeWithWebSocketStream` 権限追加
-- [ ] `cdk/lib/infrastructure-stack.ts` 修正
+- [x] `cdk/lib/infrastructure-stack.ts` 修正
   - nova-sonic-bidi-agent AgentCore Runtimeインスタンス化追加（IAM認証、環境変数設定）
   - npc-conversation AgentCore Runtimeインスタンス化削除
   - TranscribeWebSocketConstructインスタンス化削除
   - CfnOutput追加（NovaSonicAgentEndpoint）
-- [ ] `cdk/lib/constructs/api.ts` 修正
+- [x] `cdk/lib/constructs/api.ts` 修正
   - TranscribeWebSocketConstruct関連のimport・プロパティ・インスタンス化を削除
 
 ### Step 4: CDKインフラ - 削除対象ファイル・ディレクトリ
-- [ ] `cdk/lib/constructs/api/transcribe-websocket.ts` 削除
-- [ ] `cdk/lambda/transcribeWebSocket/` ディレクトリ削除
-- [ ] `cdk/agents/npc-conversation/` ディレクトリ削除
+- [x] `cdk/lib/constructs/api/transcribe-websocket.ts` 削除
+- [x] `cdk/lambda/transcribeWebSocket/` ディレクトリ削除
+- [x] `cdk/agents/npc-conversation/` ディレクトリ削除
 
 ### Step 5: フロントエンド - SigV4WebSocketClient作成
 `frontend/src/services/SigV4WebSocketClient.ts` を新規作成:
 
-- [ ] SigV4署名付きWebSocket URL生成
+- [x] SigV4署名付きWebSocket URL生成
   - Cognito Identity Poolから一時認証情報取得（fetchAuthSession）
   - @aws-sdk/signature-v4 + @aws-crypto/sha256-js でSigV4署名
   - AgentCore Runtime WebSocketエンドポイントURL構築
-- [ ] WebSocket接続管理（connect, disconnect, send, onMessage, onClose, onError）
-- [ ] 接続状態管理
+- [x] WebSocket接続管理（connect, disconnect, send, onMessage, onClose, onError）
+- [x] 接続状態管理
 
 ### Step 6: フロントエンド - NovaSonicService作成
 `frontend/src/services/NovaSonicService.ts` を新規作成（TranscribeService + AgentCoreService.chatWithNPC置き換え）:
 
-- [ ] SigV4WebSocketClient統合
-- [ ] セッション管理（connect, disconnect, isConnected）
-- [ ] 音声入力送信（sendAudioChunk - PCM 16kHz Base64）
-- [ ] テキスト入力送信（sendTextMessage - Cross-modal Input）
-- [ ] イベントリスナー登録
+- [x] SigV4WebSocketClient統合
+- [x] セッション管理（connect, disconnect, isConnected）
+- [x] 音声入力送信（sendAudioChunk - PCM 16kHz Base64）
+- [x] テキスト入力送信（sendTextMessage - Cross-modal Input）
+- [x] イベントリスナー登録
   - onAsrTranscript（ASR転写テキスト受信）
   - onNpcResponse（NPC応答テキスト受信）
   - onAudioOutput（音声出力データ受信）
   - onSessionStatus（セッション状態変更）
   - onError（エラー通知）
-- [ ] エラーハンドリング（SESSION_RECOVERY_FAILED, MODEL_TIMEOUT, CONNECTION_ERROR, AUTH_ERROR）
-- [ ] SessionConfig型定義（sessionId, scenarioId, npcConfig, endpointingSensitivity, language, agentCoreEndpoint, region）
+- [x] エラーハンドリング（SESSION_RECOVERY_FAILED, MODEL_TIMEOUT, CONNECTION_ERROR, AUTH_ERROR）
+- [x] SessionConfig型定義（sessionId, scenarioId, npcConfig, endpointingSensitivity, language, agentCoreEndpoint, region）
 
 ### Step 7: フロントエンド - AudioOutputManager作成
 `frontend/src/services/AudioOutputManager.ts` を新規作成:
 
-- [ ] 音声ソース切り替え管理（'polly' | 'nova-sonic'、デフォルト: 'polly'）
-- [ ] Nova 2 Sonic音声再生（AudioWorklet - 24kHz LPCM Base64デコード → Float32Array → 連続再生）
-- [ ] AudioWorkletProcessor定義（NovaSonicAudioProcessor）
-- [ ] Polly音声再生（既存PollyService/AudioService連携）
-- [ ] ボリューム制御（GainNode）
-- [ ] 停止・再生状態管理
+- [x] 音声ソース切り替え管理（'polly' | 'nova-sonic'、デフォルト: 'polly'）
+- [x] Nova 2 Sonic音声再生（AudioWorklet - 24kHz LPCM Base64デコード → Float32Array → 連続再生）
+- [x] AudioWorkletProcessor定義（NovaSonicAudioProcessor）
+- [x] Polly音声再生（既存PollyService/AudioService連携）
+- [x] ボリューム制御（GainNode）
+- [x] 停止・再生状態管理
 
 ### Step 8: フロントエンド - ConversationPage統合
 `frontend/src/pages/ConversationPage.tsx` を修正:
 
-- [ ] TranscribeService → NovaSonicService置き換え
+- [x] TranscribeService → NovaSonicService置き換え
   - import変更
   - transcribeServiceRef → novaSonicServiceRef
   - initializeConnection → NovaSonicService.connect
   - startListening → NovaSonicService経由の音声キャプチャ
   - stopListening → NovaSonicService.disconnect
-- [ ] AgentCoreService.chatWithNPC() 呼び出し削除
+- [x] AgentCoreService.chatWithNPC() 呼び出し削除
   - NPC応答はNovaSonicServiceのonNpcResponseコールバックで受信
-- [ ] ASR転写テキスト受信フロー更新
+- [x] ASR転写テキスト受信フロー更新
   - onAsrTranscriptコールバックでチャットUI更新 + スコアリングAPI呼び出し
-- [ ] NPC応答テキスト受信フロー更新
+- [x] NPC応答テキスト受信フロー更新
   - onNpcResponseコールバックでチャットUI更新 + Polly音声合成
-- [ ] AudioOutputManager統合
+- [x] AudioOutputManager統合
   - Nova 2 Sonic音声出力受信時の処理
   - Polly/Nova切り替え対応
-- [ ] エラーハンドリング更新
+- [x] エラーハンドリング更新
   - NovaSonicServiceのonErrorコールバック処理
   - エラーUI表示（セッション再開ボタン）
-- [ ] 環境変数参照更新
+- [x] 環境変数参照更新
   - VITE_TRANSCRIBE_WEBSOCKET_URL → VITE_NOVA_SONIC_AGENT_ENDPOINT + VITE_NOVA_SONIC_AGENT_REGION
-- [ ] SilenceDetector関連コード削除（silenceThreshold状態、setSilenceThreshold呼び出し等）
+- [x] SilenceDetector関連コード削除（silenceThreshold状態、setSilenceThreshold呼び出し等）
 
 ### Step 9: フロントエンド - endpointingSensitivity設定UI
 `frontend/src/components/conversation/SessionSettingsPanel.tsx` を修正:
 
-- [ ] endpointingSensitivity設定セクション追加（HIGH/MEDIUM/LOW ラジオボタン or セレクト）
-- [ ] デフォルト値: MEDIUM
-- [ ] localStorage永続化
-- [ ] i18nキー追加（日英対応: "ターン検出感度" / "Turn Detection Sensitivity"）
-- [ ] 「セッション中は変更が反映されません」注意書き表示
-- [ ] silenceThreshold設定の削除（SilenceDetector廃止に伴い不要）
+- [x] endpointingSensitivity設定セクション追加（HIGH/MEDIUM/LOW ラジオボタン or セレクト）
+- [x] デフォルト値: MEDIUM
+- [x] localStorage永続化
+- [x] i18nキー追加（日英対応: "ターン検出感度" / "Turn Detection Sensitivity"）
+- [x] 「セッション中は変更が反映されません」注意書き表示
+- [x] silenceThreshold設定の削除（SilenceDetector廃止に伴い不要）
 
 ### Step 10: フロントエンド - 廃止ファイル削除
-- [ ] `frontend/src/services/TranscribeService.ts` 削除
-- [ ] `frontend/src/services/SilenceDetector.ts` 削除
-- [ ] AgentCoreService.tsからchatWithNPC()メソッド削除
+- [x] `frontend/src/services/TranscribeService.ts` 削除
+- [x] `frontend/src/services/SilenceDetector.ts` 削除
+- [x] AgentCoreService.tsからchatWithNPC()メソッド削除
 
 ### Step 11: フロントエンド - 環境変数更新 + npm依存関係追加
-- [ ] `frontend/.env.dev` / `.env.staging` / `.env.prod` 更新
+- [x] `frontend/.env` / `.env.local` 更新（.env.dev/.staging/.prodは存在しないため対象外）
   - VITE_TRANSCRIBE_WEBSOCKET_URL 削除
   - VITE_NOVA_SONIC_AGENT_ENDPOINT 追加（プレースホルダー）
   - VITE_NOVA_SONIC_AGENT_REGION 追加
-- [ ] `cdk/.env.dev` / `.env.staging` / `.env.prod` 更新（必要に応じて）
-- [ ] `frontend/package.json` に依存関係追加
-  - @aws-sdk/signature-v4
+- [x] `cdk/.env.dev` / `.env.staging` / `.env.prod` 確認済み（Transcribe関連設定なし、変更不要）
+- [x] `frontend/package.json` に依存関係追加
   - @aws-crypto/sha256-js
-- [ ] i18n翻訳ファイル更新（日英）
-  - endpointingSensitivity関連キー
-  - Nova 2 Sonicエラーメッセージキー
+  - @aws-sdk/protocol-http
+  - @aws-sdk/signature-v4
+- [x] i18n翻訳ファイル更新（日英）
+  - endpointingSensitivity関連キー追加（ja.json, en.json）
+  - silenceThreshold/silenceNote キー削除（SilenceDetector廃止に伴い不要）
+- [x] SidebarPanel.tsx からsilenceThreshold/setSilenceThreshold props削除
 
 ### Step 12: ドキュメント - コスト試算更新
-- [ ] `docs/cost/コスト試算.md` 更新（FR-013）
+- [x] `docs/cost/コスト試算.md` 更新（FR-013）
   - Transcribe Streaming廃止コスト削除
   - Nova 2 Sonicトークン課金追加
   - AgentCore Runtime（nova-sonic BidiAgent）コスト追加

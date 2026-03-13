@@ -10,7 +10,6 @@ export const validateBasicInfo = (
   category: string,
   language: string,
   scenarioId?: string,
-  maxTurns?: number,
 ) => {
   const errors = {
     scenarioId: null as string | null,
@@ -18,7 +17,6 @@ export const validateBasicInfo = (
     description: null as string | null,
     category: null as string | null,
     language: null as string | null,
-    maxTurns: null as string | null,
   };
 
   // シナリオIDのバリデーション（任意フィールド）
@@ -57,15 +55,6 @@ export const validateBasicInfo = (
   // 言語のバリデーション
   if (!language.trim()) {
     errors.language = "scenarios.validation.languageRequired";
-  }
-
-  // 最大ターン数のバリデーション（任意フィールド、1-100の範囲内であること）
-  if (maxTurns !== undefined) {
-    if (maxTurns <= 0) {
-      errors.maxTurns = "scenarios.validation.maxTurnsPositive";
-    } else if (maxTurns > 100) {
-      errors.maxTurns = "scenarios.validation.maxTurnsTooLarge";
-    }
   }
 
   return errors;

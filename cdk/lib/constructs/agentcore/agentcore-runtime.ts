@@ -71,7 +71,7 @@ export class AgentCoreRuntime extends Construct {
     runtime.addToRolePolicy(new iam.PolicyStatement({
       sid: 'BedrockModelInvocation',
       effect: iam.Effect.ALLOW,
-      actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
+      actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream', 'bedrock:InvokeModelWithBidirectionalStream'],
       resources: ['arn:aws:bedrock:*::foundation-model/*', `arn:aws:bedrock:${region}:${account}:*`],
     }));
 

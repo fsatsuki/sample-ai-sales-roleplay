@@ -2176,3 +2176,267 @@
 **Context**: Code Generation Part 1 Planning完了、ユーザー承認待ち
 
 ---
+
+
+---
+
+## New Workflow Session: Nova 2 Sonic移行 - Code Generation
+**Timestamp**: 2026-03-12T00:00:00Z
+
+---
+
+## CONSTRUCTION - Code Generation Plan Approval (Nova 2 Sonic)
+**Timestamp**: 2026-03-12T00:00:00Z
+**User Input**: "approve"
+**AI Response**: コード生成計画を承認。Part 2（Generation）を開始。Step 1から実装開始。
+**Status**: Approved
+**Context**: Code Generation Part 2開始 - 12ステップの実装計画
+
+---
+
+## CONSTRUCTION - Code Generation Part 2: Step 1 開始
+**Timestamp**: 2026-03-12T00:01:00Z
+**AI Response**: Step 1 - バックエンド nova-sonic BidiAgentコンテナコード作成を開始
+**Context**: cdk/agents/nova-sonic-bidi/ ディレクトリに8ファイルを作成
+
+---
+
+
+---
+
+## CONSTRUCTION - Code Generation Step 1 完了 (Nova 2 Sonic移行)
+**Timestamp**: 2026-03-12T10:00:00Z
+**User Input**: "approve" (コード生成プラン承認)
+**AI Response**: Step 1のバックエンドコンテナコード全8ファイルを生成完了。
+
+### 生成ファイル:
+- `cdk/agents/nova-sonic-bidi/Dockerfile` - コンテナイメージ定義
+- `cdk/agents/nova-sonic-bidi/requirements.txt` - Python依存関係
+- `cdk/agents/nova-sonic-bidi/models.py` - データモデル定義
+- `cdk/agents/nova-sonic-bidi/prompts.py` - システムプロンプト管理
+- `cdk/agents/nova-sonic-bidi/event_handler.py` - Nova 2 Sonicイベント処理
+- `cdk/agents/nova-sonic-bidi/memory_manager.py` - AgentCore Memory連携
+- `cdk/agents/nova-sonic-bidi/conversation_resumption.py` - Conversation Resumptionリカバリ
+- `cdk/agents/nova-sonic-bidi/session_transition_manager.py` - Session Continuation管理
+- `cdk/agents/nova-sonic-bidi/agent.py` - BidiAgentエントリーポイント（完成）
+
+### agent.py実装内容:
+- FastAPI /ws WebSocketエンドポイント + /ping ヘルスチェック
+- NovaSonicSessionクラス（セッション管理）
+- BidiNovaSonicModel + BidiAgent初期化
+- session_start/audio/text/session_endメッセージハンドラ
+- Nova 2 Sonicイベント処理ループ（ASR転写、NPC応答、音声出力転送）
+- Session Continuation監視ループ（6分→MONITORING→BUFFERING→HANDOFF）
+- Conversation Resumptionフォールバック
+- AgentCore Memory連携（会話履歴保存）
+- Cross-modal テキスト入力対応
+- ModelTimeoutException自動リカバリ
+
+### プランチェックボックス更新:
+- Step 1の全8ファイルを[x]に更新
+
+**Context**: Code Generation Step 1完了、Step 2に進む
+
+---
+
+
+---
+
+## CONSTRUCTION - Nova 2 Sonic Code Generation Step 2: コードサマリー記録
+**Timestamp**: 2026-03-12T10:00:00Z
+**User Input**: N/A (自動実行 - Step 1完了後)
+**AI Response**: Step 1で生成した8ファイルのコードサマリーを記録。
+
+### Step 1 生成コードサマリー
+
+**ファイル一覧（8ファイル）:**
+
+1. **`Dockerfile`** - Python 3.12-slim、FastAPI + uvicorn、非rootユーザー、ヘルスチェック付き
+2. **`requirements.txt`** - strands-agents, strands-agents-bedrock, fastapi, uvicorn, pydantic, bedrock-agentcore[strands-agents]
+3. **`models.py`** - Pydanticデータモデル定義
+   - 入力: SessionStartMessage, AudioMessage, TextMessage, SessionEndMessage
+   - 出力: AsrTranscriptEvent, NpcResponseEvent, AudioOutputEvent, SessionStatusEvent, ErrorEvent
+   - 設定: TransitionState(Enum), SessionTransitionConfig
+4. **`prompts.py`** - NPC会話用システムプロンプト生成（日英対応）、既存npc-conversation/prompts.pyベース
+5. **`event_handler.py`** - NovaSonicEventHandler: textOutput(ASR/NPC)、audioOutput(LPCM 24kHz)、usageEvent処理
+6. **`memory_manager.py`** - MemoryManager: AgentCore Memory連携（会話イベント保存、メタデータ保存、履歴取得）
+7. **`session_transition_manager.py`** - SessionTransitionManager: 6分監視→BUFFERING→HANDOFF、10秒リングバッファ
+8. **`conversation_resumption.py`** - ConversationResumption: Memory ListEventsで履歴取得→新セッション作成（最大1回リトライ）
+9. **`agent.py`** - メインエントリーポイント
+   - FastAPI `/ws` WebSocketエンドポイント + `/ping` ヘルスチェック
+   - NovaSonicSession: BidiNovaSonicModel + BidiAgent初期化、session_start/audio/text/session_end処理
+   - Session Continuationモニターループ（6分→MONITORING→BUFFERING→HANDOFF）
+   - Conversation Resumptionフォールバック
+   - Nova 2 Sonicイベント処理（ASR転写、NPC応答、音声出力のフロントエンド転送）
+
+**Context**: Step 2完了、Step 3（CDKインフラ修正）に進む
+
+---
+
+## Code Generation - Step 5: SigV4WebSocketClient作成
+**Timestamp**: 2026-03-12T10:00:00Z
+**AI Response**: Step 5完了。以下のファイルを作成・修正:
+
+1. `frontend/src/services/SigV4WebSocketClient.ts` - 新規作成
+   - WsConnectionState enum（DISCONNECTED, CONNECTING, CONNECTED, RECONNECTING, ERROR）
+   - SigV4WebSocketCallbacks / SigV4WebSocketConfig インターフェース
+   - SigV4WebSocketClient クラス:
+     - connect(): fetchAuthSession()で一時認証情報取得 → SigV4 presign → WebSocket接続
+     - disconnect(): クリーンな切断処理
+     - send(): メッセージ送信
+     - dispose(): リソース解放
+     - generateSignedUrl(): SigV4署名付きURL生成（bedrock-agentcoreサービス、5分有効）
+     - establishConnection(): WebSocket接続確立（タイムアウト付き）
+
+2. `frontend/src/vite-env.d.ts` - 修正
+   - VITE_TRANSCRIBE_WEBSOCKET_URL → VITE_NOVA_SONIC_AGENT_ENDPOINT + VITE_NOVA_SONIC_AGENT_REGION
+
+3. `frontend/src/amplifyconfiguration.ts` - 修正
+   - TRANSCRIBE.WEBSOCKET セクション → NOVA_SONIC セクション（agentEndpoint, region）
+
+全ファイル getDiagnostics エラーなし。
+**Context**: Construction Phase - Code Generation Step 5
+
+---
+
+## Code Generation - Step 6: NovaSonicService作成
+**Timestamp**: 2026-03-12T10:15:00Z
+**AI Response**: Step 6完了。`frontend/src/services/NovaSonicService.ts` を新規作成。
+- シングルトンパターン（TranscribeServiceと同様）
+- SigV4WebSocketClient統合、amplifyConfigからエンドポイント取得
+- connect(): session_startメッセージ送信、disconnect(): session_endメッセージ送信
+- sendAudioChunk(): PCM 16kHz Base64音声送信
+- sendTextMessage(): Cross-modal Inputテキスト送信
+- イベントリスナー: onAsrTranscript, onNpcResponse, onAudioOutput, onSessionStatus, onError, onConnectionStateChange
+- handleMessage(): バックエンドメッセージのディスパッチ
+- 異常切断時のエラー通知
+getDiagnostics エラーなし。
+**Context**: Construction Phase - Code Generation Step 6
+
+---
+
+## Code Generation - Step 7: AudioOutputManager作成
+**Timestamp**: 2026-03-12T10:30:00Z
+**AI Response**: Step 7完了。`frontend/src/services/AudioOutputManager.ts` を新規作成。
+- AudioSource型（'polly' | 'nova-sonic'）、デフォルト: 'polly'
+- playNovaSonicAudio(): Base64 LPCM 24kHz → Float32Array変換 → AudioWorklet再生
+- インラインBlobURL方式でNovaSonicAudioProcessor定義（外部ファイル不要）
+- setVolume(): GainNodeによるボリューム制御
+- stopNovaSonicPlayback(): バッファクリア
+- dispose(): AudioContext/WorkletNode/GainNodeの完全解放
+getDiagnostics エラーなし。
+**Context**: Construction Phase - Code Generation Step 7
+
+---
+
+## Code Generation Step 8: ConversationPage統合
+**Timestamp**: 2026-03-12T10:00:00Z
+**User Input**: "continue"
+**AI Response**: ConversationPage.tsxを大幅修正。TranscribeService→NovaSonicService置き換え、chatWithNPC呼び出し削除（NPC応答はonNpcResponseコールバック経由）、sendMessageをNovaSonicService.sendTextMessage()に変更、startSpeechRecognitionをWeb Audio API→PCM 16kHz→Base64→NovaSonicService.sendAudioChunk()に書き換え、switchToTextInputでmic capture停止処理追加、JSXのConnectionState→WsConnectionState修正、silenceThreshold状態変数削除。diagnosticsエラーなし。
+**Context**: Construction Phase - Code Generation Step 8
+
+---
+
+## Code Generation Step 9: endpointingSensitivity設定UI
+**Timestamp**: 2026-03-12T10:15:00Z
+**User Input**: "continue"
+**AI Response**: SessionSettingsPanel.tsxを完全書き換え。silenceThreshold/setSilenceThresholdプロパティ削除、endpointingSensitivityラジオボタン（HIGH/MEDIUM/LOW）追加、デフォルトMEDIUM、localStorage永続化、「次回セッション開始時に反映されます」注記追加。diagnosticsエラーなし。
+**Context**: Construction Phase - Code Generation Step 9
+
+---
+
+## Code Generation Step 10: 廃止ファイル削除
+**Timestamp**: 2026-03-12T10:30:00Z
+**User Input**: "continue"
+**AI Response**: TranscribeService.ts削除、SilenceDetector.ts削除、AgentCoreService.tsからchatWithNPC()メソッド・NPC_CONVERSATION_RUNTIME_ARN定数削除、isAvailable()をREALTIME_SCORING_RUNTIME_ARNのみチェックに変更、ApiService.tsからchatWithNPC()メソッド削除。diagnosticsエラーなし。
+**Context**: Construction Phase - Code Generation Step 10
+
+---
+
+## Code Generation Step 11: 環境変数更新 + npm依存関係追加 + i18n更新
+**Timestamp**: 2026-03-12T10:45:00Z
+**User Input**: "continue"
+**AI Response**: 
+- frontend/.env, .env.local: VITE_TRANSCRIBE_WEBSOCKET_URL削除、VITE_NOVA_SONIC_AGENT_ENDPOINT/REGION追加（前セッションで完了済み確認）
+- frontend/package.json: @aws-crypto/sha256-js, @aws-sdk/protocol-http, @aws-sdk/signature-v4 依存関係追加
+- ja.json/en.json: conversation.settings.endpointingSensitivity関連5キー追加、audioSettings.silenceThreshold/silenceNote削除
+- SidebarPanel.tsx: silenceThreshold/setSilenceThreshold props削除（SessionSettingsPanel連携修正）
+- cdk/.env.dev/.staging/.prod: Transcribe関連設定なし、変更不要確認
+- frontend/.env.dev/.staging/.prod: 存在しないため対象外確認
+diagnosticsエラーなし。
+**Context**: Construction Phase - Code Generation Step 11
+
+---
+
+## Code Generation Step 12: コスト試算ドキュメント更新
+**Timestamp**: 2026-03-12T11:00:00Z
+**User Input**: "continue"
+**AI Response**: docs/cost/コスト試算.md更新。
+- セクション15: Transcribe Streaming($270/月)→Nova 2 Sonic($358.02/月)に置き換え（音声入力$114.75+音声出力$229.50+テキスト入力$4.05+テキスト出力$9.72）
+- セクション16-18削除: API Gateway WebSocket($0.19)、Lambda WebSocket($0.01)、DynamoDB WebSocket($0.05)廃止
+- セクション21→16: AgentCore Runtime NPC会話処理時間削除、$24.68→$8.09に削減
+- 月間総コスト: $1,353.26→$1,424.44（+$71.18、+5.3%）
+- 1人あたり: $27.07→$28.49/月
+- コスト構成比更新: Nova 2 Sonic 25.1%（2位）
+- スケールメリット分析更新
+- 料金参照日: 2026/03/12に更新
+**Context**: Construction Phase - Code Generation Step 12
+
+---
+
+## Code Generation Step 12: コスト試算ドキュメント更新（料金見直し・総額再計算）
+**Timestamp**: 2026-03-12T12:00:00Z
+**User Input**: ユーザーがAWS公式料金表を提供（Nova 2 Sonic、Anthropicモデル、Novaモデル）。「Amazon Bedrockの料金計算を見直してほしい」
+**AI Response**: docs/cost/コスト試算.md の全面的な料金再計算を実施。
+- セクション1: NPC会話生成（Nova Lite）をNova 2 Sonicに移行済みとして除外。$319.12→$56.75（-$262.37）
+- セクション15: AWS公式料金に更新（Speech Input $0.003、Speech Output $0.012、Text Input $0.00033、Text Output $0.00275）。$358.02→$337.16（-$20.86）
+- 月間総コスト: $1,424.44→$1,142.21（-$282.23、-19.8%）
+- 1人あたり月間コスト: $28.49→$22.84
+- 1人あたり年間コスト: $341.87→$274.13
+- 1セッションあたりコスト: $2.85→$2.28
+- Nova 2 Sonicセッションあたりコスト: $1.59→$0.67
+- コスト構成比更新: Transcribe 47.3%、Nova 2 Sonic 29.5%、Polly 10.9%、Bedrock 5.0%
+- スケールメリット分析: 変動コスト$1,137.21、50人$22.84/月
+- 詳細試算データ: 会話生成（Nova Lite）→Nova 2 Sonic移行済み注記に変更
+- 旧$1,353.26→$1,142.21（-15.6%）の削減注記追加
+**Context**: Construction Phase - Code Generation Step 12 完了
+
+---
+
+## Code Generation Step 12: コスト試算ドキュメント更新（音声分析使用率見直し）
+**Timestamp**: 2026-03-12T12:30:00Z
+**User Input**: "音声分析の使用率を全体の5%と仮定する"
+**AI Response**: docs/cost/コスト試算.md の音声分析関連セクションを全面再計算。
+- 前提条件に「音声分析使用率: 5%」を追加
+- セクション1（Bedrock）: 音声分析トークン量を1/20に削減（25,000K→1,250K入力、5,000K→250K出力）。$56.75→$55.25
+- セクション14（Transcribe）: 500回→25回、22,500分→1,125分。$540.00→$27.00（-95%）
+- セクション16（AgentCore Runtime）: 音声分析実行時間4.17h→0.21h。$8.09→$7.87
+- セクション19（Step Functions）: 500回→25回。$0.10→$0.01
+- セクション21（S3音声ファイル）: 500ファイル→25ファイル。$0.97→$0.05
+- 月間総コスト: $1,142.21→$626.48（-$515.73、-45.2%）
+- 1人あたり月間コスト: $22.84→$12.53
+- コスト構成比: Nova 2 Sonic 53.8%（1位）に変動
+**Context**: Construction Phase - Code Generation Step 12 音声分析使用率見直し
+
+---
+
+## Build and Test Stage
+**Timestamp**: 2026-03-12T13:00:00Z
+**User Input**: "approve。次のタスクは？"
+**AI Response**: Build and Testステージを実行。以下のドキュメントをNova 2 Sonic移行用に更新・生成:
+- build-instructions.md: フロントエンド・BidiAgentコンテナ・CDKのビルド手順
+- unit-test-instructions.md: フロントエンド・バックエンドのユニットテスト手順
+- integration-test-instructions.md: 6シナリオの統合テスト手順
+- performance-test-instructions.md: レイテンシー・メモリ・CPU・ネットワーク計測手順
+- build-and-test-summary.md: 変更ファイル一覧・テスト実行サマリー
+**Context**: Construction Phase - Build and Test Stage 完了
+
+---
+
+## Nova 2 Sonic移行 - ワークフロー完了
+**Timestamp**: 2026-03-12T13:30:00Z
+**User Input**: "approve"
+**AI Response**: Nova 2 Sonic移行のAI-DLCワークフロー全ステージ完了・承認。
+**Context**: INCEPTION + CONSTRUCTION全フェーズ完了。Operations はプレースホルダー。
+
+---

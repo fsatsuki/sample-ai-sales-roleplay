@@ -10,7 +10,8 @@ interface ImportMetaEnv {
   readonly VITE_COGNITO_USER_POOL_CLIENT_ID: string;
   readonly VITE_COGNITO_IDENTITY_POOL_ID: string;
   readonly VITE_API_GATEWAY_ENDPOINT: string;
-  readonly VITE_TRANSCRIBE_WEBSOCKET_URL: string;
+  readonly VITE_NOVA_SONIC_AGENT_ENDPOINT: string;
+  readonly VITE_NOVA_SONIC_AGENT_REGION: string;
 }
 
 interface ImportMeta {

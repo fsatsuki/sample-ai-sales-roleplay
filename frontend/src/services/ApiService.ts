@@ -1,7 +1,7 @@
 // aws-amplifyモジュールとユーティリティのインポートを集約（動的インポートをすべて静的インポートに変換）
 import { post, get, put, del } from "aws-amplify/api";
 import { getCurrentUser, fetchAuthSession, signOut } from "aws-amplify/auth";
-import type { Message, Metrics, NPC, Goal, GoalStatus } from "../types/index";
+import type { Message, Metrics, Goal, GoalStatus } from "../types/index";
 import type {
   FeedbackAnalysisResult,
   SessionInfo,
@@ -295,68 +295,6 @@ export class ApiService {
   /**
    * NPCと会話する
    *
-   * AgentCore Runtimeを使用してNPCとの会話を行います。
-   * 会話履歴はAgentCore Memoryで管理されます。
-   *
-   * @param message ユーザーメッセージ
-   * @param npc NPCの情報
-   * @param previousMessages 過去のメッセージ履歴（AgentCore Memoryで管理されるため未使用）
-   * @param sessionId セッションID
-   * @param messageId メッセージID
-   * @param emotionParams 感情パラメータ（怒りレベル、信頼レベル、進捗レベル）
-   * @param scenarioId シナリオID
-   * @param language 言語設定（"ja", "en"など）
-   * @returns NPCの応答
-   */
-  public async chatWithNPC(
-    message: string,
-    npc: NPC,
-    previousMessages: Message[],
-    sessionId?: string,
-    messageId?: string,
-    emotionParams?: {
-      angerLevel?: number;
-      trustLevel?: number;
-      progressLevel?: number;
-    },
-    scenarioId?: string,
-    language?: string,
-  ): Promise<{ response: string; sessionId: string; messageId: string }> {
-    try {
-      // AgentCore Runtimeを使用（会話履歴はAgentCore Memoryで管理）
-      const agentCoreService = AgentCoreService.getInstance();
-      if (!agentCoreService.isAvailable()) {
-        throw new Error("AgentCore Runtimeが利用できません。環境設定を確認してください。");
-      }
-
-      return await agentCoreService.chatWithNPC(
-        message,
-        npc,
-        previousMessages,
-        sessionId,
-        messageId,
-        emotionParams,
-        scenarioId,
-        language,
-      );
-    } catch (error: unknown) {
-      console.error("=== NPCとの会話中にエラーが発生 ===");
-      console.error("エラー詳細:", error);
-      console.error("エラータイプ:", typeof error);
-      console.error(
-        "エラースタック:",
-        error instanceof Error ? error.stack : "スタックなし",
-      );
-      // エラー時のフォールバック応答
-      return {
-        response:
-          "申し訳ありません、応答の生成中にエラーが発生しました。少し経ってからもう一度お試しください。",
-        sessionId: sessionId || "",
-        messageId: messageId || "",
-      };
-    }
-  }
-
   /**
    * リアルタイム評価を取得する
    *

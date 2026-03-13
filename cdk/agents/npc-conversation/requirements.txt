@@ -1,5 +1,0 @@
-strands-agents
-fastapi
-uvicorn[standard]
-pydantic
-bedrock-agentcore[strands-agents]
