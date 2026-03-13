@@ -81,13 +81,14 @@ export function calculateCurrentTurns(messageCount: number): number {
  * 以下の条件のいずれかが満たされた場合にセッションを終了します：
  * 1. 怒りメーターが最大値に達した場合
  * 2. すべてのゴールが達成された場合
- * 3. メッセージ数がシナリオの最大ターン数または設定された上限に達した場合
+ *
+ * ※ターン数ベースの終了判定は廃止。Nova Sonicの8分時間制限で管理。
  *
  * @param metrics 現在のメトリクス値
- * @param messageCount 現在のメッセージ数
+ * @param messageCount 現在のメッセージ数（未使用、後方互換性のため残す）
  * @param goalStatuses ゴール達成状況（オプショナル）
  * @param goals シナリオのゴール定義（オプショナル）
- * @param scenario シナリオ情報（オプショナル）
+ * @param scenario シナリオ情報（オプショナル、未使用）
  * @returns セッションを終了すべき場合はtrue
  */
 export const shouldEndSession = (
@@ -95,7 +96,8 @@ export const shouldEndSession = (
   messageCount: number,
   goalStatuses?: GoalStatus[],
   goals?: Goal[],
-  scenario?: Scenario,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _scenario?: Scenario,
 ): boolean => {
   // 1. 怒りが最大値に達した場合
   if (metrics.angerLevel >= METRICS_MAX) {
@@ -114,18 +116,6 @@ export const shouldEndSession = (
     }
   }
 
-  // 3. メッセージ数が最大ターン数に達した場合
-  // シナリオに指定があればそれを使用、なければデフォルト値を使用
-  const maxTurns = scenario?.maxTurns || dialogueConfig.MAX_MESSAGE_COUNT;
-  const currentTurns = calculateCurrentTurns(messageCount);
-
-  if (currentTurns > maxTurns) {
-    if (process.env.NODE_ENV !== "test") {
-      console.log(`会話上限に到達しました: ${currentTurns}/${maxTurns}`);
-    }
-    return true;
-  }
-
   return false;
 };
 
@@ -136,13 +126,15 @@ export const shouldEndSession = (
  * 終了理由は以下の優先順位で判断されます：
  * 1. 怒りメーターが最大値に達した場合
  * 2. すべてのゴールが達成された場合
- * 3. メッセージ数が最大ターン数に達した場合
+ * 3. 上記以外（時間切れ・手動終了など）
+ *
+ * ※ターン数ベースの終了判定は廃止。Nova Sonicの8分時間制限で管理。
  *
  * @param metrics 現在のメトリクス値
- * @param messageCount 現在のメッセージ数
+ * @param messageCount 現在のメッセージ数（未使用、後方互換性のため残す）
  * @param goalStatuses ゴール達成状況（オプショナル）
  * @param goals シナリオのゴール定義（オプショナル）
- * @param scenario シナリオ情報（オプショナル）
+ * @param _scenario シナリオ情報（未使用）
  * @returns セッション終了理由のメッセージ
  */
 export const getSessionEndReason = (
@@ -150,7 +142,8 @@ export const getSessionEndReason = (
   messageCount: number,
   goalStatuses?: GoalStatus[],
   goals?: Goal[],
-  scenario?: Scenario,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _scenario?: Scenario,
 ): string => {
   if (metrics.angerLevel >= METRICS_MAX) {
     return "顧客が非常に不快になり、商談が中断されました。";
@@ -168,13 +161,5 @@ export const getSessionEndReason = (
     }
   }
 
-  // メッセージ数が最大ターン数に達した場合
-  const maxTurns = scenario?.maxTurns || dialogueConfig.MAX_MESSAGE_COUNT;
-  const currentTurns = calculateCurrentTurns(messageCount);
-
-  if (currentTurns >= maxTurns) {
-    return "予定していた商談時間が終了しました。お疲れ様でした。";
-  }
-
-  return "商談が終了しました。";
+  return "商談時間が終了しました。お疲れ様でした。";
 };

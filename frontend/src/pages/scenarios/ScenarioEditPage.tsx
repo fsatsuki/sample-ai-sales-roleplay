@@ -65,7 +65,6 @@ const ScenarioEditPage: React.FC = () => {
     difficulty: "normal" as DifficultyLevel,
     category: "",
     language: "ja", // デフォルトは日本語
-    maxTurns: 10, // デフォルト値を設定
 
     // NPC情報
     npc: {
@@ -134,7 +133,6 @@ const ScenarioEditPage: React.FC = () => {
           difficulty: scenarioData.difficulty,
           category: scenarioData.category || scenarioData.industry || "",
           language: scenarioData.language || "ja",
-          maxTurns: scenarioData.maxTurns || 10,
 
           npc: {
             name: scenarioData.npc?.name || scenarioData.npcInfo?.name || "",
@@ -373,7 +371,6 @@ const ScenarioEditPage: React.FC = () => {
         description: formData.description,
         difficulty: formData.difficulty,
         category: formData.category,
-        maxTurns: formData.maxTurns,
         npc: { ...formData.npc, voiceId },
         initialMetrics: formData.initialMetrics,
         goals: formData.goals,

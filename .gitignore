@@ -30,3 +30,6 @@ frontend/.env.test
 reviewed/
 docs/image/Architecture_new.pptx
 .kiro/skills/code-knowledge-base-guide/
+test_bidi_ws/
+.kiro/skills/serena-guide
+.serena/

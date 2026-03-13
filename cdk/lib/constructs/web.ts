@@ -14,11 +14,11 @@ export interface WebProps {
   selfSignUpEnabled: boolean;
   webAclId?: string;
   resourceNamePrefix?: string; // リソース名のプレフィックス
-  transcribeWebSocketEndpoint: string; // Transcribe WebSocketエンドポイント
   avatarBucket?: s3.IBucket; // アバターVRMファイル用S3バケット
   // AgentCore Runtime設定
   agentCoreEnabled?: boolean;
-  npcConversationAgentArn?: string;
+  novaSonicAgentEndpoint?: string; // Nova 2 Sonic BidiAgent Endpoint ARN
+  novaSonicAgentRegion?: string; // Nova 2 Sonic BidiAgent Region
   realtimeScoringAgentArn?: string;
 }
 
@@ -129,12 +129,13 @@ export class Web extends Construct {
         VITE_COGNITO_USER_POOL_CLIENT_ID: props.userPoolClientId,
         VITE_COGNITO_IDENTITY_POOL_ID: props.idPoolId,
         VITE_APP_SELF_SIGN_UP_ENABLED: props.selfSignUpEnabled.toString(),
-        VITE_TRANSCRIBE_WEBSOCKET_URL: props.transcribeWebSocketEndpoint,
+        // Nova 2 Sonic BidiAgent設定
+        VITE_NOVA_SONIC_AGENT_ENDPOINT: props.novaSonicAgentEndpoint ?? '',
+        VITE_NOVA_SONIC_AGENT_REGION: props.novaSonicAgentRegion ?? Stack.of(this).region,
         // アバターCDN URL（CloudFront経由でアバターVRMファイルを配信）
         VITE_AVATAR_CDN_URL: `https://${cloudFrontWebDistribution.domainName}/avatars`,
         // AgentCore Runtime設定
         VITE_AGENTCORE_ENABLED: (props.agentCoreEnabled ?? false).toString(),
-        VITE_AGENTCORE_NPC_CONVERSATION_ARN: props.npcConversationAgentArn ?? '',
         VITE_AGENTCORE_REALTIME_SCORING_ARN: props.realtimeScoringAgentArn ?? '',
       },
     });

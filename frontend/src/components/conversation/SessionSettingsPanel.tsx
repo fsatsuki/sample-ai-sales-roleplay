@@ -7,6 +7,10 @@ import {
   Switch,
   Box,
   Slider,
+  RadioGroup,
+  Radio,
+  FormControl,
+  FormLabel,
 } from "@mui/material";
 import {
   VolumeUp as VolumeUpIcon,
@@ -16,6 +20,8 @@ import {
 } from "@mui/icons-material";
 import { useTranslation } from "react-i18next";
 
+type EndpointingSensitivity = "HIGH" | "MEDIUM" | "LOW";
+
 interface SessionSettingsPanelProps {
   audioEnabled: boolean;
   setAudioEnabled: (enabled: boolean) => void;
@@ -23,8 +29,6 @@ interface SessionSettingsPanelProps {
   setAudioVolume: (volume: number) => void;
   speechRate: number;
   setSpeechRate: (rate: number) => void;
-  silenceThreshold: number;
-  setSilenceThreshold: (threshold: number) => void;
   // アバター表示トグル（セッション中のランタイム切替）
   avatarVisible?: boolean;
   setAvatarVisible?: (visible: boolean) => void;
@@ -33,7 +37,7 @@ interface SessionSettingsPanelProps {
 
 /**
  * セッション設定パネルコンポーネント
- * 音声設定とアバター表示切替を統合
+ * 音声設定、アバター表示切替、ターン検出感度を統合
  */
 const SessionSettingsPanel: React.FC<SessionSettingsPanelProps> = ({
   audioEnabled,
@@ -42,14 +46,18 @@ const SessionSettingsPanel: React.FC<SessionSettingsPanelProps> = ({
   setAudioVolume,
   speechRate,
   setSpeechRate,
-  silenceThreshold,
-  setSilenceThreshold,
   avatarVisible,
   setAvatarVisible,
   avatarEnabled,
 }) => {
   const { t, i18n } = useTranslation();
   const [ready, setReady] = useState<boolean>(i18n.isInitialized);
+
+  // endpointingSensitivity設定（localStorageで永続化）
+  const [endpointingSensitivity, setEndpointingSensitivity] = useState<EndpointingSensitivity>(() => {
+    const saved = localStorage.getItem('endpointingSensitivity') as EndpointingSensitivity | null;
+    return saved || "MEDIUM";
+  });
 
   // i18n初期化の完了を待つ
   useEffect(() => {
@@ -65,6 +73,13 @@ const SessionSettingsPanel: React.FC<SessionSettingsPanelProps> = ({
     }
   }, [i18n]);
 
+  // endpointingSensitivity変更時にlocalStorageに保存
+  const handleSensitivityChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value as EndpointingSensitivity;
+    setEndpointingSensitivity(value);
+    localStorage.setItem('endpointingSensitivity', value);
+  };
+
   // フォールバックテキスト（翻訳が読み込まれるまでの一時的なテキスト）
   const getDefaultText = (key: string): string => {
     const defaults: Record<string, string> = {
@@ -73,14 +88,15 @@ const SessionSettingsPanel: React.FC<SessionSettingsPanelProps> = ({
       "conversation.audioSettings.outputOff": "音声出力 OFF",
       "conversation.audioSettings.volume": `音量: ${audioVolume}%`,
       "conversation.audioSettings.speechRate": `読み上げ速度: ${speechRate.toFixed(1)}x`,
-      "conversation.audioSettings.silenceThreshold": `無音検出時間: ${(silenceThreshold / 1000).toFixed(1)}秒`,
-      "conversation.audioSettings.npcResponseNote":
-        "※ NPCの応答が音声で再生されます",
-      "conversation.audioSettings.silenceNote":
-        "※ この時間無音が続くと自動送信されます",
+      "conversation.audioSettings.npcResponseNote": "※ NPCの応答が音声で再生されます",
       "conversation.settings.title": "設定",
       "conversation.settings.avatarOn": "3Dアバター表示 ON",
       "conversation.settings.avatarOff": "3Dアバター表示 OFF",
+      "conversation.settings.endpointingSensitivity": "ターン検出感度",
+      "conversation.settings.endpointingSensitivityHigh": "高（短い間で発話終了を検出）",
+      "conversation.settings.endpointingSensitivityMedium": "中（標準）",
+      "conversation.settings.endpointingSensitivityLow": "低（長い間を許容）",
+      "conversation.settings.endpointingSensitivityNote": "※ 次回セッション開始時に反映されます",
     };
     return defaults[key] || key;
   };
@@ -196,37 +212,55 @@ const SessionSettingsPanel: React.FC<SessionSettingsPanelProps> = ({
           </>
         )}
 
-        {/* 無音検出時間設定 - 音声出力ON/OFFに関係なく常に表示 */}
+        {/* ターン検出感度設定（endpointingSensitivity） */}
         <Box mt={2}>
-          <Typography variant="body2" gutterBottom>
-            {translate("conversation.audioSettings.silenceThreshold", {
-              threshold: (silenceThreshold / 1000).toFixed(1),
-            })}
-          </Typography>
-          <Slider
-            value={silenceThreshold}
-            onChange={(_, value) => setSilenceThreshold(value as number)}
-            aria-labelledby="silence-threshold-slider"
-            step={100}
-            marks={[
-              { value: 500, label: "0.5秒" },
-              { value: 1000, label: "1.0秒" },
-              { value: 1500, label: "1.5秒" },
-              { value: 3000, label: "3.0秒" },
-              { value: 5000, label: "5.0秒" },
-            ]}
-            min={500}
-            max={5000}
-            valueLabelDisplay="auto"
-            valueLabelFormat={(value) => `${(value / 1000).toFixed(1)}秒`}
-          />
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{ display: "block", mt: 0.5 }}
-          >
-            {translate("conversation.audioSettings.silenceNote")}
-          </Typography>
+          <FormControl component="fieldset">
+            <FormLabel component="legend" id="endpointing-sensitivity-label">
+              <Typography variant="body2">
+                {translate("conversation.settings.endpointingSensitivity")}
+              </Typography>
+            </FormLabel>
+            <RadioGroup
+              aria-labelledby="endpointing-sensitivity-label"
+              value={endpointingSensitivity}
+              onChange={handleSensitivityChange}
+            >
+              <FormControlLabel
+                value="HIGH"
+                control={<Radio size="small" />}
+                label={
+                  <Typography variant="body2">
+                    {translate("conversation.settings.endpointingSensitivityHigh")}
+                  </Typography>
+                }
+              />
+              <FormControlLabel
+                value="MEDIUM"
+                control={<Radio size="small" />}
+                label={
+                  <Typography variant="body2">
+                    {translate("conversation.settings.endpointingSensitivityMedium")}
+                  </Typography>
+                }
+              />
+              <FormControlLabel
+                value="LOW"
+                control={<Radio size="small" />}
+                label={
+                  <Typography variant="body2">
+                    {translate("conversation.settings.endpointingSensitivityLow")}
+                  </Typography>
+                }
+              />
+            </RadioGroup>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ display: "block", mt: 0.5 }}
+            >
+              {translate("conversation.settings.endpointingSensitivityNote")}
+            </Typography>
+          </FormControl>
         </Box>
 
         <Typography

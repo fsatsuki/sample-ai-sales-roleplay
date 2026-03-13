@@ -36,7 +36,7 @@ export class InfrastructureStack extends cdk.Stack {
   public readonly userPoolClient: cognito.UserPoolClient;
 
   // AgentCore Runtimes
-  public readonly npcConversationAgent: AgentCoreRuntime;
+  public readonly novaSonicBidiAgent: AgentCoreRuntime;
   public readonly realtimeScoringAgent: AgentCoreRuntime;
   public readonly feedbackAnalysisAgent: AgentCoreRuntime;
   public readonly videoAnalysisAgent: AgentCoreRuntime;
@@ -117,20 +117,24 @@ export class InfrastructureStack extends cdk.Stack {
     // AgentCore Runtime - Strands Agent移行
     // ========================================
 
-    // NPC会話エージェント（フロントエンド直接呼び出し - JWT認証）
-    this.npcConversationAgent = new AgentCoreRuntime(this, 'NpcConversationAgent', {
+    // Nova 2 Sonic BidiAgentエージェント（フロントエンド直接呼び出し - IAM/SigV4認証）
+    this.novaSonicBidiAgent = new AgentCoreRuntime(this, 'NovaSonicBidiAgent', {
       envId: envId,
       resourceNamePrefix: resourcePrefix,
       cognitoUserPoolId: auth.userPool.userPoolId,
       cognitoClientId: auth.client.userPoolClientId,
-      agentCodePath: path.join(__dirname, '../agents/npc-conversation'),
-      agentName: 'npc-conversation',
-      description: `NPC会話応答生成エージェント - ${props!.bedrockModels.conversation}使用`,
-      enableJwtAuth: true,
+      agentCodePath: path.join(__dirname, '../agents/nova-sonic-bidi'),
+      agentName: 'nova-sonic-bidi',
+      description: 'Nova 2 Sonic BidiAgent - 双方向音声ストリーミング',
+      enableJwtAuth: false, // IAM認証（SigV4用）
       sessionBucket: undefined,
       memoryId: this.sessionMemory.memoryId,
       additionalEnvironmentVariables: {
-        BEDROCK_MODEL_CONVERSATION: props!.bedrockModels.conversation,
+        NOVA_SONIC_MODEL_ID: 'amazon.nova-2-sonic-v1:0',
+        NOVA_SONIC_REGION: cdk.Stack.of(this).region,
+        DEFAULT_ENDPOINTING_SENSITIVITY: 'MEDIUM',
+        SESSION_TRANSITION_THRESHOLD_SECONDS: '60',
+        AUDIO_BUFFER_DURATION_SECONDS: '10',
       },
     });
 
@@ -252,10 +256,10 @@ export class InfrastructureStack extends cdk.Stack {
       selfSignUpEnabled,
       webAclId: props?.webAclId,
       resourceNamePrefix: resourcePrefix,
-      transcribeWebSocketEndpoint: api.transcribeWebSocket.webSocketApiEndpoint,
       avatarBucket: api.avatarStorage.bucket,
       agentCoreEnabled: true,
-      npcConversationAgentArn: this.npcConversationAgent.runtimeArn,
+      novaSonicAgentEndpoint: this.novaSonicBidiAgent.endpointArn,
+      novaSonicAgentRegion: cdk.Stack.of(this).region,
       realtimeScoringAgentArn: this.realtimeScoringAgent.runtimeArn,
     });
 
@@ -280,10 +284,10 @@ export class InfrastructureStack extends cdk.Stack {
       exportName: `${prefix}ApiEndpoint`
     });
 
-    new cdk.CfnOutput(this, 'TranscribeWebSocketEndpoint', {
-      value: api.transcribeWebSocket.webSocketApiEndpoint,
-      description: 'WebSocket API Endpoint for Transcribe integration',
-      exportName: `${prefix}TranscribeWebSocketEndpoint`
+    new cdk.CfnOutput(this, 'NovaSonicAgentEndpoint', {
+      value: this.novaSonicBidiAgent.endpointArn,
+      description: 'Nova 2 Sonic BidiAgent AgentCore Runtime Endpoint',
+      exportName: `${prefix}NovaSonicAgentEndpoint`
     });
 
     new cdk.CfnOutput(this, 'CloudFrontURL', {
@@ -306,10 +310,10 @@ export class InfrastructureStack extends cdk.Stack {
     });
 
     // AgentCore Runtime ARNs
-    new cdk.CfnOutput(this, 'NpcConversationAgentArn', {
-      value: this.npcConversationAgent.runtimeArn,
-      description: 'NPC Conversation AgentCore Runtime ARN',
-      exportName: `${prefix}NpcConversationAgentArn`
+    new cdk.CfnOutput(this, 'NovaSonicBidiAgentArn', {
+      value: this.novaSonicBidiAgent.runtimeArn,
+      description: 'Nova 2 Sonic BidiAgent AgentCore Runtime ARN',
+      exportName: `${prefix}NovaSonicBidiAgentArn`
     });
 
     new cdk.CfnOutput(this, 'RealtimeScoringAgentArn', {

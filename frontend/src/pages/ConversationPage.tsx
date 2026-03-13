@@ -20,7 +20,9 @@ import { ApiService } from "../services/ApiService";
 import { AudioService } from "../services/AudioService";
 import { LanguageService } from "../services/LanguageService";
 import { PollyService } from "../services/PollyService";
-import { TranscribeService, ConnectionState } from "../services/TranscribeService";
+import { NovaSonicService } from "../services/NovaSonicService";
+import { WsConnectionState } from "../services/SigV4WebSocketClient";
+import { AudioOutputManager } from "../services/AudioOutputManager";
 import type { EmotionState } from "../types/index";
 import {
   initializeGoalStatuses,
@@ -45,17 +47,6 @@ import CoachingHintBar from "../components/conversation/CoachingHintBar";
 import AvatarStage from "../components/conversation/AvatarStage";
 import SessionSettingsPanel from "../components/conversation/SessionSettingsPanel";
 import { Dialog, DialogTitle, DialogContent } from "@mui/material";
-
-/**
- * NPC応答遅延設定（ミリ秒）
- * テスト環境では0に設定してテスタビリティを向上させる
- */
-const NPC_RESPONSE_BASE_DELAY = import.meta.env.VITE_NPC_RESPONSE_DELAY
-  ? Number(import.meta.env.VITE_NPC_RESPONSE_DELAY)
-  : 1000;
-const NPC_RESPONSE_RANDOM_DELAY = import.meta.env.VITE_NPC_RESPONSE_DELAY
-  ? 0
-  : 1000;
 
 /**
  * 会話ページコンポーネント
@@ -86,6 +77,10 @@ const ConversationPage: React.FC = () => {
   const [sessionEnded, setSessionEnded] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [sessionId, setSessionId] = useState<string>("");
+  // セッション経過時間表示用
+  const [sessionRemainingSeconds, setSessionRemainingSeconds] = useState<number | null>(null);
+  const sessionTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const sessionStartTimeRef = useRef<number | null>(null);
   // アバターの表情状態管理用の状態変数
   const [currentEmotion, setCurrentEmotion] = useState<string>("neutral");
   // NPC感情状態（リアルタイム評価から取得、アバターに直接渡す）
@@ -105,30 +100,39 @@ const ConversationPage: React.FC = () => {
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [audioVolume, setAudioVolume] = useState<number>(80);
   const [speechRate, setSpeechRate] = useState<number>(1.15);
-  const [silenceThreshold, setSilenceThreshold] = useState<number>(1500); // 無音検出時間（ミリ秒）
   const [isListening, setIsListening] = useState(false);
   const [continuousListening, setContinuousListening] = useState(false); // 常時マイク入力モード
   const [speechRecognitionError, setSpeechRecognitionError] = useState<
     "permission" | "no-speech" | "network" | "not-supported" | "unknown" | null
   >(null);
-  const [connectionState, setConnectionState] = useState<ConnectionState>(ConnectionState.DISCONNECTED);
+  const [connectionState, setConnectionState] = useState<WsConnectionState>(WsConnectionState.DISCONNECTED);
   const [metricsUpdating, setMetricsUpdating] = useState(false);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [goalStatuses, setGoalStatuses] = useState<GoalStatus[]>([]);
 
-  // Transcribe音声認識サービスへの参照
-  const transcribeServiceRef = useRef<TranscribeService | null>(null);
+  // NovaSonicServiceへの参照
+  const novaSonicServiceRef = useRef<NovaSonicService | null>(null);
+  // AudioOutputManagerへの参照
+  const audioOutputManagerRef = useRef<AudioOutputManager | null>(null);
+  // マイク音声キャプチャ用AudioContext
+  const micAudioContextRef = useRef<AudioContext | null>(null);
+  const micProcessorRef = useRef<ScriptProcessorNode | null>(null);
+  const micStreamRef = useRef<MediaStream | null>(null);
   // 最新のuserInputを参照するためのRef
   const userInputRef = useRef<string>("");
-  // ゴールの達成スコア（セッション終了時に使用）
-  const [goalScore, setGoalScore] = useState<number>(0);
   // ジェスチャーリセット用タイマー
   const gestureTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // CR-007: NPC応答タイマーRef管理（アンマウント時クリーンアップ用）
   const npcResponseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Polly音声合成デバウンス用タイマー（npcResponseTimerRefとの競合を避ける）
+  const pollyDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Nova Sonic応答ID管理（responseIdベースのメッセージ境界管理）
+  const currentResponseIdRef = useRef<string | null>(null);
   // CR-006: isSpeakingをRef経由で参照し、依存配列から除外
   const isSpeakingRef = useRef(isSpeaking);
+  // WR-012: ゴール達成によるセッション終了の二重実行防止用Ref
+  const sessionEndingRef = useRef(false);
 
   // userInputの変更をrefに同期
   useEffect(() => {
@@ -159,24 +163,40 @@ const ConversationPage: React.FC = () => {
   useEffect(() => {
     hasComponentMounted.current = true;
 
-    // TranscribeServiceの初期化
-    transcribeServiceRef.current = TranscribeService.getInstance();
+    // NovaSonicServiceの初期化
+    novaSonicServiceRef.current = NovaSonicService.getInstance();
+    audioOutputManagerRef.current = AudioOutputManager.getInstance();
 
-    // 接続状態変更コールバックを設定
-    transcribeServiceRef.current.setOnConnectionStateChange((state: ConnectionState) => {
-      setConnectionState(state);
-    });
-
-    // 環境変数からWebSocketエンドポイントを取得
-    const websocketEndpoint = import.meta.env.VITE_TRANSCRIBE_WEBSOCKET_URL;
-    if (websocketEndpoint) {
-      transcribeServiceRef.current.setWebSocketEndpoint(websocketEndpoint);
-    }
+    // クリーンアップ用にref値をローカル変数にコピー
+    const fallbackTimer = fallbackTimerRef.current;
+    const pollyDebounceTimer = pollyDebounceTimerRef.current;
 
     return () => {
       // コンポーネントのアンマウント時にリソース解放
-      if (transcribeServiceRef.current) {
-        transcribeServiceRef.current.dispose();
+      if (novaSonicServiceRef.current) {
+        novaSonicServiceRef.current.dispose();
+      }
+      if (audioOutputManagerRef.current) {
+        audioOutputManagerRef.current.dispose();
+      }
+      // マイク音声キャプチャのクリーンアップ
+      if (micProcessorRef.current) {
+        micProcessorRef.current.disconnect();
+        micProcessorRef.current = null;
+      }
+      if (micAudioContextRef.current && micAudioContextRef.current.state !== 'closed') {
+        micAudioContextRef.current.close().catch(() => { });
+        micAudioContextRef.current = null;
+      }
+      if (micStreamRef.current) {
+        micStreamRef.current.getTracks().forEach(t => t.stop());
+        micStreamRef.current = null;
+      }
+
+      // セッション経過時間タイマーのクリーンアップ
+      if (sessionTimerRef.current) {
+        clearInterval(sessionTimerRef.current);
+        sessionTimerRef.current = null;
       }
 
       // ジェスチャータイマーのクリーンアップ
@@ -188,8 +208,11 @@ const ConversationPage: React.FC = () => {
       if (npcResponseTimerRef.current) {
         clearTimeout(npcResponseTimerRef.current);
       }
-      if (fallbackTimerRef.current) {
-        clearTimeout(fallbackTimerRef.current);
+      if (pollyDebounceTimer) {
+        clearTimeout(pollyDebounceTimer);
+      }
+      if (fallbackTimer) {
+        clearTimeout(fallbackTimer);
       }
 
       // 音声認識関連の状態もクリアする
@@ -339,16 +362,7 @@ const ConversationPage: React.FC = () => {
     fetchScenario();
   }, [scenarioId, navigate]);
 
-  // 音声設定の初期適用（シナリオ取得後）
-  useEffect(() => {
-    if (scenario) {
-      const audioSvc = AudioService.getInstance();
-      audioSvc.setAudioEnabled(audioEnabled);
-      audioSvc.setVolume(audioVolume / 100);
-    }
-  }, [scenario, audioEnabled, audioVolume]);
-
-  // 音声設定変更時の処理
+  // 音声設定の適用（シナリオ取得後 + 設定変更時に統合）
   useEffect(() => {
     const audioSvc = AudioService.getInstance();
     audioSvc.setAudioEnabled(audioEnabled);
@@ -359,20 +373,13 @@ const ConversationPage: React.FC = () => {
       audioSvc.stopAllAudio();
       setIsSpeaking(false);
     }
-  }, [audioEnabled, audioVolume]);
+  }, [scenario, audioEnabled, audioVolume]);
 
   // 読み上げ速度変更時の処理
   useEffect(() => {
     const pollySvc = PollyService.getInstance();
     pollySvc.setSpeechRate(speechRate);
   }, [speechRate]);
-
-  // 無音検出時間変更時の処理
-  useEffect(() => {
-    if (transcribeServiceRef.current) {
-      transcribeServiceRef.current.setSilenceThreshold(silenceThreshold);
-    }
-  }, [silenceThreshold]);
 
   // シナリオ言語に応じたUI言語の設定
   useEffect(() => {
@@ -413,7 +420,7 @@ const ConversationPage: React.FC = () => {
       await apiService.createOrUpdateSession(
         newSessionId,
         scenario.id,
-        `${scenario.npc.name}との会話`,
+        t('conversation.sessionTitle', { name: scenario.npc.name }),
         {
           name: scenario.npc.name,
           role: scenario.npc.role,
@@ -427,29 +434,191 @@ const ConversationPage: React.FC = () => {
       // エラーが発生しても会話は続行できるようにする
     }
 
-    // Transcribe WebSocketの初期化
-    if (transcribeServiceRef.current) {
-      transcribeServiceRef.current.initializeConnection(newSessionId, scenario?.language || 'ja')
-        .catch(error => {
-          console.error("Transcribe WebSocket接続エラー:", error);
-          // エラーがあっても通常の会話は続行できるようにする
-        });
+    // NovaSonicService接続（NPC対話 + ASR統合）
+    if (novaSonicServiceRef.current && scenario) {
+      // イベントリスナーを設定
+      novaSonicServiceRef.current.setListeners({
+        onAsrTranscript: (event) => {
+          // ASR転写テキスト受信 → メッセージとして表示
+          if (event.isFinal && event.text.trim()) {
+            const cleanedText = normalizeTranscriptText(event.text.trim());
+            if (!cleanedText) return;
+
+            // ユーザーメッセージとしてメッセージリストに追加
+            const userMessage: Message = {
+              id: crypto.randomUUID(),
+              sender: "user",
+              content: cleanedText,
+              timestamp: new Date(),
+            };
+            // WR-002: 関数型更新でアトミックにメッセージを追加
+            setMessages(prev => {
+              const updatedMessages = [...prev, userMessage];
+              messagesRef.current = updatedMessages;
+              return updatedMessages;
+            });
+
+            // 確定テキストをリセット
+            setConfirmedTranscripts([]);
+            setUserInput("");
+            userInputRef.current = "";
+          } else if (!event.isFinal && event.text.trim()) {
+            // 途中認識 → テキスト入力欄にプレビュー表示
+            setUserInput(event.text.trim());
+          }
+        },
+        onNpcResponse: (event) => {
+          const response = event.text;
+          if (!response.trim()) return;
+
+          // WR-002: 関数型更新でアトミックにメッセージを更新
+          setMessages(prev => {
+            const lastMsg = prev.length > 0 ? prev[prev.length - 1] : null;
+
+            if (lastMsg?.sender === "npc") {
+              // 完全一致 → スキップ
+              if (lastMsg.content === response) return prev;
+              // 新テキストが既存テキストに含まれている → スキップ
+              if (lastMsg.content.includes(response)) return prev;
+              // 既存テキストが新テキストに含まれている → 上書き
+              if (response.includes(lastMsg.content) || response.startsWith(lastMsg.content)) {
+                const updatedMessages = [...prev];
+                updatedMessages[updatedMessages.length - 1] = { ...lastMsg, content: response };
+                messagesRef.current = updatedMessages;
+                setIsProcessing(false);
+                return updatedMessages;
+              }
+              // 別のテキスト → 既存メッセージに追記（同一応答ターン内）
+              const updatedMessages = [...prev];
+              updatedMessages[updatedMessages.length - 1] = { ...lastMsg, content: lastMsg.content + response };
+              messagesRef.current = updatedMessages;
+              setIsProcessing(false);
+              return updatedMessages;
+            } else {
+              // 新しいNPCメッセージを追加
+              currentResponseIdRef.current = event.responseId;
+              const npcMessage: Message = {
+                id: crypto.randomUUID(),
+                sender: "npc",
+                content: response,
+                timestamp: new Date(),
+                metrics: { ...currentMetrics },
+              };
+              setIsSpeaking(true);
+              const finalMessages = [...prev, npcMessage];
+              messagesRef.current = finalMessages;
+              setIsProcessing(false);
+              return finalMessages;
+            }
+          });
+        },
+        onResponseComplete: () => {
+          // 応答完了時にPolly音声合成を実行
+          const latestMsgs = messagesRef.current;
+          const latestNpcMsg = latestMsgs.length > 0 && latestMsgs[latestMsgs.length - 1]?.sender === "npc"
+            ? latestMsgs[latestMsgs.length - 1]
+            : null;
+          if (!latestNpcMsg) return;
+
+          const finalText = latestNpcMsg.content;
+          const finalMsgId = latestNpcMsg.id;
+
+          if (audioEnabled) {
+            const audioService = AudioService.getInstance();
+            audioService
+              .synthesizeAndQueueAudio(finalText, finalMsgId, scenarioVoiceId)
+              .then(() => {
+                audioService.addPlaybackCompleteListener(finalMsgId, () => {
+                  setIsSpeaking(false);
+                });
+              })
+              .catch((error) => {
+                console.error("Amazon Polly音声合成エラー:", error);
+                setIsSpeaking(false);
+              });
+          } else {
+            setTimeout(() => setIsSpeaking(false), 500);
+          }
+
+          // responseIdをリセット
+          currentResponseIdRef.current = null;
+        },
+        onAudioOutput: (event) => {
+          // Nova 2 Sonic音声出力（将来的にPollyからの切り替え用）
+          if (audioOutputManagerRef.current) {
+            audioOutputManagerRef.current.playNovaSonicAudio(event.data);
+          }
+        },
+        onSessionStatus: () => {
+          // セッション状態変更の処理（必要に応じてログレベル制御）
+        },
+        onError: (event) => {
+          console.error("NovaSonic エラー:", event.errorType, event.message);
+          setSpeechRecognitionError("network");
+        },
+        onConnectionStateChange: (state) => {
+          setConnectionState(state);
+        },
+      });
+
+      // endpointingSensitivity設定をlocalStorageから取得（WR-007: バリデーション追加）
+      const validSensitivities = ["HIGH", "MEDIUM", "LOW"] as const;
+      const rawSensitivity = localStorage.getItem('endpointingSensitivity');
+      const savedSensitivity = rawSensitivity && validSensitivities.includes(rawSensitivity as typeof validSensitivities[number])
+        ? rawSensitivity as "HIGH" | "MEDIUM" | "LOW"
+        : null;
+
+      novaSonicServiceRef.current.connect({
+        sessionId: newSessionId,
+        scenarioId: scenario.id,
+        npcConfig: {
+          name: scenario.npc.name,
+          role: scenario.npc.role,
+          company: scenario.npc.company,
+          personality: scenario.npc.personality,
+          description: scenario.npc.description,
+        },
+        scenarioDescription: scenario.description,
+        endpointingSensitivity: savedSensitivity || "MEDIUM",
+        language: scenario.language || 'ja',
+      }).then(() => {
+        // 接続成功後にマイクを自動起動（Nova Sonicは常時音声ストリーミングが必要）
+        setTimeout(() => {
+          if (!isListening) {
+            startSpeechRecognition();
+          }
+        }, 500);
+      }).catch(error => {
+        console.error("NovaSonic接続エラー:", error);
+      });
     }
 
     // 短い遅延を入れてセッションIDの状態更新を確実に反映させる
     setTimeout(() => {
       setSessionStarted(true);
+      // セッション経過時間タイマー開始（表示用のみ、自動終了はバックエンドのConversation Resumptionで管理）
+      sessionStartTimeRef.current = Date.now();
+      sessionTimerRef.current = setInterval(() => {
+        if (!sessionStartTimeRef.current) return;
+        const elapsed = (Date.now() - sessionStartTimeRef.current) / 1000;
+        // 経過時間を表示用に更新（制限なし）
+        setSessionRemainingSeconds(Math.ceil(elapsed));
+      }, 1000);
     }, 50);
 
-    // シナリオに定義された初期メッセージがある場合はそれを使用、なければデフォルトメッセージを表示
+    // シナリオに定義された初期メッセージがある場合はそれを使用、なければi18nキーを使用
     const initialContent =
       scenario?.initialMessage ||
-      `こんにちは。${scenario?.npc.company}の${scenario?.npc.name}です。本日はお忙しい中、お時間をいただきありがとうございます。どのようなご提案でしょうか？`;
+      t('conversation.defaultInitialMessage', {
+        company: scenario?.npc.company,
+        name: scenario?.npc.name
+      });
+
+    // 初期メッセージIDを一度だけ生成して共有（WR-003: 音声再生完了リスナーとの不一致を防止）
+    const initialMessageId = crypto.randomUUID();
 
     // 少し遅延してからメッセージを追加（レンダリング安定化のため）
     setTimeout(() => {
-      const initialMessageId = crypto.randomUUID();
-
       const initialMessage: Message = {
         id: initialMessageId,
         sender: "npc",
@@ -469,7 +638,6 @@ const ConversationPage: React.FC = () => {
     if (audioEnabled) {
       setIsSpeaking(true);
       const audioSvc = AudioService.getInstance();
-      const initialMessageId = crypto.randomUUID();
       audioSvc
         .synthesizeAndQueueAudio(initialContent, initialMessageId, scenarioVoiceId)
         .then(() => {
@@ -529,8 +697,8 @@ const ConversationPage: React.FC = () => {
 
   // メッセージ送信
   const sendMessage = useCallback(async (inputText?: string) => {
-    // 引数で渡されたテキストまたは現在のuserInputを使用
-    const messageText = inputText || userInput.trim();
+    // 引数で渡されたテキストまたはuserInputRef経由で最新値を取得
+    const messageText = inputText || userInputRef.current.trim();
     if (!messageText || !scenario || isProcessing) return;
 
     // 入力フィールドを無効化（API処理中）
@@ -560,294 +728,164 @@ const ConversationPage: React.FC = () => {
     setConfirmedTranscripts([]);
 
     // メッセージ送信時に一時的に感情状態を更新
-    // ユーザーが入力している間は中立的な状態にする
     setCurrentEmotion("neutral");
 
-    // NPCの応答を生成
-    npcResponseTimerRef.current = setTimeout(
-      async () => {
-        // 安全なプリミティブ型に変換して循環参照を避ける
+    // NovaSonicService経由でテキスト送信（Cross-modal Input）
+    // NPC応答はonNpcResponseコールバックで受信される
+    try {
+      if (novaSonicServiceRef.current?.isConnected()) {
+        novaSonicServiceRef.current.sendTextMessage(messageText);
+      }
+    } catch (error) {
+      console.error("NovaSonic テキスト送信エラー:", error);
+    }
+
+    // リアルタイム評価を非同期で実行（NPC応答はonNpcResponseコールバックで受信）
+    const activeSessionId = sessionId;
+    if (activeSessionId) {
+      // 少し遅延してからリアルタイム評価を実行（メッセージ状態の反映を待つ）
+      // WR-013: 前回のタイマーをキャンセルしてデバウンス動作を実現
+      if (npcResponseTimerRef.current) {
+        clearTimeout(npcResponseTimerRef.current);
+      }
+      npcResponseTimerRef.current = setTimeout(async () => {
         const cleanMessageText = messageText ? String(messageText) : "";
 
         try {
           const apiService = ApiService.getInstance();
-          // セッションIDとメッセージIDを追加
-          const messageId = crypto.randomUUID();
-          // フロントエンドで生成されたセッションIDを使用
-          const currentSessionId = sessionId;
 
-          // 純粋なオブジェクトを作成してAPI呼び出し
-          const cleanMetrics = {
-            angerLevel: Number(currentMetrics.angerLevel) || 1,
-            trustLevel: Number(currentMetrics.trustLevel) || 1,
-            progressLevel: Number(currentMetrics.progressLevel) || 1,
-          };
+          // messagesRef経由で確実に最新のメッセージ履歴を取得
+          const latestMessages = messagesRef.current;
 
-          // messagesRef経由で確実に最新のメッセージ履歴を取得（バグ修正）
-          const currentMessages = messagesRef.current;
-
-          // メッセージ配列をディープコピーし、純粋なデータ構造にする（sender型を正しくキャスト）
-          const cleanMessages = currentMessages.map(msg => ({
-            id: String(msg.id),
+          // メッセージ配列を純粋なデータ構造に変換
+          const cleanMessages = latestMessages.map(msg => ({
+            id: String(msg.id || ""),
             sender: (msg.sender === "user" || msg.sender === "npc" ? msg.sender : "user") as "user" | "npc",
-            content: String(msg.content),
-            timestamp: msg.timestamp instanceof Date ? msg.timestamp : new Date()
+            content: String(msg.content || ""),
+            timestamp: msg.timestamp instanceof Date ? msg.timestamp :
+              (typeof msg.timestamp === 'string' ? new Date(msg.timestamp) : new Date())
           }));
 
-          // NPCオブジェクトをディープコピー
-          const cleanNpc = {
-            name: String(scenario.npc.name),
-            role: String(scenario.npc.role),
-            company: String(scenario.npc.company),
-            description: String(scenario.npc.description || ""),
-            personality: Array.isArray(scenario.npc.personality) ?
-              scenario.npc.personality.map(p => String(p)) : []
-          };
+          // ゴール状態を純粋なデータ構造に変換
+          const cleanGoalStatuses = Array.isArray(goalStatuses) ?
+            goalStatuses.map(status => ({
+              goalId: String(status.goalId || ""),
+              achieved: Boolean(status.achieved),
+              progress: Number(status.progress || 0),
+              achievedAt: status.achievedAt
+            })) : [];
 
-          // /bedrock/conversation エンドポイントからメトリクス出力を廃止したため、デフォルトのメトリクスを使用
-          const result = await apiService.chatWithNPC(
-            cleanMessageText, // 安全な文字列に変換済み
-            cleanNpc, // 安全なプリミティブ型に変換済み
-            cleanMessages, // 安全なプリミティブ型に変換済み
-            String(currentSessionId),
-            String(messageId),
-            // 感情パラメータを追加
-            cleanMetrics,
-            // シナリオIDを追加
+          // ゴールを純粋なデータ構造に変換
+          const cleanGoals = Array.isArray(goals) ?
+            goals.map(goal => ({
+              id: String(goal.id || ""),
+              description: String(goal.description || ""),
+              isRequired: Boolean(goal.isRequired),
+              priority: Number(goal.priority || 3),
+              criteria: Array.isArray(goal.criteria) ? goal.criteria.map(c => String(c)) : []
+            })) : [];
+
+          const evaluationResult = await apiService.getRealtimeEvaluation(
+            cleanMessageText,
+            cleanMessages,
+            String(activeSessionId),
+            cleanGoalStatuses,
+            cleanGoals,
             String(scenario.id),
-            // 言語設定を追加
-            scenario?.language || 'ja',
+            String(scenario.language || "ja"),
+            {
+              angerLevel: currentMetrics.angerLevel,
+              trustLevel: currentMetrics.trustLevel,
+              progressLevel: currentMetrics.progressLevel,
+            },
           );
 
-          const { response } = result;
-
-          // フロントエンドで生成されたセッションIDを使用
-          const activeSessionId = sessionId;
-
-          // メトリクスは現在の値を維持
-          const newMetrics = { ...currentMetrics };
-
-          const npcMessage: Message = {
-            id: crypto.randomUUID(),
-            sender: "npc",
-            content: response,
-            timestamp: new Date(),
-            metrics: newMetrics,
-          };
-
-          // 話している状態を開始
-          setIsSpeaking(true);
-
-          // messagesRefから最新の状態を取得（バグ修正）
-          const currentMessagesState = messagesRef.current;
-          const finalMessages = [...currentMessagesState, npcMessage];
-
-          // 両方同時に更新して一貫性を保つ
-          messagesRef.current = finalMessages;
-          setMessages(finalMessages);
-          setCurrentMetrics(newMetrics);
-
-          // APIからのレスポンスが返ってきた時点で入力処理を有効化
-          // ユーザーは音声を聞きながら次の入力を準備できるように
-          setIsProcessing(false);
-
-          // Amazon Polly で音声合成
-          if (audioEnabled) {
-            const audioService = AudioService.getInstance();
-            audioService
-              .synthesizeAndQueueAudio(response, messageId, scenarioVoiceId)
-              .then(() => {
-                // 音声合成が成功したら、音声再生完了リスナーを追加
-                // このリスナーは音声再生が完了したときに実行される
-                audioService.addPlaybackCompleteListener(messageId, () => {
-                  setIsSpeaking(false);
-                });
-              })
-              .catch((error) => {
-                console.error("Amazon Polly音声合成エラー:", error);
-                // エラーが発生した場合も話している状態を更新
-                setIsSpeaking(false);
-              });
-          } else {
-            // 音声が無効な場合は、短い遅延後に話している状態を更新
-            setTimeout(() => {
-              setIsSpeaking(false);
-            }, 500);
-          }
-
-          // NPCの応答後にリアルタイム評価を実行（有効なsessionIDがある場合のみ）
-          if (activeSessionId) {
-            try {
-              // 安全な文字列に変換
-              const cleanMessageText = messageText ? String(messageText) : "";
-
-              // メッセージ配列を純粋なデータ構造に変換（sender型を正しくキャスト）
-              const cleanMessages = finalMessages.map(msg => ({
-                id: String(msg.id || ""),
-                sender: (msg.sender === "user" || msg.sender === "npc" ? msg.sender : "user") as "user" | "npc",
-                content: String(msg.content || ""),
-                timestamp: msg.timestamp instanceof Date ? msg.timestamp :
-                  (typeof msg.timestamp === 'string' ? new Date(msg.timestamp) : new Date())
-              }));
-
-              // ゴール状態を純粋なデータ構造に変換（GoalStatus型に合わせる）
-              const cleanGoalStatuses = Array.isArray(goalStatuses) ?
-                goalStatuses.map(status => ({
-                  goalId: String(status.goalId || ""),
-                  achieved: Boolean(status.achieved),
-                  progress: Number(status.progress || 0),
-                  achievedAt: status.achievedAt
-                })) : [];
-
-              // ゴールを純粋なデータ構造に変換（Goal型に合わせる）
-              const cleanGoals = Array.isArray(goals) ?
-                goals.map(goal => ({
-                  id: String(goal.id || ""),
-                  description: String(goal.description || ""),
-                  isRequired: Boolean(goal.isRequired),
-                  priority: Number(goal.priority || 3),
-                  criteria: Array.isArray(goal.criteria) ? goal.criteria.map(c => String(c)) : []
-                })) : [];
-
-              const evaluationResult = await apiService.getRealtimeEvaluation(
-                cleanMessageText,
-                cleanMessages,
-                String(activeSessionId), // 安全な文字列に変換
-                cleanGoalStatuses,
-                cleanGoals,
-                String(scenario.id), // 安全な文字列に変換
-                String(scenario.language || "ja"), // 安全な文字列に変換
-                // 現在のスコアを渡す（エージェントが差分を計算するため）
-                {
-                  angerLevel: currentMetrics.angerLevel,
-                  trustLevel: currentMetrics.trustLevel,
-                  progressLevel: currentMetrics.progressLevel,
-                },
+          // コンプライアンスチェック結果の確認
+          if (
+            evaluationResult.compliance &&
+            evaluationResult.compliance.violations &&
+            evaluationResult.compliance.violations.length > 0
+          ) {
+            const sortedViolations = [
+              ...evaluationResult.compliance.violations,
+            ].sort((a, b) => {
+              const severityOrder: Record<"high" | "medium" | "low", number> = { high: 3, medium: 2, low: 1 };
+              return (
+                severityOrder[b.severity as "high" | "medium" | "low"] -
+                severityOrder[a.severity as "high" | "medium" | "low"]
               );
+            });
 
-              // コンプライアンスチェック結果の確認
-              if (
-                evaluationResult.compliance &&
-                evaluationResult.compliance.violations &&
-                evaluationResult.compliance.violations.length > 0
-              ) {
-                // 最も重大度の高い違反を表示
-                const sortedViolations = [
-                  ...evaluationResult.compliance.violations,
-                ].sort((a, b) => {
-                  const severityOrder: Record<
-                    "high" | "medium" | "low",
-                    number
-                  > = { high: 3, medium: 2, low: 1 };
-                  return (
-                    severityOrder[b.severity as "high" | "medium" | "low"] -
-                    severityOrder[a.severity as "high" | "medium" | "low"]
-                  );
-                });
-
-                // 最も重大な違反を通知用に設定
-                setActiveViolation(sortedViolations[0]);
-                setShowComplianceAlert(true);
-              }
-
-              if (evaluationResult) {
-                // 前回のメトリクスを保存
-                setPrevMetrics(currentMetrics);
-
-                // NPC感情状態をアバターに反映
-                if (evaluationResult.npcEmotion) {
-                  const validEmotions: EmotionState[] = ['happy', 'angry', 'neutral', 'annoyed', 'satisfied'];
-                  const emotion = evaluationResult.npcEmotion as EmotionState;
-                  if (validEmotions.includes(emotion)) {
-                    setNpcDirectEmotion(emotion);
-                  }
-                } else {
-                  // APIがnpcEmotionを返さない場合はリセットし、メトリクスベースの計算にフォールバック
-                  setNpcDirectEmotion(undefined);
-                }
-
-                // NPCジェスチャーをアバターに反映
-                if (evaluationResult.gesture) {
-                  const validGestures: GestureType[] = ['nod', 'headTilt', 'none'];
-                  const gesture = evaluationResult.gesture as GestureType;
-                  if (validGestures.includes(gesture)) {
-                    if (gestureTimerRef.current) clearTimeout(gestureTimerRef.current);
-                    setNpcGesture(gesture);
-                    // ジェスチャー実行後にリセット
-                    gestureTimerRef.current = setTimeout(() => setNpcGesture('none'), 1500);
-                  }
-                }
-
-                // 新しいメトリクスを設定
-                setCurrentMetrics((prevMetrics) => ({
-                  ...prevMetrics,
-                  angerLevel:
-                    evaluationResult.scores?.angerLevel ||
-                    prevMetrics.angerLevel,
-                  trustLevel:
-                    evaluationResult.scores?.trustLevel ||
-                    prevMetrics.trustLevel,
-                  progressLevel:
-                    evaluationResult.scores?.progressLevel ||
-                    prevMetrics.progressLevel,
-                  analysis: evaluationResult.analysis || prevMetrics.analysis,
-                }));
-
-                // 更新中の状態を表示
-                setMetricsUpdating(true);
-                setTimeout(() => setMetricsUpdating(false), 1000);
-
-                // ゴールステータス更新（既存のステータスとマージ）
-                if (evaluationResult.goalStatuses) {
-                  setGoalStatuses((prevStatuses) => {
-                    const merged = prevStatuses.map((prev) => {
-                      const update = evaluationResult.goalStatuses!.find(
-                        (u) => u.goalId === prev.goalId,
-                      );
-                      if (update) {
-                        return {
-                          ...prev,
-                          ...update,
-                          // 達成時にタイムスタンプを記録（未設定の場合のみ）
-                          achievedAt:
-                            update.achieved && !prev.achievedAt
-                              ? new Date()
-                              : prev.achievedAt,
-                        };
-                      }
-                      return prev;
-                    });
-                    setGoalScore(calculateGoalScore(merged, goals));
-                    return merged;
-                  });
-                }
-              }
-            } catch (error) {
-              console.error("リアルタイム評価API呼び出しエラー:", error);
-            }
+            setActiveViolation(sortedViolations[0]);
+            setShowComplianceAlert(true);
           }
 
-          // 音声再生完了イベントが発火しない場合のフォールバック
-          // 音声が無限に再生され続けることを防止
-          fallbackTimerRef.current = setTimeout(() => {
-            if (isSpeakingRef.current) {
-              setIsSpeaking(false);
+          if (evaluationResult) {
+            setPrevMetrics(currentMetrics);
+
+            // NPC感情状態をアバターに反映
+            if (evaluationResult.npcEmotion) {
+              const validEmotions: EmotionState[] = ['happy', 'angry', 'neutral', 'annoyed', 'satisfied'];
+              const emotion = evaluationResult.npcEmotion as EmotionState;
+              if (validEmotions.includes(emotion)) {
+                setNpcDirectEmotion(emotion);
+              }
+            } else {
+              setNpcDirectEmotion(undefined);
             }
-          }, 30000); // 長めのタイムアウト - 通常は音声再生が完了するはず
 
+            // NPCジェスチャーをアバターに反映
+            if (evaluationResult.gesture) {
+              const validGestures: GestureType[] = ['nod', 'headTilt', 'none'];
+              const gesture = evaluationResult.gesture as GestureType;
+              if (validGestures.includes(gesture)) {
+                if (gestureTimerRef.current) clearTimeout(gestureTimerRef.current);
+                setNpcGesture(gesture);
+                gestureTimerRef.current = setTimeout(() => setNpcGesture('none'), 1500);
+              }
+            }
+
+            // メトリクス更新
+            setCurrentMetrics((prevMetrics) => ({
+              ...prevMetrics,
+              angerLevel: evaluationResult.scores?.angerLevel || prevMetrics.angerLevel,
+              trustLevel: evaluationResult.scores?.trustLevel || prevMetrics.trustLevel,
+              progressLevel: evaluationResult.scores?.progressLevel || prevMetrics.progressLevel,
+              analysis: evaluationResult.analysis || prevMetrics.analysis,
+            }));
+
+            setMetricsUpdating(true);
+            setTimeout(() => setMetricsUpdating(false), 1000);
+
+            // ゴールステータス更新
+            if (evaluationResult.goalStatuses) {
+              setGoalStatuses((prevStatuses) => {
+                const merged = prevStatuses.map((prev) => {
+                  const update = evaluationResult.goalStatuses!.find(
+                    (u) => u.goalId === prev.goalId,
+                  );
+                  if (update) {
+                    return {
+                      ...prev,
+                      ...update,
+                      achievedAt:
+                        update.achieved && !prev.achievedAt
+                          ? new Date()
+                          : prev.achievedAt,
+                    };
+                  }
+                  return prev;
+                });
+                return merged;
+              });
+            }
+          }
         } catch (error) {
-          console.error("=== ConversationPage: API呼び出しエラー ===");
-          console.error("エラー詳細:", error);
-
-          // エラー時はセッションを終了
-          setIsProcessing(false);
-          console.error("API呼び出しエラーのため、セッションを終了します");
-          throw error; // エラーを再スロー
+          console.error("リアルタイム評価API呼び出しエラー:", error);
         }
-      },
-      NPC_RESPONSE_BASE_DELAY + Math.random() * NPC_RESPONSE_RANDOM_DELAY,
-    ); // NPC応答遅延（設定可能: VITE_NPC_RESPONSE_DELAY環境変数で制御）
-  }, [userInput, scenario, isProcessing, currentMetrics, sessionId, audioEnabled, goalStatuses, goals, scenarioVoiceId]);
+      }, 500); // リアルタイム評価は短い遅延で実行
+    }
+  }, [scenario, isProcessing, currentMetrics, sessionId, goalStatuses, goals]);
 
   /**
    * セッション終了処理
@@ -863,7 +901,6 @@ const ConversationPage: React.FC = () => {
 
       // 最終的なゴールスコアを計算
       const finalGoalScore = calculateGoalScore(goalStatuses, goals);
-      setGoalScore(finalGoalScore);
 
       // 終了理由を取得
       const endReason = getSessionEndReason(
@@ -885,14 +922,11 @@ const ConversationPage: React.FC = () => {
         finalScore: 0,
         feedback: [],
         goalStatuses: goalStatuses,
-        goalScore: goalScore,
+        goalScore: finalGoalScore,
         endReason: endReason,
       };
 
-      // セッションデータをlocalStorageに保存
-      localStorage.setItem(`session_${session.id}`, JSON.stringify(session));
-
-      // 録画完了を確実に待つ処理を改善
+      // WR-006: 録画完了待機のクリーンアップ改善（統一的なcleanup関数）
       const waitForRecordingUpload = () => {
         return new Promise<void>((resolve) => {
           let uploadCompleted = false;
@@ -900,9 +934,16 @@ const ConversationPage: React.FC = () => {
           // 前回の録画キーを保存（新しいセッションの録画を待つため）
           const previousKey = localStorage.getItem("lastRecordingKey");
 
+          // 統一的なクリーンアップ関数
+          const cleanup = () => {
+            clearTimeout(timeoutId);
+            clearInterval(checkInterval);
+            window.removeEventListener('recordingComplete', handleRecordingComplete as EventListener);
+          };
+
           // 90秒でタイムアウト（大きなファイル対応）
           const timeoutId = setTimeout(() => {
-            window.removeEventListener('recordingComplete', handleRecordingComplete as EventListener);
+            cleanup();
             resolve();
           }, 90000);
 
@@ -911,18 +952,11 @@ const ConversationPage: React.FC = () => {
 
             const videoKey = newVideoKey || localStorage.getItem("lastRecordingKey");
 
-            // 新しいキーが設定されているか確認
-            // 1. セッションIDを含むキーであること
-            // 2. 前回のキーと異なること（または前回のキーがない場合）
             if (videoKey && videoKey.includes(session.id)) {
               if (!previousKey || videoKey !== previousKey) {
                 uploadCompleted = true;
-                localStorage.setItem(`session_${session.id}_videoKey`, videoKey);
-                clearTimeout(timeoutId);
-                window.removeEventListener('recordingComplete', handleRecordingComplete as EventListener);
+                cleanup();
                 resolve();
-              } else {
-                // 前回と同じキーのためスキップ
               }
             }
           };
@@ -944,17 +978,9 @@ const ConversationPage: React.FC = () => {
               const currentKey = localStorage.getItem("lastRecordingKey");
               if (currentKey && currentKey.includes(session.id) && currentKey !== previousKey) {
                 checkUploadComplete(currentKey);
-                clearInterval(checkInterval);
               }
-            } else {
-              clearInterval(checkInterval);
             }
           }, 1000);
-
-          // タイムアウト時にインターバルもクリア
-          setTimeout(() => {
-            clearInterval(checkInterval);
-          }, 90000);
         });
       };
 
@@ -968,9 +994,6 @@ const ConversationPage: React.FC = () => {
           session.id,
           i18n.language || "ja"
         );
-
-        // 分析開始情報をlocalStorageに保存
-        localStorage.setItem(`session_${session.id}_analysisStarted`, "true");
       } catch {
         // 分析開始に失敗しても結果ページへ遷移（従来の同期分析にフォールバック）
       }
@@ -984,25 +1007,22 @@ const ConversationPage: React.FC = () => {
       goalStatuses,
       navigate,
       scenario,
-      setGoalScore,
-      setSessionEnded,
-      goalScore,
       sessionId,
       i18n.language,
     ],
   );
 
   // 手動終了
-  const handleManualEnd = async () => {
-    if (messages.length > 0) {
-      await endSession(messages, currentMetrics);
+  const handleManualEnd = useCallback(async () => {
+    if (messagesRef.current.length > 0) {
+      await endSession(messagesRef.current, currentMetrics);
     } else {
       navigate("/scenarios");
     }
-  };
+  }, [endSession, currentMetrics, navigate]);
 
   // Enter キー処理
-  const handleKeyDown = (event: CompositionEventType) => {
+  const handleKeyDown = useCallback((event: CompositionEventType) => {
     // IME入力中の場合は何もしない
     if (event.nativeEvent.isComposing || event.key === "Process") {
       return;
@@ -1013,108 +1033,100 @@ const ConversationPage: React.FC = () => {
       event.preventDefault();
       sendMessage();
     }
-  };
+  }, [sendMessage]);
 
-  // 音声入力を開始
+  // 音声入力を開始（NovaSonicService経由でマイク音声をストリーミング送信）
   const startSpeechRecognition = useCallback(async () => {
     // すでにリスニング中なら停止（トグル動作）
-    if (isListening && transcribeServiceRef.current) {
-      transcribeServiceRef.current.stopListening();
+    if (isListening) {
+      // マイクキャプチャを停止
+      if (micProcessorRef.current) {
+        micProcessorRef.current.disconnect();
+        micProcessorRef.current = null;
+      }
+      if (micStreamRef.current) {
+        micStreamRef.current.getTracks().forEach(t => t.stop());
+        micStreamRef.current = null;
+      }
+
       setIsListening(false);
       setContinuousListening(false);
 
       // 現在入力中のテキストがあれば送信
       if (userInputRef.current.trim()) {
         sendMessage(userInputRef.current.trim());
-        // sendMessage内で状態がクリアされるので、ここでは不要
       } else {
-        // テキストがない場合は音声認識状態だけクリア
         setConfirmedTranscripts([]);
       }
       return;
     }
 
     try {
-      if (!transcribeServiceRef.current) {
-        throw new Error("TranscribeServiceが初期化されていません");
+      if (!novaSonicServiceRef.current || !novaSonicServiceRef.current.isConnected()) {
+        throw new Error("NovaSonicServiceが接続されていません");
       }
 
-      // WebSocketが接続されていなければ再接続を試みる
-      if (!transcribeServiceRef.current.isConnected() && sessionId) {
-        try {
-          await transcribeServiceRef.current.initializeConnection(sessionId, scenario?.language || 'ja');
-        } catch (error) {
-          console.error("Transcribe WebSocket接続エラー:", error);
-          setSpeechRecognitionError("network");
-          return;
-        }
-      }
-
-      // Amazon Transcribeを使った常時マイク入力を開始
-      await transcribeServiceRef.current.startListening(
-        // 文字起こしコールバック（isPartial: true=途中認識、false=最終確定）
-        (text, isPartial) => {
-          if (!isPartial) {
-            // 最終確定時の処理（無音検出後に来る場合は既に送信済みのためスキップされる）
-            const trimmedText = text.trim();
-            if (!trimmedText) return;
-
-            const cleanedText = normalizeTranscriptText(trimmedText);
-            if (!cleanedText) return;
-
-            setConfirmedTranscripts((prev) => {
-              if (prev.includes(cleanedText)) return prev;
-
-              const newConfirmed = [...prev, cleanedText];
-              const combinedText = newConfirmed.join("\n");
-
-              setUserInput(combinedText);
-              userInputRef.current = combinedText;
-
-              return newConfirmed;
-            });
-          } else {
-            // 途中認識時の処理 - Transcribeは累積的にテキストを返す
-            const currentPartial = text.trim();
-            if (!currentPartial) return;
-
-            // 確定済みテキストと途中認識を組み合わせて表示
-            const combinedText = confirmedTranscripts.length > 0
-              ? confirmedTranscripts.join("\n") + "\n" + currentPartial
-              : currentPartial;
-
-            setUserInput(combinedText);
-            userInputRef.current = combinedText;
-          }
+      // マイクアクセスを取得
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          sampleRate: 16000,
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true,
         },
-        // 無音検出コールバック（引数化されたsendMessage関数を使用）
-        () => {
-          if (userInputRef.current.trim()) {
-            // 現在の入力値を一時変数に保存
-            const currentInput = userInputRef.current.trim();
+      });
+      micStreamRef.current = stream;
 
-            // 引数付きでsendMessage関数を呼び出し（完全な送信処理を実行）
-            sendMessage(currentInput);
-          }
-        },
-        // エラーコールバック
-        (error) => {
-          console.error("音声認識エラー:", error);
-          setIsListening(false);
-          setContinuousListening(false);
-          setSpeechRecognitionError("network");
+      // AudioContextを作成（16kHz PCMキャプチャ用）
+      const audioContext = new AudioContext({ sampleRate: 16000 });
+      micAudioContextRef.current = audioContext;
+
+      const source = audioContext.createMediaStreamSource(stream);
+
+      // ScriptProcessorNodeでPCMデータをキャプチャ（bufferSize: 4096）
+      const processor = audioContext.createScriptProcessor(4096, 1, 1);
+      micProcessorRef.current = processor;
+
+      processor.onaudioprocess = (event) => {
+        const inputData = event.inputBuffer.getChannelData(0);
+
+        // Float32 → Int16 PCM変換
+        const pcmData = new Int16Array(inputData.length);
+        for (let i = 0; i < inputData.length; i++) {
+          const s = Math.max(-1, Math.min(1, inputData[i]));
+          pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
         }
-      );
+
+        // Int16 PCM → Base64エンコード
+        const uint8Array = new Uint8Array(pcmData.buffer);
+        let binary = '';
+        for (let i = 0; i < uint8Array.length; i++) {
+          binary += String.fromCharCode(uint8Array[i]);
+        }
+        const base64Audio = btoa(binary);
+
+        // NovaSonicService経由で送信
+        if (novaSonicServiceRef.current?.isConnected()) {
+          novaSonicServiceRef.current.sendAudioChunk(base64Audio);
+        }
+      };
+
+      source.connect(processor);
+      processor.connect(audioContext.destination);
 
       setIsListening(true);
       setContinuousListening(true);
       setSpeechRecognitionError(null);
     } catch (error) {
       console.error("音声認識の開始に失敗:", error);
-      setSpeechRecognitionError("not-supported");
+      if (error instanceof DOMException && error.name === 'NotAllowedError') {
+        setSpeechRecognitionError("permission");
+      } else {
+        setSpeechRecognitionError("not-supported");
+      }
       setIsListening(false);
     }
-  }, [isListening, sessionId, sendMessage, confirmedTranscripts, normalizeTranscriptText, scenario?.language]);
+  }, [isListening, sendMessage]);
 
   // 音声認識を停止し、テキスト入力モードに切り替え
   const switchToTextInput = useCallback(() => {
@@ -1122,12 +1134,15 @@ const ConversationPage: React.FC = () => {
     setIsListening(false);
     setContinuousListening(false);
 
-    // Transcribeサービスの停止
-    if (transcribeServiceRef.current && transcribeServiceRef.current.isListening()) {
-      transcribeServiceRef.current.stopListening();
+    // マイクキャプチャの停止
+    if (micProcessorRef.current) {
+      micProcessorRef.current.disconnect();
+      micProcessorRef.current = null;
     }
-
-    // 部分認識をクリア（確定済みテキストは保持）
+    if (micStreamRef.current) {
+      micStreamRef.current.getTracks().forEach(t => t.stop());
+      micStreamRef.current = null;
+    }
 
     // ユーザー入力を確定済みテキストのみに更新
     if (confirmedTranscripts.length > 0) {
@@ -1173,7 +1188,9 @@ const ConversationPage: React.FC = () => {
         // 必須ゴールがすべて達成された場合、セッションを終了
         if (areAllRequiredGoalsAchieved(goalStatuses, goals)) {
           setTimeout(async () => {
-            if (!sessionEnded && messagesRef.current.length > 0) {
+            // WR-012: Refで二重実行を防止
+            if (!sessionEnded && !sessionEndingRef.current && messagesRef.current.length > 0) {
+              sessionEndingRef.current = true;
               await endSession(messagesRef.current, currentMetrics);
             }
           }, 2000);
@@ -1211,6 +1228,7 @@ const ConversationPage: React.FC = () => {
         sessionEnded={sessionEnded}
         onManualEnd={handleManualEnd}
         messageCount={messages.length}
+        sessionRemainingSeconds={sessionRemainingSeconds}
         onToggleRightPanels={() => setRightPanelsVisible((v) => !v)}
         onToggleMetrics={() => setMetricsVisible((v) => !v)}
         onOpenSettings={() => setShowSettings(true)}
@@ -1220,11 +1238,13 @@ const ConversationPage: React.FC = () => {
 
       {/* コンプライアンス違反通知 - ヘッダー下スライドイン */}
       {showComplianceAlert && activeViolation && (
-        <ComplianceAlert
-          violation={activeViolation}
-          open={showComplianceAlert}
-          onClose={() => setShowComplianceAlert(false)}
-        />
+        <Box aria-live="assertive" role="alert">
+          <ComplianceAlert
+            violation={activeViolation}
+            open={showComplianceAlert}
+            onClose={() => setShowComplianceAlert(false)}
+          />
+        </Box>
       )}
 
       {/* メインエリア */}
@@ -1240,12 +1260,14 @@ const ConversationPage: React.FC = () => {
       >
         {/* メトリクスオーバーレイ（左上） */}
         {sessionStarted && (
-          <MetricsOverlay
-            currentMetrics={currentMetrics}
-            prevMetrics={prevMetrics}
-            metricsUpdating={metricsUpdating}
-            visible={metricsVisible}
-          />
+          <Box aria-live="polite" aria-atomic="true">
+            <MetricsOverlay
+              currentMetrics={currentMetrics}
+              prevMetrics={prevMetrics}
+              metricsUpdating={metricsUpdating}
+              visible={metricsVisible}
+            />
+          </Box>
         )}
 
         {/* 右側パネル（ゴール・シナリオ・ペルソナ） */}
@@ -1373,7 +1395,7 @@ const ConversationPage: React.FC = () => {
         sendMessage={sendMessage}
         isProcessing={isProcessing}
         isListening={isListening}
-        isConnecting={connectionState === ConnectionState.CONNECTING}
+        isConnecting={connectionState === WsConnectionState.CONNECTING}
         speechRecognitionError={speechRecognitionError}
         startSpeechRecognition={startSpeechRecognition}
         switchToTextInput={switchToTextInput}
@@ -1388,6 +1410,7 @@ const ConversationPage: React.FC = () => {
         open={showSettings}
         onClose={() => setShowSettings(false)}
         aria-labelledby="settings-dialog-title"
+        aria-describedby="settings-dialog-description"
         maxWidth="sm"
         fullWidth
       >
@@ -1395,6 +1418,9 @@ const ConversationPage: React.FC = () => {
           {t("conversation.settings.title")}
         </DialogTitle>
         <DialogContent>
+          <Box id="settings-dialog-description" sx={{ mb: 1 }}>
+            {t("conversation.settingsDescription")}
+          </Box>
           <SessionSettingsPanel
             audioEnabled={audioEnabled}
             setAudioEnabled={setAudioEnabled}
@@ -1402,8 +1428,6 @@ const ConversationPage: React.FC = () => {
             setAudioVolume={setAudioVolume}
             speechRate={speechRate}
             setSpeechRate={setSpeechRate}
-            silenceThreshold={silenceThreshold}
-            setSilenceThreshold={setSilenceThreshold}
             avatarVisible={avatarVisible}
             setAvatarVisible={setAvatarVisible}
             avatarEnabled={enableAvatar}

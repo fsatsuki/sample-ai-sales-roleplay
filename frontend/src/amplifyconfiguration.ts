@@ -21,10 +21,9 @@ export const amplifyConfig = {
       },
     },
   },
-  // 追加: TranscribeのWebSocketエンドポイント
-  TRANSCRIBE: {
-    WEBSOCKET: {
-      endpoint: import.meta.env.VITE_TRANSCRIBE_WEBSOCKET_URL || "",
-    }
+  // Nova 2 Sonic AgentCore Runtime設定
+  NOVA_SONIC: {
+    agentEndpoint: import.meta.env.VITE_NOVA_SONIC_AGENT_ENDPOINT || "",
+    region: import.meta.env.VITE_NOVA_SONIC_AGENT_REGION || import.meta.env.VITE_AWS_REGION,
   },
 };

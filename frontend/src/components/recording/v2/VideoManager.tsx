@@ -45,8 +45,7 @@ const VideoManager = forwardRef<VideoManagerRef, VideoManagerProps>(({
     console.log(`録画完了: ${key}`);
     setVideoKey(key);
 
-    // セッション情報に録画キーを関連付けて保存
-    localStorage.setItem(`session_${sessionId}_videoKey`, key);
+    // 録画キーを保存（ConversationPageのwaitForRecordingUploadで参照）
     localStorage.setItem("lastRecordingKey", key);
   };
 
@@ -78,12 +77,12 @@ const VideoManager = forwardRef<VideoManagerRef, VideoManagerProps>(({
   useEffect(() => {
     if (sessionEnded && sessionStarted && videoRecorderRef.current) {
       console.log("VideoManager: sessionEnded検知による録画停止処理");
-      
+
       // 録画停止処理を確実に実行
       const forceStopWithRetry = async () => {
         let attempts = 0;
         const maxAttempts = 3;
-        
+
         while (attempts < maxAttempts) {
           try {
             console.log(`VideoManager: 録画停止試行 ${attempts + 1}/${maxAttempts}`);
@@ -95,19 +94,19 @@ const VideoManager = forwardRef<VideoManagerRef, VideoManagerProps>(({
           } catch (error) {
             console.error(`VideoManager: 録画停止試行 ${attempts + 1} でエラー:`, error);
             attempts++;
-            
+
             if (attempts < maxAttempts) {
               // 1秒待ってリトライ
               await new Promise(resolve => setTimeout(resolve, 1000));
             }
           }
         }
-        
+
         if (attempts >= maxAttempts) {
           console.error("VideoManager: 録画停止が最大試行回数に達しました");
         }
       };
-      
+
       // 少し遅延させてから録画停止を確実に実行
       setTimeout(() => {
         forceStopWithRetry();

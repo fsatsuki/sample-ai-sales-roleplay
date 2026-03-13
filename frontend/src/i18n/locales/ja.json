@@ -164,9 +164,7 @@
       "outputOff": "音声出力 OFF",
       "volume": "音量: {{volume}}%",
       "speechRate": "読み上げ速度: {{rate}}x",
-      "silenceThreshold": "無音検出時間: {{threshold}}秒",
-      "npcResponseNote": "※ NPCの応答が音声で再生されます",
-      "silenceNote": "※ この時間無音が続くと自動送信されます"
+      "npcResponseNote": "※ NPCの応答が音声で再生されます"
     },
     "npcRole": "{{role}}",
     "endConversation": "商談終了",
@@ -181,6 +179,8 @@
       "continueVoice": "音声入力を継続（既存のテキストは保持されます）"
     },
     "turn": "ターン",
+    "remainingTime": "残り時間: {{time}}",
+    "elapsedTime": "経過時間: {{time}}",
     "emoji": {
       "emotionState": "感情状態",
       "description": "NPCの現在の感情状態を示しています"
@@ -204,6 +204,9 @@
     "voiceOutput": "音声出力",
     "npcVoicePlayback": "※NPCの応答が音声で再生されます",
     "expandSettings": "展開して設定を表示",
+    "defaultInitialMessage": "こんにちは。{{company}}の{{name}}です。本日はお忙しい中、お時間をいただきありがとうございます。どのようなご提案でしょうか？",
+    "sessionTitle": "{{name}}との会話",
+    "settingsDescription": "音声出力やアバター表示などのセッション設定を変更できます。",
     "chatLog": {
       "expand": "チャットログを展開",
       "collapse": "チャットログを折りたたむ"
@@ -217,7 +220,12 @@
     "settings": {
       "title": "設定",
       "avatarOn": "3Dアバター表示 ON",
-      "avatarOff": "3Dアバター表示 OFF"
+      "avatarOff": "3Dアバター表示 OFF",
+      "endpointingSensitivity": "ターン検出感度",
+      "endpointingSensitivityHigh": "高（短い間で発話終了を検出）",
+      "endpointingSensitivityMedium": "中（標準）",
+      "endpointingSensitivityLow": "低（長い間を許容）",
+      "endpointingSensitivityNote": "※ 次回セッション開始時に反映されます"
     }
   },
   "metrics": {

@@ -264,33 +264,6 @@ const BasicInfoStep: React.FC<BasicInfoStepProps> = ({
           </FormHelperText>
         </FormControl>
 
-        {/* 最大ターン数 */}
-        <FormControl
-          fullWidth
-          margin="normal"
-          error={Boolean(validationErrors?.maxTurns)}
-        >
-          {/* 最大会話ターン数の入力フィールド（1-100の範囲） */}
-          <TextField
-            name="maxTurns"
-            label={t("scenarios.fields.maxTurns")}
-            type="number"
-            value={formData.maxTurns || ""}
-            onChange={(e) => {
-              const value = e.target.value
-                ? parseInt(e.target.value, 10)
-                : undefined;
-              updateFormData({ maxTurns: value });
-            }}
-            inputProps={{ min: 1, max: 100 }}
-            helperText={
-              validationErrors?.maxTurns
-                ? t(validationErrors.maxTurns)
-                : t("scenarios.create.maxTurnsHelp")
-            }
-            data-testid="maxTurns-input"
-          />
-        </FormControl>
       </Box>
     </Box>
   );

@@ -15,7 +15,8 @@
     "test:e2e": "playwright test",
     "test:coverage": "jest --config jest.config.cjs --coverage",
     "validate-i18n": "node scripts/validate-i18n.js",
-    "postinstall": "cd eslint-plugin-i18n-keys && npm install || true"
+    "postinstall": "cd eslint-plugin-i18n-keys && npm install || true",
+    "update_package": "npm i --package-lock-only"
   },
   "dependencies": {
     "@aws-amplify/pubsub": "^6.1.65",
@@ -27,6 +28,9 @@
     "@mui/material": "^7.3.6",
     "@pixiv/three-vrm": "^3.4.5",
     "@types/three": "^0.182.0",
+    "@aws-crypto/sha256-js": "^5.2.0",
+    "@aws-sdk/protocol-http": "^3.374.0",
+    "@aws-sdk/signature-v4": "^3.374.0",
     "aws-amplify": "^6.16.2",
     "chart.js": "^4.5.1",
     "i18next": "^25.7.2",
