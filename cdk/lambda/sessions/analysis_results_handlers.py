@@ -213,15 +213,23 @@ def get_session_data_from_memory(session_id: str, actor_id: str):
             
             # Strands Agents Session Managerのペイロード形式を優先的に処理
             if role_from_payload:
+                # メタデータからスライド提示情報を抽出
+                event_metadata = event.get('metadata', {})
+                presented_slides_str = event_metadata.get('presentedSlides', {}).get('stringValue', '') if isinstance(event_metadata, dict) else ''
+                presented_slides = [int(p) for p in presented_slides_str.split() if p] if presented_slides_str else None
+
                 if role_from_payload in ['USER', 'HUMAN']:
                     if content_text:
-                        messages.append({
+                        msg = {
                             'messageId': event_id,
                             'sessionId': session_id,
                             'sender': 'user',
                             'content': content_text,
                             'timestamp': timestamp,
-                        })
+                        }
+                        if presented_slides:
+                            msg['presentedSlides'] = presented_slides
+                        messages.append(msg)
                 elif role_from_payload in ['ASSISTANT', 'AI', 'AGENT']:
                     if content_text:
                         messages.append({

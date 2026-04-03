@@ -41,6 +41,50 @@ bedrock_model = BedrockModel(
     boto_client_config=boto_config,
 )
 
+# AgentCore Memory設定
+AGENTCORE_MEMORY_ID = os.environ.get("AGENTCORE_MEMORY_ID", "")
+
+
+def _get_slide_history_from_memory(session_id: str) -> List[Dict[str, Any]]:
+    """AgentCore Memoryからスライド提示履歴を取得"""
+    if not AGENTCORE_MEMORY_ID or not session_id:
+        return []
+    
+    try:
+        import boto3
+        client = boto3.client('bedrock-agentcore', region_name=REGION)
+        
+        # メタデータフィルタでslide_presentationイベントのみ取得
+        response = client.list_events(
+            memoryId=AGENTCORE_MEMORY_ID,
+            sessionId=session_id,
+            filter={
+                'eventMetadata': [{
+                    'left': {'metadataKey': 'eventType'},
+                    'operator': 'EQUALS_TO',
+                    'right': {'metadataValue': {'stringValue': 'slide_presentation'}},
+                }],
+            },
+        )
+        
+        slide_history = []
+        for event in response.get('events', []):
+            metadata = event.get('metadata', {})
+            pages_str = metadata.get('presentedSlides', {}).get('stringValue', '')
+            if pages_str:
+                for page in pages_str.split():
+                    slide_history.append({
+                        'pageNumber': int(page),
+                        'eventId': event.get('eventId', ''),
+                        'timestamp': str(event.get('eventTimestamp', '')),
+                    })
+        
+        logger.info(f"Slide history from AgentCore Memory: {len(slide_history)} entries")
+        return slide_history
+    except Exception as e:
+        logger.warning(f"Failed to get slide history from AgentCore Memory: {e}")
+        return []
+
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
@@ -112,8 +156,11 @@ def generate_feedback_with_strands(
     
     for retry_count in range(max_retries):
         try:
+            # AgentCore Memoryからスライド提示履歴を取得
+            slide_history = _get_slide_history_from_memory(session_id)
+
             # プロンプト作成
-            prompt = build_feedback_prompt(metrics, messages, scenario_goals, language)
+            prompt = build_feedback_prompt(metrics, messages, scenario_goals, language, slide_history=slide_history if slide_history else None)
             
             logger.info("Strands Agentでフィードバック生成を実行", extra={
                 "model_id": BEDROCK_MODEL_FEEDBACK,

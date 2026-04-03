@@ -14,6 +14,7 @@ import { AvatarLambdaConstruct } from './api/avatar-lambda';
 import { ScoringLambdaConstruct } from './api/scoring-lambda';
 import { SessionLambdaConstruct } from './api/session-lambda';
 import { ScenarioLambdaConstruct } from './api/scenario-lambda';
+import { SlideConvertLambdaConstruct } from './api/slide-convert-lambda';
 import { RankingsLambdaConstruct } from './api/rankings-lambda';
 import { GuardrailsLambdaConstruct } from './api/guardrails-lambda';
 import { AudioAnalysisLambdaConstruct } from './api/audio-analysis-lambda';
@@ -37,6 +38,7 @@ export interface BackendApiProps {
   knowledgeBaseId: string;
   databaseTables: DatabaseTables;
   pdfStorageBucket: s3.IBucket;
+  slideStorageBucket: s3.IBucket;
   bedrockModels: BedrockModelsConfig;
   agentCoreMemoryId?: string;
 }
@@ -73,6 +75,9 @@ export class Api extends Construct {
 
   /** シナリオ管理Lambda */
   public readonly scenarioLambda: ScenarioLambdaConstruct;
+
+  /** PDF→スライド画像変換Lambda */
+  public readonly slideConvertLambda: SlideConvertLambdaConstruct;
 
   /** ガードレール管理Lambda */
   public readonly guardrailsLambda: GuardrailsLambdaConstruct;
@@ -130,8 +135,20 @@ export class Api extends Construct {
     this.scenarioLambda = new ScenarioLambdaConstruct(this, 'ScenarioLambda', {
       scenariosTable: this.databaseTables.scenariosTable,
       pdfBucket: props.pdfStorageBucket,
+      slideBucket: props.slideStorageBucket,
       knowledgeBaseId: props.knowledgeBaseId,
     });
+
+    // PDF→スライド画像変換Lambda関数
+    this.slideConvertLambda = new SlideConvertLambdaConstruct(this, 'SlideConvertLambda', {
+      scenariosTable: this.databaseTables.scenariosTable,
+      slideBucket: props.slideStorageBucket,
+    });
+
+    // ScenarioLambdaにSlideConvert Lambda関数名を環境変数として設定
+    this.scenarioLambda.function.addEnvironment('SLIDE_CONVERT_FUNCTION', this.slideConvertLambda.function.functionName);
+    // ScenarioLambdaにSlideConvert Lambdaの呼び出し権限を付与
+    this.slideConvertLambda.function.grantInvoke(this.scenarioLambda.function);
 
     // SessionLambdaに各テーブル名を環境変数として設定
     this.sessionLambda.function.addEnvironment('SESSION_FEEDBACK_TABLE', this.databaseTables.sessionFeedbackTable.tableName);

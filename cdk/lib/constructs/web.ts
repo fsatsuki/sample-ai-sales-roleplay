@@ -1,4 +1,4 @@
-import { Stack, CfnOutput, RemovalPolicy } from 'aws-cdk-lib';
+import { Stack, CfnOutput, RemovalPolicy, Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { CloudFrontToS3 } from '@aws-solutions-constructs/aws-cloudfront-s3';
 import { CfnDistribution, Distribution, ViewerProtocolPolicy, CachePolicy, AllowedMethods, ResponseHeadersPolicy, HeadersFrameOption, HeadersReferrerPolicy } from 'aws-cdk-lib/aws-cloudfront';
@@ -81,6 +81,14 @@ export class Web extends Construct {
 
       // WR-004: アバターオリジンにレスポンスヘッダーポリシーを設定（XSS防止）
       const avatarResponseHeadersPolicy = new ResponseHeadersPolicy(this, 'AvatarResponseHeadersPolicy', {
+        corsBehavior: {
+          accessControlAllowCredentials: false,
+          accessControlAllowOrigins: ['*'],
+          accessControlAllowMethods: ['GET', 'HEAD'],
+          accessControlAllowHeaders: ['*'],
+          accessControlMaxAge: Duration.seconds(3600),
+          originOverride: true,
+        },
         securityHeadersBehavior: {
           contentTypeOptions: { override: true },
           frameOptions: { frameOption: HeadersFrameOption.DENY, override: true },
@@ -112,6 +120,12 @@ export class Web extends Construct {
             '.gitignore',
             '*.md',
             'README.md',
+            '.claude',
+            '.vscode',
+            'coverage',
+            'playwright-report',
+            'test-results',
+            'tmp'
           ],
         },
       ],

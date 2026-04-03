@@ -51,7 +51,7 @@ export class TranscribeService {
    * コンストラクタ - シングルトンパターン
    */
   private constructor() {
-    console.log("TranscribeService初期化");
+    // シングルトン初期化
   }
 
   /**
@@ -61,7 +61,6 @@ export class TranscribeService {
    */
   public setWebSocketEndpoint(url: string): void {
     this.websocketUrl = url;
-    console.log(`WebSocketエンドポイントを設定: ${url}`);
   }
 
   /**
@@ -72,7 +71,6 @@ export class TranscribeService {
   public setSilenceThreshold(thresholdMs: number): void {
     const clampedThreshold = Math.max(500, Math.min(10000, thresholdMs));
     this.silenceThresholdMs = clampedThreshold;
-    console.log(`無音検出時間を設定: ${clampedThreshold}ms`);
   }
 
   /**
@@ -90,7 +88,6 @@ export class TranscribeService {
    */
   public setVoiceThreshold(threshold: number): void {
     this.voiceThreshold = Math.max(0.1, Math.min(10.0, threshold));
-    console.log(`音声判定閾値を設定: ${this.voiceThreshold}`);
   }
 
   /**
@@ -103,7 +100,7 @@ export class TranscribeService {
     if (this.connectionState !== newState) {
       const oldState = this.connectionState;
       this.connectionState = newState;
-      console.log(`接続状態変更: ${oldState} → ${newState}`);
+      console.warn(`接続状態変更: ${oldState} → ${newState}`);
 
       // 接続状態変更コールバックを実行
       if (this.onConnectionStateChangeCallback) {
@@ -152,7 +149,6 @@ export class TranscribeService {
     // セッションIDと言語情報を保存
     this.currentSessionId = sessionId;
     this.language = language || 'ja';
-    console.log(`セッションID: ${this.currentSessionId}, 言語設定: ${this.language}`);
     if (!this.websocketUrl) {
       this.setConnectionState(ConnectionState.CONNECTION_ERROR);
       throw new Error('WebSocketエンドポイントが設定されていません');
@@ -176,20 +172,17 @@ export class TranscribeService {
 
       // 認証トークン付きの接続URL
       const authenticatedUrl = `${this.websocketUrl}?session=${encodeURIComponent(sessionId)}&token=${encodeURIComponent(token)}`;
-      console.log(`WebSocket認証付き接続を初期化: ${this.websocketUrl}?session=${encodeURIComponent(sessionId)}&token=***`);
 
       return new Promise((resolve, reject) => {
         try {
           this.socket = new WebSocket(authenticatedUrl);
 
           this.socket.onopen = () => {
-            console.log('WebSocket接続確立成功!');
             this.setConnectionState(ConnectionState.CONNECTED);
             resolve();
           };
 
           this.socket.onmessage = (event) => {
-            // console.log('WebSocketメッセージ受信:', event.data);
             try {
               const data = JSON.parse(event.data);
               if (data.transcript && this.onTranscriptCallback) {
@@ -205,21 +198,17 @@ export class TranscribeService {
           };
 
           this.socket.onerror = (error) => {
-            console.error('WebSocketエラー詳細:', error);
-            console.error('WebSocketエラー状態:', {
-              readyState: this.socket?.readyState,
-              url: this.socket?.url
-            });
+            console.error('WebSocketエラー:', error);
             this.setConnectionState(ConnectionState.CONNECTION_ERROR);
             reject(error);
           };
 
           this.socket.onclose = (event) => {
-            console.log(`WebSocket切断詳細: コード=${event.code}, 理由=${event.reason}, wasClean=${event.wasClean}`);
+            console.warn(`WebSocket切断: コード=${event.code}, wasClean=${event.wasClean}`);
 
             // 音声認識中だった場合は、次の音声検出時に自動再接続を準備
             if (this.isRecording) {
-              console.log('音声認識中の切断を検出、次の音声で再接続します');
+              console.warn('音声認識中の切断を検出、次の音声で再接続します');
             }
             this.setConnectionState(ConnectionState.DISCONNECTED);
           };
@@ -247,7 +236,6 @@ export class TranscribeService {
   private async autoReconnect(): Promise<void> {
     // 既に再接続中なら、その完了を待つ
     if (this.reconnectPromise) {
-      console.log('既に再接続処理中、完了を待機');
       return this.reconnectPromise;
     }
 
@@ -257,16 +245,14 @@ export class TranscribeService {
     }
 
     this.isReconnecting = true;
-    console.log('🔄 自動再接続を開始');
 
     this.reconnectPromise = (async () => {
       try {
         await this.initializeConnection(this.currentSessionId, this.language);
-        console.log('✅ 自動再接続完了');
+        console.warn('自動再接続完了');
 
         // バッファに溜まった音声データを送信
         if (this.audioBuffer.length > 0) {
-          console.log(`📤 バッファの音声データを送信: ${this.audioBuffer.length}件`);
           for (const bufferedData of this.audioBuffer) {
             if (this.socket?.readyState === WebSocket.OPEN) {
               this.socket.send(JSON.stringify({
@@ -277,7 +263,6 @@ export class TranscribeService {
             }
           }
           this.audioBuffer = [];
-          console.log('✅ バッファの音声データ送信完了');
         }
       } catch (error) {
         console.error('❌ 自動再接続失敗:', error);
@@ -354,11 +339,9 @@ export class TranscribeService {
 
           if (isVoiceDetected) {
             this.lastVoiceActivityTime = Date.now();
-            // console.log(`🎤 音声検出: レベル=${audioLevel.toFixed(2)} (閾値: ${voiceThreshold})`);
 
             // 音声検出時に接続が切れていたら自動再接続
             if (!this.isConnected() && !this.isReconnecting && this.currentSessionId) {
-              console.log('🎤 音声検出 & 未接続 → 自動再接続開始');
               this.autoReconnect().catch(err => {
                 console.error('自動再接続エラー:', err);
                 if (this.onErrorCallback) {
@@ -382,7 +365,6 @@ export class TranscribeService {
           // 接続状態に応じて送信またはバッファリング
           if (this.socket?.readyState === WebSocket.OPEN && !this.isReconnecting) {
             // 接続済み：直接送信
-            // console.log(`音声データ送信: ${uint8Array.length}バイト, レベル: ${audioLevel.toFixed(2)}`);
             this.socket.send(JSON.stringify({
               action: 'sendAudio',
               audio: base64Audio,
@@ -390,7 +372,6 @@ export class TranscribeService {
             }));
           } else if (isVoiceDetected) {
             // 音声検出中で未接続：バッファに保存
-            console.log('🔊 音声データをバッファに保存');
             this.audioBuffer.push({
               audio: base64Audio,
               language: this.language
@@ -415,7 +396,6 @@ export class TranscribeService {
       this.startSilenceDetection();
 
       this.isRecording = true;
-      console.log('音声認識を開始しました (PCM 16kHz)');
     } catch (error) {
       console.error('音声認識開始エラー:', error);
       if (this.onErrorCallback) {
@@ -436,31 +416,19 @@ export class TranscribeService {
       clearInterval(this.silenceDetectionTimer);
     }
 
-    // console.log(`無音検出タイマー開始: 閾値=${this.silenceThresholdMs}ms, チェック間隔=500ms`);
-
     // 定期的に無音状態をチェック
     this.silenceDetectionTimer = setInterval(() => {
       const now = Date.now();
       const elapsed = now - this.lastVoiceActivityTime;
 
-      // デバッグログ: 定期的に経過時間を確認
-      // if (elapsed % 2000 < 500) { // 約2秒ごとにログ出力
-      //   console.log(`無音チェック: ${elapsed}ms経過, 閾値: ${this.silenceThresholdMs}ms`);
-      // }
-
       // 設定された閾値より長く無音が続いた場合
       if (elapsed > this.silenceThresholdMs) {
-        // console.log(`🔇 無音検出トリガー: ${elapsed}ms経過, コールバック有無: ${!!this.onSilenceDetectedCallback}`);
 
         if (this.onSilenceDetectedCallback) {
-          // console.log(`📤 無音検出コールバック実行`);
           this.onSilenceDetectedCallback();
 
           // 無音検出後は検出を一時停止（連続検出を防止）
           this.lastVoiceActivityTime = now;
-          // console.log(`⏰ 無音検出後の音声アクティビティ時刻をリセット`);
-        } else {
-          // console.warn(`⚠️ 無音検出コールバックが設定されていません`);
         }
       }
     }, 500);
@@ -497,7 +465,6 @@ export class TranscribeService {
     }
 
     this.isRecording = false;
-    console.log('音声認識を停止しました (Web Audio API)');
   }
 
   /**

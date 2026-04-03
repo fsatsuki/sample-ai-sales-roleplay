@@ -52,6 +52,8 @@ import { addMetricsChangesToMessages } from "../utils/dialogueEngine";
 import VideoFeedback from "../components/recording/VideoFeedback";
 import ReferenceCheck from "../components/referenceCheck/ReferenceCheck";
 import type { ScenarioInfo } from "../types/api";
+import type { SlideImageInfo } from "../types/api";
+import SlideZoomModal from "../components/conversation/SlideZoomModal";
 import ComplianceViolationsList from "../components/compliance/ComplianceViolationsList";
 
 // サービスのインポート
@@ -107,8 +109,12 @@ const ResultPage: React.FC = () => {
 
   // シナリオ情報の状態管理
   const [scenario, setScenario] = useState<ScenarioInfo | null>(null);
+  // スライド画像の状態管理
+  const [slideImages, setSlideImages] = useState<SlideImageInfo[]>([]);
+  const [slideZoomOpen, setSlideZoomOpen] = useState(false);
+  const [slideZoomIndex, setSlideZoomIndex] = useState(0);
 
-  // シナリオ情報を取得するeffect
+  // シナリオ情報とスライド画像を取得するeffect
   useEffect(() => {
     const fetchScenario = async () => {
       if (session?.scenarioId) {
@@ -118,6 +124,23 @@ const ResultPage: React.FC = () => {
             session.scenarioId,
           );
           setScenario(scenarioInfo);
+
+          // スライド画像を取得
+          if (scenarioInfo.presentationFile) {
+            try {
+              const slidesResp = await apiService.getSlideImages(session.scenarioId);
+              if (slidesResp.status === 'ready' && slidesResp.slides.length > 0) {
+                setSlideImages(slidesResp.slides.map(s => ({
+                  pageNumber: s.pageNumber,
+                  imageKey: s.imageKey,
+                  imageUrl: s.imageUrl,
+                  thumbnailUrl: s.thumbnailUrl,
+                })));
+              }
+            } catch {
+              // スライド取得失敗は無視
+            }
+          }
         } catch (error) {
           console.error(t("results.scenarioInfoFetchFailed") + ":", error);
         }
@@ -127,7 +150,8 @@ const ResultPage: React.FC = () => {
     if (session) {
       fetchScenario();
     }
-  }, [session, t]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.scenarioId, t]);
 
   // 状態管理
   const [loading, setLoading] = useState<boolean>(false);
@@ -363,6 +387,7 @@ const ResultPage: React.FC = () => {
             content: msg.content,
             timestamp: new Date(msg.timestamp),
             metrics: undefined, // メトリクス情報は別途処理
+            presentedSlides: msg.presentedSlides,
           }));
 
         // メッセージにメトリクス変化情報を追加
@@ -705,464 +730,368 @@ const ResultPage: React.FC = () => {
       : 0;
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      {/* タブナビゲーション */}
-      <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
-        <Tabs
-          value={tabValue}
-          onChange={handleTabChange}
-          aria-label="result tabs"
-          centered
-        >
-          <Tab
-            icon={<AssessmentIcon />}
-            label={t("results.evaluationSummary")}
-            id="result-tab-0"
-            aria-controls="result-tabpanel-0"
-          />
-          <Tab
-            icon={<ChatBubbleIcon />}
-            label={t("results.conversationHistory")}
-            id="result-tab-1"
-            aria-controls="result-tabpanel-1"
-          />
-          <Tab
-            icon={<GavelIcon />}
-            label={t("compliance.title")}
-            id="result-tab-2"
-            aria-controls="result-tabpanel-2"
-          />
-          {!isAudioAnalysis && (
+    <>
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        {/* タブナビゲーション */}
+        <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
+          <Tabs
+            value={tabValue}
+            onChange={handleTabChange}
+            aria-label="result tabs"
+            centered
+          >
             <Tab
-              icon={<VideocamIcon />}
-              label={t("videoAnalysis.title")}
-              id="result-tab-3"
-              aria-controls="result-tabpanel-3"
+              icon={<AssessmentIcon />}
+              label={t("results.evaluationSummary")}
+              id="result-tab-0"
+              aria-controls="result-tabpanel-0"
             />
-          )}
-          <Tab
-            icon={<DescriptionIcon />}
-            label={t("referenceCheck.title")}
-            id={isAudioAnalysis ? "result-tab-3" : "result-tab-4"}
-            aria-controls={isAudioAnalysis ? "result-tabpanel-3" : "result-tabpanel-4"}
-          />
-        </Tabs>
-      </Box>
+            <Tab
+              icon={<ChatBubbleIcon />}
+              label={t("results.conversationHistory")}
+              id="result-tab-1"
+              aria-controls="result-tabpanel-1"
+            />
+            <Tab
+              icon={<GavelIcon />}
+              label={t("compliance.title")}
+              id="result-tab-2"
+              aria-controls="result-tabpanel-2"
+            />
+            {!isAudioAnalysis && (
+              <Tab
+                icon={<VideocamIcon />}
+                label={t("videoAnalysis.title")}
+                id="result-tab-3"
+                aria-controls="result-tabpanel-3"
+              />
+            )}
+            <Tab
+              icon={<DescriptionIcon />}
+              label={t("referenceCheck.title")}
+              id={isAudioAnalysis ? "result-tab-3" : "result-tab-4"}
+              aria-controls={isAudioAnalysis ? "result-tabpanel-3" : "result-tabpanel-4"}
+            />
+          </Tabs>
+        </Box>
 
-      <TabPanel value={tabValue} index={0}>
-        {/* 総合スコア */}
-        <Card sx={{ mb: 4, textAlign: "center", p: 3 }}>
-          <CardContent>
-            {detailedFeedback ? (
-              <>
-                <Box
-                  display="flex"
-                  justifyContent="center"
-                  alignItems="center"
-                  gap={2}
-                  mb={2}
-                >
-                  {getScoreIcon(detailedFeedback.scores.overall)}
-                  <Typography
-                    variant="h2"
-                    sx={{
-                      color: getScoreColor(detailedFeedback.scores.overall),
-                      fontWeight: "bold",
-                    }}
+        <TabPanel value={tabValue} index={0}>
+          {/* 総合スコア */}
+          <Card sx={{ mb: 4, textAlign: "center", p: 3 }}>
+            <CardContent>
+              {detailedFeedback ? (
+                <>
+                  <Box
+                    display="flex"
+                    justifyContent="center"
+                    alignItems="center"
+                    gap={2}
+                    mb={2}
                   >
-                    {detailedFeedback.scores.overall}
-                  </Typography>
-                  <Typography variant="h4" color="text.secondary">
-                    / 100
-                  </Typography>
-                </Box>
-                <Chip
-                  label={getPerformanceLevel(detailedFeedback.scores.overall)}
-                  color={
-                    detailedFeedback.scores.overall >= 80
-                      ? "success"
-                      : detailedFeedback.scores.overall >= 60
-                        ? "warning"
-                        : "error"
-                  }
-                  sx={{ fontSize: "1rem", py: 1 }}
-                />
-              </>
-            ) : (
-              <>
-                <Alert severity="warning" sx={{ mb: 2 }}>
-                  {t("results.generatingScoreAnalysis")}
-                </Alert>
-                <Typography variant="h6" color="text.secondary">
-                  {t("results.preparingDetailedAnalysis")}
-                </Typography>
-              </>
-            )}
-            {session.endReason && (
-              <Typography
-                variant="body1"
-                sx={{ mt: 2, fontWeight: "medium", color: "text.primary" }}
-              >
-                {session.endReason}
-              </Typography>
-            )}
-            <Typography variant="body1" color="text.secondary" mt={2}>
-              {t("results.sessionStats", {
-                duration: duration,
-                count: session.messages.length,
-              })}
-            </Typography>
-          </CardContent>
-        </Card>
-
-        {/* エラー表示 */}
-        {error && (
-          <Alert severity="error" sx={{ mb: 4 }}>
-            {error}
-          </Alert>
-        )}
-
-        {/* ローディング表示 */}
-        {loading ? (
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              my: 4,
-            }}
-          >
-            <Typography variant="h6" color="text.secondary" mb={2}>
-              {t("results.loadingAnalysis")}
-            </Typography>
-            <LinearProgress sx={{ width: "50%", mb: 2 }} />
-          </Box>
-        ) : (
-          <Box
-            display="flex"
-            gap={3}
-            sx={{ flexDirection: { xs: "column", md: "row" } }}
-          >
-            {/* 詳細評価カラム */}
-            <Box flexGrow={1} sx={{ minWidth: { xs: "100%", md: "300px" } }}>
-              {/* チャート表示 - パフォーマンス分析（詳細フィードバックがある場合のみ表示） */}
-              {detailedFeedback && (
-                <Card sx={{ mb: 3, p: 2 }}>
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom>
-                      {t("results.performanceAnalysis")}
-                    </Typography>
-                    <Box
+                    {getScoreIcon(detailedFeedback.scores.overall)}
+                    <Typography
+                      variant="h2"
                       sx={{
-                        height: 300,
-                        mt: 2,
-                        mx: "auto",
-                        width: "100%",
-                        maxWidth: "500px",
+                        color: getScoreColor(detailedFeedback.scores.overall),
+                        fontWeight: "bold",
                       }}
                     >
-                      <Radar
-                        data={{
-                          labels: [
-                            t("results.skillLabels.communication"),
-                            t("results.skillLabels.needsAnalysis"),
-                            t("results.skillLabels.proposalQuality"),
-                            t("results.skillLabels.flexibility"),
-                            t("results.skillLabels.trustBuilding"),
-                          ],
-                          datasets: [
-                            {
-                              label: t("results.currentScore"),
-                              data: [
-                                detailedFeedback.scores.communication || 0,
-                                detailedFeedback.scores.needsAnalysis || 0,
-                                detailedFeedback.scores.proposalQuality || 0,
-                                detailedFeedback.scores.flexibility || 0,
-                                detailedFeedback.scores.trustBuilding || 0,
-                              ],
-                              backgroundColor: "rgba(54, 162, 235, 0.2)",
-                              borderColor: "rgba(54, 162, 235, 1)",
-                              borderWidth: 1,
-                            },
-                          ],
+                      {detailedFeedback.scores.overall}
+                    </Typography>
+                    <Typography variant="h4" color="text.secondary">
+                      / 100
+                    </Typography>
+                  </Box>
+                  <Chip
+                    label={getPerformanceLevel(detailedFeedback.scores.overall)}
+                    color={
+                      detailedFeedback.scores.overall >= 80
+                        ? "success"
+                        : detailedFeedback.scores.overall >= 60
+                          ? "warning"
+                          : "error"
+                    }
+                    sx={{ fontSize: "1rem", py: 1 }}
+                  />
+                </>
+              ) : (
+                <>
+                  <Alert severity="warning" sx={{ mb: 2 }}>
+                    {t("results.generatingScoreAnalysis")}
+                  </Alert>
+                  <Typography variant="h6" color="text.secondary">
+                    {t("results.preparingDetailedAnalysis")}
+                  </Typography>
+                </>
+              )}
+              {session.endReason && (
+                <Typography
+                  variant="body1"
+                  sx={{ mt: 2, fontWeight: "medium", color: "text.primary" }}
+                >
+                  {session.endReason}
+                </Typography>
+              )}
+              <Typography variant="body1" color="text.secondary" mt={2}>
+                {t("results.sessionStats", {
+                  duration: duration,
+                  count: session.messages.length,
+                })}
+              </Typography>
+            </CardContent>
+          </Card>
+
+          {/* エラー表示 */}
+          {error && (
+            <Alert severity="error" sx={{ mb: 4 }}>
+              {error}
+            </Alert>
+          )}
+
+          {/* ローディング表示 */}
+          {loading ? (
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                my: 4,
+              }}
+            >
+              <Typography variant="h6" color="text.secondary" mb={2}>
+                {t("results.loadingAnalysis")}
+              </Typography>
+              <LinearProgress sx={{ width: "50%", mb: 2 }} />
+            </Box>
+          ) : (
+            <Box
+              display="flex"
+              gap={3}
+              sx={{ flexDirection: { xs: "column", md: "row" } }}
+            >
+              {/* 詳細評価カラム */}
+              <Box flexGrow={1} sx={{ minWidth: { xs: "100%", md: "300px" } }}>
+                {/* チャート表示 - パフォーマンス分析（詳細フィードバックがある場合のみ表示） */}
+                {detailedFeedback && (
+                  <Card sx={{ mb: 3, p: 2 }}>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        {t("results.performanceAnalysis")}
+                      </Typography>
+                      <Box
+                        sx={{
+                          height: 300,
+                          mt: 2,
+                          mx: "auto",
+                          width: "100%",
+                          maxWidth: "500px",
                         }}
-                        options={{
-                          responsive: true,
-                          maintainAspectRatio: false,
-                          scales: {
-                            r: {
-                              beginAtZero: true,
-                              max: 10,
-                              min: 0,
-                              ticks: {
-                                stepSize: 2,
+                      >
+                        <Radar
+                          data={{
+                            labels: [
+                              t("results.skillLabels.communication"),
+                              t("results.skillLabels.needsAnalysis"),
+                              t("results.skillLabels.proposalQuality"),
+                              t("results.skillLabels.flexibility"),
+                              t("results.skillLabels.trustBuilding"),
+                            ],
+                            datasets: [
+                              {
+                                label: t("results.currentScore"),
+                                data: [
+                                  detailedFeedback.scores.communication || 0,
+                                  detailedFeedback.scores.needsAnalysis || 0,
+                                  detailedFeedback.scores.proposalQuality || 0,
+                                  detailedFeedback.scores.flexibility || 0,
+                                  detailedFeedback.scores.trustBuilding || 0,
+                                ],
+                                backgroundColor: "rgba(54, 162, 235, 0.2)",
+                                borderColor: "rgba(54, 162, 235, 1)",
+                                borderWidth: 1,
                               },
-                              pointLabels: {
-                                font: {
-                                  size: 12,
+                            ],
+                          }}
+                          options={{
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                              r: {
+                                beginAtZero: true,
+                                max: 10,
+                                min: 0,
+                                ticks: {
+                                  stepSize: 2,
+                                },
+                                pointLabels: {
+                                  font: {
+                                    size: 12,
+                                  },
                                 },
                               },
                             },
-                          },
-                        }}
-                      />
-                    </Box>
-                  </CardContent>
-                </Card>
-              )}
+                          }}
+                        />
+                      </Box>
+                    </CardContent>
+                  </Card>
+                )}
 
-              {/* メトリクス変化チャート（リアルタイムメトリクス履歴がある場合のみ表示） */}
-              {realtimeMetricsHistory.length > 0 && (
+                {/* メトリクス変化チャート（リアルタイムメトリクス履歴がある場合のみ表示） */}
+                {realtimeMetricsHistory.length > 0 && (
+                  <Card sx={{ mb: 3, p: 2 }}>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        {t("results.metricsChange")}
+                      </Typography>
+                      <Box
+                        sx={{
+                          height: 300,
+                          mt: 2,
+                          mx: "auto",
+                          width: "100%",
+                          maxWidth: "500px",
+                        }}
+                      >
+                        <Line
+                          data={{
+                            labels: realtimeMetricsHistory.map((_, index) =>
+                              t("results.round", { count: index + 1 }),
+                            ),
+                            datasets: [
+                              {
+                                label: t("metrics.angerMeter"),
+                                data: realtimeMetricsHistory.map((m) =>
+                                  Number(m.angerLevel),
+                                ),
+                                borderColor: "rgba(255, 99, 132, 1)",
+                                backgroundColor: "rgba(255, 99, 132, 0.2)",
+                              },
+                              {
+                                label: t("metrics.trustLevel"),
+                                data: realtimeMetricsHistory.map((m) =>
+                                  Number(m.trustLevel),
+                                ),
+                                borderColor: "rgba(54, 162, 235, 1)",
+                                backgroundColor: "rgba(54, 162, 235, 0.2)",
+                              },
+                              {
+                                label: t("metrics.progressLevel"),
+                                data: realtimeMetricsHistory.map((m) =>
+                                  Number(m.progressLevel),
+                                ),
+                                borderColor: "rgba(75, 192, 192, 1)",
+                                backgroundColor: "rgba(75, 192, 192, 0.2)",
+                              },
+                            ],
+                          }}
+                          options={{
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                              y: {
+                                min: 0,
+                                max: 10,
+                                ticks: {
+                                  stepSize: 2,
+                                },
+                              },
+                            },
+                            plugins: {
+                              legend: {
+                                position: "top",
+                                labels: {
+                                  boxWidth: 15,
+                                  padding: 10,
+                                },
+                              },
+                            },
+                          }}
+                        />
+                      </Box>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* キーポイント分析 */}
                 <Card sx={{ mb: 3, p: 2 }}>
                   <CardContent>
-                    <Typography variant="h6" gutterBottom>
-                      {t("results.metricsChange")}
-                    </Typography>
-                    <Box
-                      sx={{
-                        height: 300,
-                        mt: 2,
-                        mx: "auto",
-                        width: "100%",
-                        maxWidth: "500px",
-                      }}
-                    >
-                      <Line
-                        data={{
-                          labels: realtimeMetricsHistory.map((_, index) =>
-                            t("results.round", { count: index + 1 }),
-                          ),
-                          datasets: [
-                            {
-                              label: t("metrics.angerMeter"),
-                              data: realtimeMetricsHistory.map((m) =>
-                                Number(m.angerLevel),
-                              ),
-                              borderColor: "rgba(255, 99, 132, 1)",
-                              backgroundColor: "rgba(255, 99, 132, 0.2)",
-                            },
-                            {
-                              label: t("metrics.trustLevel"),
-                              data: realtimeMetricsHistory.map((m) =>
-                                Number(m.trustLevel),
-                              ),
-                              borderColor: "rgba(54, 162, 235, 1)",
-                              backgroundColor: "rgba(54, 162, 235, 0.2)",
-                            },
-                            {
-                              label: t("metrics.progressLevel"),
-                              data: realtimeMetricsHistory.map((m) =>
-                                Number(m.progressLevel),
-                              ),
-                              borderColor: "rgba(75, 192, 192, 1)",
-                              backgroundColor: "rgba(75, 192, 192, 0.2)",
-                            },
-                          ],
-                        }}
-                        options={{
-                          responsive: true,
-                          maintainAspectRatio: false,
-                          scales: {
-                            y: {
-                              min: 0,
-                              max: 10,
-                              ticks: {
-                                stepSize: 2,
-                              },
-                            },
-                          },
-                          plugins: {
-                            legend: {
-                              position: "top",
-                              labels: {
-                                boxWidth: 15,
-                                padding: 10,
-                              },
-                            },
-                          },
-                        }}
-                      />
+                    <Box display="flex" alignItems="center" mb={1}>
+                      <LightbulbIcon color="warning" sx={{ mr: 1 }} />
+                      <Typography variant="h6">
+                        {t("results.keyPointAnalysis")}
+                      </Typography>
                     </Box>
+                    <Divider sx={{ mb: 2 }} />
+
+                    {detailedFeedback ? (
+                      <>
+                        {/* 強み */}
+                        {detailedFeedback.strengths.map(
+                          (strength: string, index: number) => (
+                            <Alert
+                              key={`strength-${index}`}
+                              severity="success"
+                              sx={{ mb: 2 }}
+                            >
+                              {strength}
+                            </Alert>
+                          ),
+                        )}
+
+                        {/* 改善点 */}
+                        {detailedFeedback.improvements.map(
+                          (improvement: string, index: number) => (
+                            <Alert
+                              key={`improvement-${index}`}
+                              severity="warning"
+                              sx={{ mb: 2 }}
+                            >
+                              {improvement}
+                            </Alert>
+                          ),
+                        )}
+
+                        {/* 重要な洞察 */}
+                        {detailedFeedback.keyInsights?.map(
+                          (insight: string, index: number) => (
+                            <Alert
+                              key={`insight-${index}`}
+                              severity="info"
+                              sx={{ mb: 2 }}
+                            >
+                              {insight}
+                            </Alert>
+                          ),
+                        )}
+
+                        {/* 次のステップ */}
+                        {detailedFeedback.nextSteps && (
+                          <Alert severity="info" sx={{ mb: 2 }}>
+                            <Typography variant="subtitle2" gutterBottom>
+                              {t("results.nextSteps")}
+                            </Typography>
+                            {detailedFeedback.nextSteps}
+                          </Alert>
+                        )}
+                      </>
+                    ) : (
+                      <Alert severity="warning" sx={{ mb: 2 }}>
+                        {t("results.detailedFeedbackNotAvailable")}
+                      </Alert>
+                    )}
                   </CardContent>
                 </Card>
-              )}
 
-              {/* キーポイント分析 */}
-              <Card sx={{ mb: 3, p: 2 }}>
-                <CardContent>
-                  <Box display="flex" alignItems="center" mb={1}>
-                    <LightbulbIcon color="warning" sx={{ mr: 1 }} />
-                    <Typography variant="h6">
-                      {t("results.keyPointAnalysis")}
-                    </Typography>
-                  </Box>
-                  <Divider sx={{ mb: 2 }} />
-
-                  {detailedFeedback ? (
-                    <>
-                      {/* 強み */}
-                      {detailedFeedback.strengths.map(
-                        (strength: string, index: number) => (
-                          <Alert
-                            key={`strength-${index}`}
-                            severity="success"
-                            sx={{ mb: 2 }}
-                          >
-                            {strength}
-                          </Alert>
-                        ),
-                      )}
-
-                      {/* 改善点 */}
-                      {detailedFeedback.improvements.map(
-                        (improvement: string, index: number) => (
-                          <Alert
-                            key={`improvement-${index}`}
-                            severity="warning"
-                            sx={{ mb: 2 }}
-                          >
-                            {improvement}
-                          </Alert>
-                        ),
-                      )}
-
-                      {/* 重要な洞察 */}
-                      {detailedFeedback.keyInsights?.map(
-                        (insight: string, index: number) => (
-                          <Alert
-                            key={`insight-${index}`}
-                            severity="info"
-                            sx={{ mb: 2 }}
-                          >
-                            {insight}
-                          </Alert>
-                        ),
-                      )}
-
-                      {/* 次のステップ */}
-                      {detailedFeedback.nextSteps && (
-                        <Alert severity="info" sx={{ mb: 2 }}>
-                          <Typography variant="subtitle2" gutterBottom>
-                            {t("results.nextSteps")}
-                          </Typography>
-                          {detailedFeedback.nextSteps}
-                        </Alert>
-                      )}
-                    </>
-                  ) : (
-                    <Alert severity="warning" sx={{ mb: 2 }}>
-                      {t("results.detailedFeedbackNotAvailable")}
-                    </Alert>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* 詳細評価 */}
-              <Card sx={{ mb: 3 }}>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    {t("results.detailedEvaluation")}
-                  </Typography>
-
-                  {/* 怒りメーター */}
-                  <Box mb={3}>
-                    <Box
-                      display="flex"
-                      justifyContent="space-between"
-                      alignItems="center"
-                      mb={1}
-                    >
-                      <Typography variant="subtitle2">
-                        {t("metrics.angerMeter")}
-                      </Typography>
-                      <Typography variant="body2" fontWeight="bold">
-                        {session.finalMetrics.angerLevel}/10
-                      </Typography>
-                    </Box>
-                    <LinearProgress
-                      variant="determinate"
-                      value={(session.finalMetrics.angerLevel / 10) * 100}
-                      color={
-                        session.finalMetrics.angerLevel >= 7
-                          ? "error"
-                          : session.finalMetrics.angerLevel >= 4
-                            ? "warning"
-                            : "success"
-                      }
-                      sx={{ height: 8, borderRadius: 4 }}
-                    />
-                  </Box>
-
-                  {/* 信頼度 */}
-                  <Box mb={3}>
-                    <Box
-                      display="flex"
-                      justifyContent="space-between"
-                      alignItems="center"
-                      mb={1}
-                    >
-                      <Typography variant="subtitle2">
-                        {t("metrics.trustLevel")}
-                      </Typography>
-                      <Typography variant="body2" fontWeight="bold">
-                        {session.finalMetrics.trustLevel}/10
-                      </Typography>
-                    </Box>
-                    <LinearProgress
-                      variant="determinate"
-                      value={(session.finalMetrics.trustLevel / 10) * 100}
-                      color={
-                        session.finalMetrics.trustLevel >= 7
-                          ? "success"
-                          : session.finalMetrics.trustLevel >= 4
-                            ? "info"
-                            : "error"
-                      }
-                      sx={{ height: 8, borderRadius: 4 }}
-                    />
-                  </Box>
-
-                  {/* 商談進捗度 */}
-                  <Box>
-                    <Box
-                      display="flex"
-                      justifyContent="space-between"
-                      alignItems="center"
-                      mb={1}
-                    >
-                      <Typography variant="subtitle2">
-                        {t("metrics.progressLevel")}
-                      </Typography>
-                      <Typography variant="body2" fontWeight="bold">
-                        {session.finalMetrics.progressLevel}/10
-                      </Typography>
-                    </Box>
-                    <LinearProgress
-                      variant="determinate"
-                      value={(session.finalMetrics.progressLevel / 10) * 100}
-                      color={
-                        session.finalMetrics.progressLevel >= 7
-                          ? "success"
-                          : session.finalMetrics.progressLevel >= 4
-                            ? "info"
-                            : "error"
-                      }
-                      sx={{ height: 8, borderRadius: 4 }}
-                    />
-                  </Box>
-                </CardContent>
-              </Card>
-
-              {/* スキル詳細スコア（詳細フィードバックがある場合のみ表示） */}
-              {detailedFeedback && (
+                {/* 詳細評価 */}
                 <Card sx={{ mb: 3 }}>
                   <CardContent>
                     <Typography variant="h6" gutterBottom>
-                      💯 {t("results.skillDetailedScore")}
+                      {t("results.detailedEvaluation")}
                     </Typography>
 
-                    {/* コミュニケーション力 */}
-                    <Box mb={2}>
+                    {/* 怒りメーター */}
+                    <Box mb={3}>
                       <Box
                         display="flex"
                         justifyContent="space-between"
@@ -1170,24 +1099,28 @@ const ResultPage: React.FC = () => {
                         mb={1}
                       >
                         <Typography variant="subtitle2">
-                          {t("results.skillLabels.communication")}
+                          {t("metrics.angerMeter")}
                         </Typography>
                         <Typography variant="body2" fontWeight="bold">
-                          {detailedFeedback.scores.communication}/10
+                          {session.finalMetrics.angerLevel}/10
                         </Typography>
                       </Box>
                       <LinearProgress
                         variant="determinate"
-                        value={
-                          (detailedFeedback.scores.communication / 10) * 100
+                        value={(session.finalMetrics.angerLevel / 10) * 100}
+                        color={
+                          session.finalMetrics.angerLevel >= 7
+                            ? "error"
+                            : session.finalMetrics.angerLevel >= 4
+                              ? "warning"
+                              : "success"
                         }
-                        color="primary"
                         sx={{ height: 8, borderRadius: 4 }}
                       />
                     </Box>
 
-                    {/* ニーズ把握 */}
-                    <Box mb={2}>
+                    {/* 信頼度 */}
+                    <Box mb={3}>
                       <Box
                         display="flex"
                         justifyContent="space-between"
@@ -1195,196 +1128,27 @@ const ResultPage: React.FC = () => {
                         mb={1}
                       >
                         <Typography variant="subtitle2">
-                          {t("results.skillLabels.needsAnalysis")}
+                          {t("metrics.trustLevel")}
                         </Typography>
                         <Typography variant="body2" fontWeight="bold">
-                          {detailedFeedback.scores.needsAnalysis}/10
+                          {session.finalMetrics.trustLevel}/10
                         </Typography>
                       </Box>
                       <LinearProgress
                         variant="determinate"
-                        value={
-                          (detailedFeedback.scores.needsAnalysis / 10) * 100
+                        value={(session.finalMetrics.trustLevel / 10) * 100}
+                        color={
+                          session.finalMetrics.trustLevel >= 7
+                            ? "success"
+                            : session.finalMetrics.trustLevel >= 4
+                              ? "info"
+                              : "error"
                         }
-                        color="info"
                         sx={{ height: 8, borderRadius: 4 }}
                       />
                     </Box>
 
-                    {/* 提案品質 */}
-                    <Box mb={2}>
-                      <Box
-                        display="flex"
-                        justifyContent="space-between"
-                        alignItems="center"
-                        mb={1}
-                      >
-                        <Typography variant="subtitle2">
-                          {t("results.skillLabels.proposalQuality")}
-                        </Typography>
-                        <Typography variant="body2" fontWeight="bold">
-                          {detailedFeedback.scores.proposalQuality}/10
-                        </Typography>
-                      </Box>
-                      <LinearProgress
-                        variant="determinate"
-                        value={
-                          (detailedFeedback.scores.proposalQuality / 10) * 100
-                        }
-                        color="success"
-                        sx={{ height: 8, borderRadius: 4 }}
-                      />
-                    </Box>
-
-                    {/* 対応の柔軟性 */}
-                    <Box mb={2}>
-                      <Box
-                        display="flex"
-                        justifyContent="space-between"
-                        alignItems="center"
-                        mb={1}
-                      >
-                        <Typography variant="subtitle2">
-                          {t("results.skillLabels.flexibility")}
-                        </Typography>
-                        <Typography variant="body2" fontWeight="bold">
-                          {detailedFeedback.scores.flexibility}/10
-                        </Typography>
-                      </Box>
-                      <LinearProgress
-                        variant="determinate"
-                        value={(detailedFeedback.scores.flexibility / 10) * 100}
-                        color="warning"
-                        sx={{ height: 8, borderRadius: 4 }}
-                      />
-                    </Box>
-
-                    {/* 信頼構築 */}
-                    <Box mb={2}>
-                      <Box
-                        display="flex"
-                        justifyContent="space-between"
-                        alignItems="center"
-                        mb={1}
-                      >
-                        <Typography variant="subtitle2">
-                          {t("results.skillLabels.trustBuilding")}
-                        </Typography>
-                        <Typography variant="body2" fontWeight="bold">
-                          {detailedFeedback.scores.trustBuilding}/10
-                        </Typography>
-                      </Box>
-                      <LinearProgress
-                        variant="determinate"
-                        value={
-                          (detailedFeedback.scores.trustBuilding / 10) * 100
-                        }
-                        color="secondary"
-                        sx={{ height: 8, borderRadius: 4 }}
-                      />
-                    </Box>
-
-                    {/* 異議対応力 */}
-                    <Box mb={2}>
-                      <Box
-                        display="flex"
-                        justifyContent="space-between"
-                        alignItems="center"
-                        mb={1}
-                      >
-                        <Typography variant="subtitle2">
-                          {t("results.skillLabels.objectionHandling")}
-                        </Typography>
-                        <Typography variant="body2" fontWeight="bold">
-                          {detailedFeedback.scores.objectionHandling}/10
-                        </Typography>
-                      </Box>
-                      <LinearProgress
-                        variant="determinate"
-                        value={
-                          (detailedFeedback.scores.objectionHandling / 10) * 100
-                        }
-                        color="error"
-                        sx={{ height: 8, borderRadius: 4 }}
-                      />
-                    </Box>
-
-                    {/* クロージングスキル */}
-                    <Box mb={2}>
-                      <Box
-                        display="flex"
-                        justifyContent="space-between"
-                        alignItems="center"
-                        mb={1}
-                      >
-                        <Typography variant="subtitle2">
-                          {t("results.skillLabels.closingSkill")}
-                        </Typography>
-                        <Typography variant="body2" fontWeight="bold">
-                          {detailedFeedback.scores.closingSkill}/10
-                        </Typography>
-                      </Box>
-                      <LinearProgress
-                        variant="determinate"
-                        value={
-                          (detailedFeedback.scores.closingSkill / 10) * 100
-                        }
-                        color="info"
-                        sx={{ height: 8, borderRadius: 4 }}
-                      />
-                    </Box>
-
-                    {/* 傾聴スキル */}
-                    <Box mb={2}>
-                      <Box
-                        display="flex"
-                        justifyContent="space-between"
-                        alignItems="center"
-                        mb={1}
-                      >
-                        <Typography variant="subtitle2">
-                          {t("results.skillLabels.listeningSkill")}
-                        </Typography>
-                        <Typography variant="body2" fontWeight="bold">
-                          {detailedFeedback.scores.listeningSkill}/10
-                        </Typography>
-                      </Box>
-                      <LinearProgress
-                        variant="determinate"
-                        value={
-                          (detailedFeedback.scores.listeningSkill / 10) * 100
-                        }
-                        color="success"
-                        sx={{ height: 8, borderRadius: 4 }}
-                      />
-                    </Box>
-
-                    {/* 製品知識 */}
-                    <Box mb={2}>
-                      <Box
-                        display="flex"
-                        justifyContent="space-between"
-                        alignItems="center"
-                        mb={1}
-                      >
-                        <Typography variant="subtitle2">
-                          {t("results.skillLabels.productKnowledge")}
-                        </Typography>
-                        <Typography variant="body2" fontWeight="bold">
-                          {detailedFeedback.scores.productKnowledge}/10
-                        </Typography>
-                      </Box>
-                      <LinearProgress
-                        variant="determinate"
-                        value={
-                          (detailedFeedback.scores.productKnowledge / 10) * 100
-                        }
-                        color="primary"
-                        sx={{ height: 8, borderRadius: 4 }}
-                      />
-                    </Box>
-
-                    {/* 顧客中心思考 */}
+                    {/* 商談進捗度 */}
                     <Box>
                       <Box
                         display="flex"
@@ -1393,331 +1157,648 @@ const ResultPage: React.FC = () => {
                         mb={1}
                       >
                         <Typography variant="subtitle2">
-                          {t("results.skillLabels.customerFocus")}
+                          {t("metrics.progressLevel")}
                         </Typography>
                         <Typography variant="body2" fontWeight="bold">
-                          {detailedFeedback.scores.customerFocus}/10
+                          {session.finalMetrics.progressLevel}/10
                         </Typography>
                       </Box>
                       <LinearProgress
                         variant="determinate"
-                        value={
-                          (detailedFeedback.scores.customerFocus / 10) * 100
+                        value={(session.finalMetrics.progressLevel / 10) * 100}
+                        color={
+                          session.finalMetrics.progressLevel >= 7
+                            ? "success"
+                            : session.finalMetrics.progressLevel >= 4
+                              ? "info"
+                              : "error"
                         }
-                        color="warning"
                         sx={{ height: 8, borderRadius: 4 }}
                       />
                     </Box>
                   </CardContent>
                 </Card>
-              )}
 
-              {/* レガシーフィードバック - UI表示なし */}
-              {!detailedFeedback && (
-                <Card>
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom>
-                      📝 {t("results.feedback")}
-                    </Typography>
-                    {feedback.map((item, index) => (
-                      <Paper
-                        key={index}
-                        sx={{ p: 2, mb: 2, backgroundColor: "#f5f5f5" }}
-                      >
-                        <Typography variant="body2">{item}</Typography>
-                      </Paper>
-                    ))}
-                  </CardContent>
-                </Card>
-              )}
-            </Box>
+                {/* スキル詳細スコア（詳細フィードバックがある場合のみ表示） */}
+                {detailedFeedback && (
+                  <Card sx={{ mb: 3 }}>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        💯 {t("results.skillDetailedScore")}
+                      </Typography>
 
-            {/* サイドバー */}
-            <Box sx={{ width: { xs: "100%", md: "300px" }, flexShrink: 0 }}>
-              {/* NPC情報 */}
-              {scenario && (
+                      {/* コミュニケーション力 */}
+                      <Box mb={2}>
+                        <Box
+                          display="flex"
+                          justifyContent="space-between"
+                          alignItems="center"
+                          mb={1}
+                        >
+                          <Typography variant="subtitle2">
+                            {t("results.skillLabels.communication")}
+                          </Typography>
+                          <Typography variant="body2" fontWeight="bold">
+                            {detailedFeedback.scores.communication}/10
+                          </Typography>
+                        </Box>
+                        <LinearProgress
+                          variant="determinate"
+                          value={
+                            (detailedFeedback.scores.communication / 10) * 100
+                          }
+                          color="primary"
+                          sx={{ height: 8, borderRadius: 4 }}
+                        />
+                      </Box>
+
+                      {/* ニーズ把握 */}
+                      <Box mb={2}>
+                        <Box
+                          display="flex"
+                          justifyContent="space-between"
+                          alignItems="center"
+                          mb={1}
+                        >
+                          <Typography variant="subtitle2">
+                            {t("results.skillLabels.needsAnalysis")}
+                          </Typography>
+                          <Typography variant="body2" fontWeight="bold">
+                            {detailedFeedback.scores.needsAnalysis}/10
+                          </Typography>
+                        </Box>
+                        <LinearProgress
+                          variant="determinate"
+                          value={
+                            (detailedFeedback.scores.needsAnalysis / 10) * 100
+                          }
+                          color="info"
+                          sx={{ height: 8, borderRadius: 4 }}
+                        />
+                      </Box>
+
+                      {/* 提案品質 */}
+                      <Box mb={2}>
+                        <Box
+                          display="flex"
+                          justifyContent="space-between"
+                          alignItems="center"
+                          mb={1}
+                        >
+                          <Typography variant="subtitle2">
+                            {t("results.skillLabels.proposalQuality")}
+                          </Typography>
+                          <Typography variant="body2" fontWeight="bold">
+                            {detailedFeedback.scores.proposalQuality}/10
+                          </Typography>
+                        </Box>
+                        <LinearProgress
+                          variant="determinate"
+                          value={
+                            (detailedFeedback.scores.proposalQuality / 10) * 100
+                          }
+                          color="success"
+                          sx={{ height: 8, borderRadius: 4 }}
+                        />
+                      </Box>
+
+                      {/* 対応の柔軟性 */}
+                      <Box mb={2}>
+                        <Box
+                          display="flex"
+                          justifyContent="space-between"
+                          alignItems="center"
+                          mb={1}
+                        >
+                          <Typography variant="subtitle2">
+                            {t("results.skillLabels.flexibility")}
+                          </Typography>
+                          <Typography variant="body2" fontWeight="bold">
+                            {detailedFeedback.scores.flexibility}/10
+                          </Typography>
+                        </Box>
+                        <LinearProgress
+                          variant="determinate"
+                          value={(detailedFeedback.scores.flexibility / 10) * 100}
+                          color="warning"
+                          sx={{ height: 8, borderRadius: 4 }}
+                        />
+                      </Box>
+
+                      {/* 信頼構築 */}
+                      <Box mb={2}>
+                        <Box
+                          display="flex"
+                          justifyContent="space-between"
+                          alignItems="center"
+                          mb={1}
+                        >
+                          <Typography variant="subtitle2">
+                            {t("results.skillLabels.trustBuilding")}
+                          </Typography>
+                          <Typography variant="body2" fontWeight="bold">
+                            {detailedFeedback.scores.trustBuilding}/10
+                          </Typography>
+                        </Box>
+                        <LinearProgress
+                          variant="determinate"
+                          value={
+                            (detailedFeedback.scores.trustBuilding / 10) * 100
+                          }
+                          color="secondary"
+                          sx={{ height: 8, borderRadius: 4 }}
+                        />
+                      </Box>
+
+                      {/* 異議対応力 */}
+                      <Box mb={2}>
+                        <Box
+                          display="flex"
+                          justifyContent="space-between"
+                          alignItems="center"
+                          mb={1}
+                        >
+                          <Typography variant="subtitle2">
+                            {t("results.skillLabels.objectionHandling")}
+                          </Typography>
+                          <Typography variant="body2" fontWeight="bold">
+                            {detailedFeedback.scores.objectionHandling}/10
+                          </Typography>
+                        </Box>
+                        <LinearProgress
+                          variant="determinate"
+                          value={
+                            (detailedFeedback.scores.objectionHandling / 10) * 100
+                          }
+                          color="error"
+                          sx={{ height: 8, borderRadius: 4 }}
+                        />
+                      </Box>
+
+                      {/* クロージングスキル */}
+                      <Box mb={2}>
+                        <Box
+                          display="flex"
+                          justifyContent="space-between"
+                          alignItems="center"
+                          mb={1}
+                        >
+                          <Typography variant="subtitle2">
+                            {t("results.skillLabels.closingSkill")}
+                          </Typography>
+                          <Typography variant="body2" fontWeight="bold">
+                            {detailedFeedback.scores.closingSkill}/10
+                          </Typography>
+                        </Box>
+                        <LinearProgress
+                          variant="determinate"
+                          value={
+                            (detailedFeedback.scores.closingSkill / 10) * 100
+                          }
+                          color="info"
+                          sx={{ height: 8, borderRadius: 4 }}
+                        />
+                      </Box>
+
+                      {/* 傾聴スキル */}
+                      <Box mb={2}>
+                        <Box
+                          display="flex"
+                          justifyContent="space-between"
+                          alignItems="center"
+                          mb={1}
+                        >
+                          <Typography variant="subtitle2">
+                            {t("results.skillLabels.listeningSkill")}
+                          </Typography>
+                          <Typography variant="body2" fontWeight="bold">
+                            {detailedFeedback.scores.listeningSkill}/10
+                          </Typography>
+                        </Box>
+                        <LinearProgress
+                          variant="determinate"
+                          value={
+                            (detailedFeedback.scores.listeningSkill / 10) * 100
+                          }
+                          color="success"
+                          sx={{ height: 8, borderRadius: 4 }}
+                        />
+                      </Box>
+
+                      {/* 製品知識 */}
+                      <Box mb={2}>
+                        <Box
+                          display="flex"
+                          justifyContent="space-between"
+                          alignItems="center"
+                          mb={1}
+                        >
+                          <Typography variant="subtitle2">
+                            {t("results.skillLabels.productKnowledge")}
+                          </Typography>
+                          <Typography variant="body2" fontWeight="bold">
+                            {detailedFeedback.scores.productKnowledge}/10
+                          </Typography>
+                        </Box>
+                        <LinearProgress
+                          variant="determinate"
+                          value={
+                            (detailedFeedback.scores.productKnowledge / 10) * 100
+                          }
+                          color="primary"
+                          sx={{ height: 8, borderRadius: 4 }}
+                        />
+                      </Box>
+
+                      {/* 顧客中心思考 */}
+                      <Box>
+                        <Box
+                          display="flex"
+                          justifyContent="space-between"
+                          alignItems="center"
+                          mb={1}
+                        >
+                          <Typography variant="subtitle2">
+                            {t("results.skillLabels.customerFocus")}
+                          </Typography>
+                          <Typography variant="body2" fontWeight="bold">
+                            {detailedFeedback.scores.customerFocus}/10
+                          </Typography>
+                        </Box>
+                        <LinearProgress
+                          variant="determinate"
+                          value={
+                            (detailedFeedback.scores.customerFocus / 10) * 100
+                          }
+                          color="warning"
+                          sx={{ height: 8, borderRadius: 4 }}
+                        />
+                      </Box>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* レガシーフィードバック - UI表示なし */}
+                {!detailedFeedback && (
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        📝 {t("results.feedback")}
+                      </Typography>
+                      {feedback.map((item, index) => (
+                        <Paper
+                          key={index}
+                          sx={{ p: 2, mb: 2, backgroundColor: "#f5f5f5" }}
+                        >
+                          <Typography variant="body2">{item}</Typography>
+                        </Paper>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
+              </Box>
+
+              {/* サイドバー */}
+              <Box sx={{ width: { xs: "100%", md: "300px" }, flexShrink: 0 }}>
+                {/* NPC情報 */}
+                {scenario && (
+                  <Card sx={{ mb: 3 }}>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        {t("results.conversationPartner")}
+                      </Typography>
+                      <Box display="flex" alignItems="center" gap={2} mb={2}>
+                        <Avatar
+                          sx={{ width: 40, height: 40, fontSize: "1.2rem" }}
+                        >
+                          {scenario.npc?.avatar ||
+                            scenario.npcInfo?.avatar ||
+                            "👤"}
+                        </Avatar>
+                        <Box>
+                          <Typography variant="body1" fontWeight="bold">
+                            {scenario.npc?.name ||
+                              scenario.npcInfo?.name ||
+                              "Unknown"}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {scenario.npc?.role || scenario.npcInfo?.role || ""}
+                          </Typography>
+                        </Box>
+                      </Box>
+                      <Typography variant="body2" color="text.secondary">
+                        {scenario.npc?.description ||
+                          scenario.npcInfo?.description ||
+                          ""}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* 統計情報 */}
                 <Card sx={{ mb: 3 }}>
                   <CardContent>
                     <Typography variant="h6" gutterBottom>
-                      {t("results.conversationPartner")}
+                      📊 {t("results.sessionStatistics")}
                     </Typography>
-                    <Box display="flex" alignItems="center" gap={2} mb={2}>
-                      <Avatar
-                        sx={{ width: 40, height: 40, fontSize: "1.2rem" }}
-                      >
-                        {scenario.npc?.avatar ||
-                          scenario.npcInfo?.avatar ||
-                          "👤"}
-                      </Avatar>
-                      <Box>
-                        <Typography variant="body1" fontWeight="bold">
-                          {scenario.npc?.name ||
-                            scenario.npcInfo?.name ||
-                            "Unknown"}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {scenario.npc?.role || scenario.npcInfo?.role || ""}
-                        </Typography>
-                      </Box>
+                    <Box mb={2}>
+                      <Typography variant="body2" color="text.secondary">
+                        {t("results.conversationTime")}
+                      </Typography>
+                      <Typography variant="h6">
+                        {duration} {t("results.minutes")}
+                      </Typography>
                     </Box>
-                    <Typography variant="body2" color="text.secondary">
-                      {scenario.npc?.description ||
-                        scenario.npcInfo?.description ||
-                        ""}
-                    </Typography>
+                    <Box mb={2}>
+                      <Typography variant="body2" color="text.secondary">
+                        {t("results.messageCount")}
+                      </Typography>
+                      <Typography variant="h6">
+                        {session.messages.length} {t("results.times")}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">
+                        {t("results.userMessages")}
+                      </Typography>
+                      <Typography variant="h6">
+                        {
+                          session.messages.filter((m) => m.sender === "user")
+                            .length
+                        }{" "}
+                        {t("results.times")}
+                      </Typography>
+                    </Box>
                   </CardContent>
                 </Card>
-              )}
 
-              {/* 統計情報 */}
-              <Card sx={{ mb: 3 }}>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    📊 {t("results.sessionStatistics")}
-                  </Typography>
-                  <Box mb={2}>
-                    <Typography variant="body2" color="text.secondary">
-                      {t("results.conversationTime")}
-                    </Typography>
-                    <Typography variant="h6">
-                      {duration} {t("results.minutes")}
-                    </Typography>
-                  </Box>
-                  <Box mb={2}>
-                    <Typography variant="body2" color="text.secondary">
-                      {t("results.messageCount")}
-                    </Typography>
-                    <Typography variant="h6">
-                      {session.messages.length} {t("results.times")}
-                    </Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant="body2" color="text.secondary">
-                      {t("results.userMessages")}
-                    </Typography>
-                    <Typography variant="h6">
-                      {
-                        session.messages.filter((m) => m.sender === "user")
-                          .length
-                      }{" "}
-                      {t("results.times")}
-                    </Typography>
-                  </Box>
-                </CardContent>
-              </Card>
-
-              {/* アクションボタン */}
-              <Box display="flex" flexDirection="column" gap={2}>
-                <Button
-                  variant="contained"
-                  fullWidth
-                  startIcon={<RefreshIcon />}
-                  onClick={() => navigate("/scenarios")}
-                >
-                  {t("results.tryAnotherScenario")}
-                </Button>
-                <Button
-                  variant="outlined"
-                  fullWidth
-                  startIcon={<HomeIcon />}
-                  onClick={() => navigate("/")}
-                >
-                  {t("results.backToHome")}
-                </Button>
+                {/* アクションボタン */}
+                <Box display="flex" flexDirection="column" gap={2}>
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    startIcon={<RefreshIcon />}
+                    onClick={() => navigate("/scenarios")}
+                  >
+                    {t("results.tryAnotherScenario")}
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    fullWidth
+                    startIcon={<HomeIcon />}
+                    onClick={() => navigate("/")}
+                  >
+                    {t("results.backToHome")}
+                  </Button>
+                </Box>
               </Box>
             </Box>
-          </Box>
-        )}
-        {/* ゴール達成状況セクション - 全幅で表示 */}
-        {scenarioGoals && scenarioGoals.length > 0 && (
-          <Box sx={{ mt: 3 }}>
-            <GoalResultsSection
-              goals={scenarioGoals}
-              goalStatuses={session?.goalStatuses || []}
-            />
-          </Box>
-        )}
-      </TabPanel>
-
-      <TabPanel value={tabValue} index={1}>
-        <Card>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
-              {t("results.conversationLog")}
-            </Typography>
-            <Box sx={{ maxHeight: "500px", overflow: "auto", mt: 2 }}>
-              {session.messages.map((msg, index) => (
-                <Paper
-                  key={index}
-                  sx={{
-                    p: 2,
-                    mb: 2,
-                    backgroundColor:
-                      msg.sender === "user" ? "#e3f2fd" : "#f5f5f5",
-                    ml: msg.sender === "user" ? "auto" : 0,
-                    mr: msg.sender === "user" ? 0 : "auto",
-                    maxWidth: "80%",
-                    position: "relative",
-                  }}
-                >
-                  <Typography
-                    variant="caption"
-                    display="block"
-                    color="text.secondary"
-                    gutterBottom
-                  >
-                    {msg.sender === "user"
-                      ? t("results.you")
-                      : scenario?.npc?.name ||
-                      scenario?.npcInfo?.name ||
-                      "NPC"}{" "}
-                    - {new Date(msg.timestamp).toLocaleTimeString()}
-                  </Typography>
-                  <Typography variant="body1">{msg.content}</Typography>
-
-                  {msg.metrics && (
-                    <Box sx={{ mt: 1, pt: 1, borderTop: "1px dashed #ddd" }}>
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        display="block"
-                      >
-                        {t("results.metricsChangeLabel")}
-                      </Typography>
-                      <Box display="flex" gap={2} mt={0.5}>
-                        <Chip
-                          label={t("results.angerMeter", {
-                            value: msg.metrics.angerLevel,
-                          })}
-                          size="small"
-                          variant="outlined"
-                          color={
-                            msg.metrics.angerChange &&
-                              msg.metrics.angerChange > 0
-                              ? "error"
-                              : "default"
-                          }
-                        />
-                        <Chip
-                          label={t("results.trustLevel", {
-                            value: msg.metrics.trustLevel,
-                          })}
-                          size="small"
-                          variant="outlined"
-                          color={
-                            msg.metrics.trustChange &&
-                              msg.metrics.trustChange > 0
-                              ? "success"
-                              : "default"
-                          }
-                        />
-                        <Chip
-                          label={t("results.progressLevel", {
-                            value: msg.metrics.progressLevel,
-                          })}
-                          size="small"
-                          variant="outlined"
-                          color={
-                            msg.metrics.progressChange &&
-                              msg.metrics.progressChange > 0
-                              ? "info"
-                              : "default"
-                          }
-                        />
-                      </Box>
-                    </Box>
-                  )}
-                </Paper>
-              ))}
-            </Box>
-          </CardContent>
-        </Card>
-      </TabPanel>
-
-      {/* コンプライアンス違反一覧タブ */}
-      <TabPanel value={tabValue} index={2}>
-        <Box sx={{ maxWidth: 900, mx: "auto" }}>
-          <Typography variant="h6" gutterBottom sx={{ mb: 3 }}>
-            {t("compliance.report", "コンプライアンス違反レポート")}
-          </Typography>
-
-          {!session?.complianceViolations ||
-            session.complianceViolations.length === 0 ? (
-            <Alert severity="info" sx={{ mb: 3 }}>
-              <AlertTitle>
-                {t("compliance.noDataTitle", "データなし")}
-              </AlertTitle>
-              {t(
-                "compliance.noData",
-                "このセッションにはコンプライアンス違反データがありません。",
-              )}
-            </Alert>
-          ) : (
-            <ComplianceViolationsList
-              violations={session.complianceViolations}
-            />
           )}
+          {/* ゴール達成状況セクション - 全幅で表示 */}
+          {scenarioGoals && scenarioGoals.length > 0 && (
+            <Box sx={{ mt: 3 }}>
+              <GoalResultsSection
+                goals={scenarioGoals}
+                goalStatuses={session?.goalStatuses || []}
+              />
+            </Box>
+          )}
+        </TabPanel>
 
-          <Box
-            sx={{ mt: 4, p: 3, bgcolor: "background.default", borderRadius: 2 }}
-          >
-            <Typography variant="subtitle1" gutterBottom fontWeight="medium">
-              {t("compliance.explanationTitle", "コンプライアンス違反について")}
+        <TabPanel value={tabValue} index={1}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                {t("results.conversationLog")}
+              </Typography>
+              <Box sx={{ maxHeight: "500px", overflow: "auto", mt: 2 }}>
+                {session.messages.map((msg, index) => (
+                  <Paper
+                    key={index}
+                    sx={{
+                      p: 2,
+                      mb: 2,
+                      backgroundColor:
+                        msg.sender === "user" ? "#e3f2fd" : "#f5f5f5",
+                      ml: msg.sender === "user" ? "auto" : 0,
+                      mr: msg.sender === "user" ? 0 : "auto",
+                      maxWidth: "80%",
+                      position: "relative",
+                    }}
+                  >
+                    <Typography
+                      variant="caption"
+                      display="block"
+                      color="text.secondary"
+                      gutterBottom
+                    >
+                      {msg.sender === "user"
+                        ? t("results.you")
+                        : scenario?.npc?.name ||
+                        scenario?.npcInfo?.name ||
+                        "NPC"}{" "}
+                      - {new Date(msg.timestamp).toLocaleTimeString()}
+                    </Typography>
+                    <Typography variant="body1">{msg.content}</Typography>
+
+                    {/* スライド選択サムネイル表示 */}
+                    {msg.presentedSlides && msg.presentedSlides.length > 0 && slideImages.length > 0 && (
+                      <Box sx={{ mt: 1, display: "flex", gap: 0.5, flexWrap: "wrap" }}>
+                        {msg.presentedSlides.map((page: number) => {
+                          const slide = slideImages.find(s => s.pageNumber === page);
+                          if (!slide) return null;
+                          const idx = slideImages.indexOf(slide);
+                          return (
+                            <Box
+                              key={page}
+                              onClick={() => { setSlideZoomIndex(idx); setSlideZoomOpen(true); }}
+                              sx={{
+                                width: 60,
+                                height: 42,
+                                borderRadius: 0.5,
+                                overflow: "hidden",
+                                cursor: "pointer",
+                                border: 1,
+                                borderColor: "info.main",
+                                "&:hover": { opacity: 0.8 },
+                              }}
+                            >
+                              {slide.thumbnailUrl ? (
+                                <Box
+                                  component="img"
+                                  src={slide.thumbnailUrl}
+                                  alt={`${t("conversation.slideTray.slide")} ${page}`}
+                                  sx={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                />
+                              ) : (
+                                <Box sx={{ width: "100%", height: "100%", bgcolor: "#1a1a2e", display: "flex", alignItems: "center", justifyContent: "center", color: "#aaa", fontSize: "0.5rem" }}>
+                                  {page}
+                                </Box>
+                              )}
+                            </Box>
+                          );
+                        })}
+                      </Box>
+                    )}
+
+                    {msg.metrics && (
+                      <Box sx={{ mt: 1, pt: 1, borderTop: "1px dashed #ddd" }}>
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          display="block"
+                        >
+                          {t("results.metricsChangeLabel")}
+                        </Typography>
+                        <Box display="flex" gap={2} mt={0.5}>
+                          <Chip
+                            label={t("results.angerMeter", {
+                              value: msg.metrics.angerLevel,
+                            })}
+                            size="small"
+                            variant="outlined"
+                            color={
+                              msg.metrics.angerChange &&
+                                msg.metrics.angerChange > 0
+                                ? "error"
+                                : "default"
+                            }
+                          />
+                          <Chip
+                            label={t("results.trustLevel", {
+                              value: msg.metrics.trustLevel,
+                            })}
+                            size="small"
+                            variant="outlined"
+                            color={
+                              msg.metrics.trustChange &&
+                                msg.metrics.trustChange > 0
+                                ? "success"
+                                : "default"
+                            }
+                          />
+                          <Chip
+                            label={t("results.progressLevel", {
+                              value: msg.metrics.progressLevel,
+                            })}
+                            size="small"
+                            variant="outlined"
+                            color={
+                              msg.metrics.progressChange &&
+                                msg.metrics.progressChange > 0
+                                ? "info"
+                                : "default"
+                            }
+                          />
+                        </Box>
+                      </Box>
+                    )}
+                  </Paper>
+                ))}
+              </Box>
+            </CardContent>
+          </Card>
+        </TabPanel>
+
+        {/* コンプライアンス違反一覧タブ */}
+        <TabPanel value={tabValue} index={2}>
+          <Box sx={{ maxWidth: 900, mx: "auto" }}>
+            <Typography variant="h6" gutterBottom sx={{ mb: 3 }}>
+              {t("compliance.report", "コンプライアンス違反レポート")}
             </Typography>
-            <Typography variant="body2" sx={{ mb: 2 }}>
-              {t(
-                "compliance.explanation1",
-                "コンプライアンス違反は、営業活動において法令や倫理規範に反する表現や行為を示します。違反を避けることで、顧客との信頼関係を構築し、リスクを最小限に抑えることができます。",
-              )}
-            </Typography>
-            <Typography variant="body2">
-              {t(
-                "compliance.explanation2",
-                "上記のレポートを参考に、今後の商談での表現を改善していきましょう。特に「高」重大度の違反は、法的リスクが高いため特に注意が必要です。",
-              )}
-            </Typography>
+
+            {!session?.complianceViolations ||
+              session.complianceViolations.length === 0 ? (
+              <Alert severity="info" sx={{ mb: 3 }}>
+                <AlertTitle>
+                  {t("compliance.noDataTitle", "データなし")}
+                </AlertTitle>
+                {t(
+                  "compliance.noData",
+                  "このセッションにはコンプライアンス違反データがありません。",
+                )}
+              </Alert>
+            ) : (
+              <ComplianceViolationsList
+                violations={session.complianceViolations}
+              />
+            )}
+
+            <Box
+              sx={{ mt: 4, p: 3, bgcolor: "background.default", borderRadius: 2 }}
+            >
+              <Typography variant="subtitle1" gutterBottom fontWeight="medium">
+                {t("compliance.explanationTitle", "コンプライアンス違反について")}
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 2 }}>
+                {t(
+                  "compliance.explanation1",
+                  "コンプライアンス違反は、営業活動において法令や倫理規範に反する表現や行為を示します。違反を避けることで、顧客との信頼関係を構築し、リスクを最小限に抑えることができます。",
+                )}
+              </Typography>
+              <Typography variant="body2">
+                {t(
+                  "compliance.explanation2",
+                  "上記のレポートを参考に、今後の商談での表現を改善していきましょう。特に「高」重大度の違反は、法的リスクが高いため特に注意が必要です。",
+                )}
+              </Typography>
+            </Box>
           </Box>
-        </Box>
-      </TabPanel>
+        </TabPanel>
 
-      {/* ビデオ分析タブ（音声分析セッションでは非表示） */}
-      {!isAudioAnalysis && (
-        <TabPanel value={tabValue} index={3}>
+        {/* ビデオ分析タブ（音声分析セッションでは非表示） */}
+        {!isAudioAnalysis && (
+          <TabPanel value={tabValue} index={3}>
+            <Box sx={{ maxWidth: 900, mx: "auto" }}>
+              <Card sx={{ mb: 3 }}>
+                <CardContent>
+                  {sessionId && (
+                    <VideoFeedback
+                      isVisible={true}
+                      initialData={videoAnalysisData}
+                    />
+                  )}
+                </CardContent>
+              </Card>
+            </Box>
+          </TabPanel>
+        )}
+
+        {/* リファレンスチェックタブ */}
+        <TabPanel value={tabValue} index={isAudioAnalysis ? 3 : 4}>
           <Box sx={{ maxWidth: 900, mx: "auto" }}>
             <Card sx={{ mb: 3 }}>
               <CardContent>
                 {sessionId && (
-                  <VideoFeedback
+                  <ReferenceCheck
                     sessionId={sessionId}
-                    isVisible={true}
                     language={scenario?.language || "ja"}
-                    initialData={videoAnalysisData}
+                    isVisible={true}
+                    initialData={referenceCheckData}
                   />
                 )}
               </CardContent>
             </Card>
           </Box>
         </TabPanel>
-      )}
+      </Container>
 
-      {/* リファレンスチェックタブ */}
-      <TabPanel value={tabValue} index={isAudioAnalysis ? 3 : 4}>
-        <Box sx={{ maxWidth: 900, mx: "auto" }}>
-          <Card sx={{ mb: 3 }}>
-            <CardContent>
-              {sessionId && (
-                <ReferenceCheck
-                  sessionId={sessionId}
-                  language={scenario?.language || "ja"}
-                  isVisible={true}
-                  initialData={referenceCheckData}
-                />
-              )}
-            </CardContent>
-          </Card>
-        </Box>
-      </TabPanel>
-    </Container>
+      {/* スライド拡大モーダル */}
+      {
+        slideImages.length > 0 && (
+          <SlideZoomModal
+            open={slideZoomOpen}
+            slides={slideImages}
+            currentIndex={slideZoomIndex}
+            presentedPages={[]}
+            onSlideChange={setSlideZoomIndex}
+            onPresent={() => { }}
+            onUnpresent={() => { }}
+            onClose={() => setSlideZoomOpen(false)}
+          />
+        )
+      }
+    </>
   );
 };
 

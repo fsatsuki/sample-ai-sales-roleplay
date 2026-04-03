@@ -341,12 +341,22 @@ def get_messages_from_agentcore_memory(session_id: str, actor_id: str = "default
                         sender = "user" if role in ["USER", "HUMAN"] else "npc"
                         # event_timestampがdatetimeオブジェクトの場合は文字列に変換
                         timestamp_str = event_timestamp.isoformat() if hasattr(event_timestamp, 'isoformat') else str(event_timestamp)
-                        messages.append({
+                        
+                        # メタデータからスライド提示情報を抽出
+                        event_metadata = event.get("metadata", {})
+                        presented_slides_str = event_metadata.get("presentedSlides", {}).get("stringValue", "")
+                        presented_slides = [int(p) for p in presented_slides_str.split() if p] if presented_slides_str else None
+                        
+                        msg_data = {
                             "sender": sender,
                             "content": actual_content,
                             "timestamp": timestamp_str,
-                        })
-                        logger.debug(f"  メッセージ追加: sender={sender}, content={actual_content[:50]}...")
+                        }
+                        if presented_slides:
+                            msg_data["presentedSlides"] = presented_slides
+                        
+                        messages.append(msg_data)
+                        logger.debug(f"  メッセージ追加: sender={sender}, content={actual_content[:50]}..." + (f", slides={presented_slides}" if presented_slides else ""))
         
         # タイムスタンプでソート（古い順）
         messages.sort(key=lambda x: x.get("timestamp", ""))

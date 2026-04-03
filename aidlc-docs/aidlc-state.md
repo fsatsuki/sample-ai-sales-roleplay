@@ -69,11 +69,26 @@
 - CONSTRUCTION - Code Generation: 完了
 - CONSTRUCTION - Build and Test: 完了
 
+### 提案資料スライド連動ロールプレイ機能 🔄 進行中
+- INCEPTION - Workspace Detection: 完了
+- INCEPTION - Requirements Analysis: 完了
+- INCEPTION - User Stories: スキップ（既存ユーザータイプ、要件明確）
+- INCEPTION - Workflow Planning: 完了
+- INCEPTION - Application Design: スキップ（モックで設計済み、既存コンポーネント拡張）
+- INCEPTION - Units Generation: スキップ（Phase分割は要件定義書で明確）
+- CONSTRUCTION - Functional Design: スキップ（要件定義書で十分）
+- CONSTRUCTION - NFR Requirements: スキップ（既存NFR踏襲）
+- CONSTRUCTION - NFR Design: スキップ
+- CONSTRUCTION - Infrastructure Design: スキップ（既存CDKパターン踏襲）
+- CONSTRUCTION - Code Generation (Phase 1): 実装完了（Step 9のConversationPage統合はPhase 2で実施）
+- CONSTRUCTION - Code Generation (Phase 2): 実装完了（Step 3,5はConversationPage大規模変更のため別途実施）
+- CONSTRUCTION - Build and Test: 完了
+
 ## Current Status
 - **Lifecycle Phase**: CONSTRUCTION
 - **Current Stage**: Build and Test 完了
 - **Next Stage**: Operations（プレースホルダー）
-- **Feature**: アバター表示のシナリオ別On/Off機能
+- **Feature**: 提案資料スライド連動ロールプレイ機能
 - **Status**: 全ステージ完了
 
 ## Notes

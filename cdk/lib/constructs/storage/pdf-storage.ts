@@ -33,6 +33,15 @@ export class PdfStorageConstruct extends Construct {
       ],
       // サーバーサイド暗号化を有効化
       encryption: s3.BucketEncryption.S3_MANAGED,
+      // 一時アップロードファイルの自動削除ルール
+      lifecycleRules: [
+        {
+          id: 'DeleteTempUploads',
+          prefix: 'scenarios/temp-',
+          expiration: cdk.Duration.days(1),
+          enabled: true,
+        },
+      ],
     });
 
     // SSL必須のバケットポリシーを追加

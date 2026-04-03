@@ -16,6 +16,11 @@ import type {
   SessionCompleteDataResponse,
 } from "../types/api";
 import { AgentCoreService } from "./AgentCoreService";
+import {
+  transformImportResponse,
+  transformVideoAnalysisResult,
+  transformComplianceViolation,
+} from "../utils/apiTransformers";
 
 /**
  * API通信サービス - Amazon Bedrockとの通信を処理
@@ -321,6 +326,7 @@ export class ApiService {
     },
     scenarioId?: string,
     language?: string,
+    presentedSlides?: Array<{ pageNumber: number; imageKey: string }>,
   ): Promise<{ response: string; sessionId: string; messageId: string }> {
     try {
       // AgentCore Runtimeを使用（会話履歴はAgentCore Memoryで管理）
@@ -338,15 +344,10 @@ export class ApiService {
         emotionParams,
         scenarioId,
         language,
+        presentedSlides,
       );
     } catch (error: unknown) {
-      console.error("=== NPCとの会話中にエラーが発生 ===");
-      console.error("エラー詳細:", error);
-      console.error("エラータイプ:", typeof error);
-      console.error(
-        "エラースタック:",
-        error instanceof Error ? error.stack : "スタックなし",
-      );
+      console.error("NPCとの会話中にエラーが発生:", error);
       // エラー時のフォールバック応答
       return {
         response:
@@ -867,6 +868,115 @@ export class ApiService {
     }
   }
 
+  // ========================================
+  // 提案資料（プレゼンテーション）関連メソッド
+  // ========================================
+
+  /**
+   * 提案資料PDFアップロード用の署名付きURLを取得
+   */
+  public async getPresentationUploadUrl(
+    scenarioId: string,
+    fileName: string,
+    contentType: string,
+  ): Promise<{
+    uploadUrl: string;
+    formData: Record<string, string>;
+    key: string;
+    fileName: string;
+    contentType: string;
+  }> {
+    try {
+      return await this.apiPost<
+        {
+          uploadUrl: string;
+          formData: Record<string, string>;
+          key: string;
+          fileName: string;
+          contentType: string;
+        },
+        { fileName: string; contentType: string }
+      >(`/scenarios/${scenarioId}/presentation-upload-url`, {
+        fileName,
+        contentType,
+      });
+    } catch (error) {
+      console.error("提案資料アップロードURL取得エラー:", error);
+      throw new Error("提案資料のアップロードURLの取得に失敗しました");
+    }
+  }
+
+  /**
+   * 提案資料PDFをアップロード
+   */
+  public async uploadPresentationFile(
+    uploadUrl: string,
+    formData: Record<string, string>,
+    file: File,
+  ): Promise<void> {
+    return this.uploadFile(uploadUrl, formData, file, "application/pdf");
+  }
+
+  /**
+   * 提案資料を削除
+   */
+  public async deletePresentationFile(
+    scenarioId: string,
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      return await this.apiDelete<{ success: boolean; message: string }>(
+        `/scenarios/${scenarioId}/presentation`,
+      );
+    } catch (error) {
+      console.error("提案資料削除エラー:", error);
+      throw new Error("提案資料の削除に失敗しました");
+    }
+  }
+
+  /**
+   * スライド画像一覧を取得（署名付きURL付き）
+   */
+  public async getSlideImages(
+    scenarioId: string,
+  ): Promise<{
+    success: boolean;
+    scenarioId: string;
+    status: string;
+    totalPages: number;
+    slides: Array<{
+      pageNumber: number;
+      imageKey: string;
+      imageUrl: string;
+      thumbnailUrl?: string;
+    }>;
+  }> {
+    try {
+      return await this.apiGet(`/scenarios/${scenarioId}/slides`);
+    } catch (error) {
+      console.error("スライド画像一覧取得エラー:", error);
+      throw new Error("スライド画像の取得に失敗しました");
+    }
+  }
+
+  /**
+   * PDF→スライド画像変換をトリガー
+   */
+  public async triggerSlideConversion(
+    scenarioId: string,
+    pdfKey: string,
+    fileName: string,
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      return await this.apiPost<
+        { success: boolean; message: string },
+        { pdfKey: string; fileName: string }
+      >(`/scenarios/${scenarioId}/convert-slides`, { pdfKey, fileName });
+    } catch (error) {
+      console.error("スライド変換トリガーエラー:", error);
+      throw new Error("スライド変換の開始に失敗しました");
+    }
+  }
+
   /**
    * 単一シナリオをエクスポートする
    * @param scenarioId エクスポートするシナリオID
@@ -901,10 +1011,12 @@ export class ApiService {
   ): Promise<ImportResponse> {
     try {
       // API呼び出し
-      return await this.apiPost<ImportResponse>(
+      const rawResponse = await this.apiPost<ImportResponse>(
         "/scenarios/import",
         scenarioData,
       );
+      // バックエンドのsnake_caseレスポンスをcamelCaseに変換
+      return transformImportResponse(rawResponse);
     } catch (error) {
       console.error("シナリオのインポートに失敗しました:", error);
 
@@ -1179,7 +1291,18 @@ export class ApiService {
       );
 
       if (response.success) {
-        return response;
+        // バックエンドのsnake_caseレスポンスをcamelCaseに変換
+        return {
+          ...response,
+          complianceViolations: Array.isArray(response.complianceViolations)
+            ? response.complianceViolations.map((v) =>
+              typeof (v as Record<string, unknown>).rule_id === "string"
+                ? transformComplianceViolation(v as never)
+                : v,
+            )
+            : [],
+          videoAnalysis: transformVideoAnalysisResult(response.videoAnalysis),
+        };
       } else {
         throw new Error("セッション分析結果が正常に取得できませんでした");
       }
@@ -1248,49 +1371,34 @@ export class ApiService {
   }
 
   /**
-  /**
-   * 504 Gateway Timeoutエラーかどうかを判定する
+   * HTTPレスポンスのステータスコードを判定する共通メソッド
    * @param error エラーオブジェクト
-   * @returns 504エラーの場合true
+   * @param statusCode 判定するHTTPステータスコード
+   * @returns 指定したステータスコードの場合true
    */
+  private hasResponseStatus(error: unknown, statusCode: number): boolean {
+    if (error && typeof error === "object" && "response" in error) {
+      const response = (error as { response: unknown }).response;
+      if (response && typeof response === "object" && "status" in response) {
+        return (response as { status: number }).status === statusCode;
+      }
+    }
+    return false;
+  }
+
+  /** 504 Gateway Timeoutエラーかどうかを判定する */
   private isGatewayTimeoutError(error: unknown): boolean {
-    if (error && typeof error === "object" && "response" in error) {
-      const response = (error as { response: unknown }).response;
-      if (response && typeof response === "object" && "status" in response) {
-        return (response as { status: number }).status === 504;
-      }
-    }
-    return false;
+    return this.hasResponseStatus(error, 504);
   }
 
-  /**
-   * 404 Not Foundエラーかどうかを判定する
-   * @param error エラーオブジェクト
-   * @returns 404エラーの場合true
-   */
+  /** 404 Not Foundエラーかどうかを判定する */
   private is404Error(error: unknown): boolean {
-    if (error && typeof error === "object" && "response" in error) {
-      const response = (error as { response: unknown }).response;
-      if (response && typeof response === "object" && "status" in response) {
-        return (response as { status: number }).status === 404;
-      }
-    }
-    return false;
+    return this.hasResponseStatus(error, 404);
   }
 
-  /**
-   * 409 Conflictエラーかどうかを判定する
-   * @param error エラーオブジェクト
-   * @returns 409エラーの場合true
-   */
+  /** 409 Conflictエラーかどうかを判定する */
   private is409Error(error: unknown): boolean {
-    if (error && typeof error === "object" && "response" in error) {
-      const response = (error as { response: unknown }).response;
-      if (response && typeof response === "object" && "status" in response) {
-        return (response as { status: number }).status === 409;
-      }
-    }
-    return false;
+    return this.hasResponseStatus(error, 409);
   }
 
   public async getRankings(

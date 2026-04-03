@@ -12,7 +12,8 @@ def build_feedback_prompt(
     metrics: Dict[str, Any],
     messages: List[Dict[str, Any]],
     scenario_goals: List[Dict[str, Any]],
-    language: str
+    language: str,
+    slide_history: List[Dict[str, Any]] = None
 ) -> str:
     """
     フィードバック生成用プロンプトを構築
@@ -55,6 +56,36 @@ def build_feedback_prompt(
         else:
             goal_section = f"\n## シナリオのゴール\n{goals_text}\n"
     
+    # スライド提示履歴セクション
+    slide_section = ""
+    if slide_history:
+        if language == "en":
+            slide_lines = ["\n## Slide Presentation History"]
+            slide_lines.append("The salesperson presented the following slides during the conversation:")
+            for entry in slide_history:
+                page = entry.get('pageNumber', '?')
+                timestamp = entry.get('timestamp', '')
+                msg_id = entry.get('messageId', '')
+                slide_lines.append(f"- Slide {page} (presented at message: {msg_id})")
+            slide_lines.append("\nEvaluate the slide usage:")
+            slide_lines.append("- Was the timing of each slide presentation appropriate?")
+            slide_lines.append("- Were the presented slides relevant to the conversation topic?")
+            slide_lines.append("- Was the presentation order logical?")
+            slide_section = "\n".join(slide_lines) + "\n"
+        else:
+            slide_lines = ["\n## スライド提示履歴"]
+            slide_lines.append("営業担当者は会話中に以下のスライドを提示しました:")
+            for entry in slide_history:
+                page = entry.get('pageNumber', '?')
+                timestamp = entry.get('timestamp', '')
+                msg_id = entry.get('messageId', '')
+                slide_lines.append(f"- スライド{page}（メッセージ: {msg_id}で提示）")
+            slide_lines.append("\nスライドの活用を評価してください:")
+            slide_lines.append("- 各スライドの提示タイミングは適切でしたか？")
+            slide_lines.append("- 提示されたスライドは会話のトピックに関連していましたか？")
+            slide_lines.append("- 提示順序は論理的でしたか？")
+            slide_section = "\n".join(slide_lines) + "\n"
+    
     if language == "en":
         return f"""You are an expert sales trainer analyzing a sales roleplay session.
 
@@ -66,7 +97,7 @@ def build_feedback_prompt(
 ## Conversation (This is the COMPLETE and ONLY conversation that occurred)
 {conversation_text}
 {goal_section}
-
+{slide_section}
 **CRITICAL INSTRUCTIONS - READ CAREFULLY:**
 1. The conversation above is the COMPLETE record. There is NO other dialogue.
 2. Base your analysis ONLY on what the salesperson (User) actually said in the conversation above.
@@ -88,7 +119,7 @@ Analyze this sales conversation based STRICTLY on what actually happened."""
 ## 会話内容（これが発生した完全かつ唯一の会話です）
 {conversation_text}
 {goal_section}
-
+{slide_section}
 **重要な指示 - 注意深く読んでください:**
 1. 上記の会話が完全な記録です。他の会話は存在しません。
 2. 営業担当者（ユーザー）が上記の会話で実際に言ったことのみに基づいて分析してください。

@@ -132,10 +132,6 @@ const ScenarioSelectPage: React.FC = () => {
 
       // ユーザーIDを設定（Cognitoのsub属性を使用）
       setCurrentUserId(user.userId);
-
-      if (process.env.NODE_ENV !== "test") {
-        console.log("現在のユーザーID:", user.userId);
-      }
     } catch (err) {
       console.error("ユーザー情報取得エラー:", err);
       // 認証されていない場合はnullを設定
@@ -147,43 +143,23 @@ const ScenarioSelectPage: React.FC = () => {
   const isScenarioOwner = (scenario: ScenarioInfo): boolean => {
     // 現在のユーザーIDが取得できていない場合はfalse
     if (!currentUserId) {
-      if (process.env.NODE_ENV !== "test") {
-        console.log(
-          `オーナー判定: ユーザーIDが未取得のため false (scenario: ${scenario.scenarioId})`,
-        );
-      }
       return false;
     }
 
     // シナリオにcreatedByフィールドがある場合はそれを使用
     if (scenario.createdBy) {
       const isOwner = scenario.createdBy === currentUserId;
-      if (process.env.NODE_ENV !== "test") {
-        console.log(
-          `オーナー判定: createdBy比較 ${isOwner} (scenario: ${scenario.scenarioId}, createdBy: ${scenario.createdBy}, currentUser: ${currentUserId})`,
-        );
-      }
       return isOwner;
     }
 
     // カスタムシナリオフラグがある場合はそれを使用
     if (scenario.isCustom !== undefined) {
-      if (process.env.NODE_ENV !== "test") {
-        console.log(
-          `オーナー判定: isCustomフラグ ${scenario.isCustom} (scenario: ${scenario.scenarioId})`,
-        );
-      }
       return scenario.isCustom;
     }
 
     // フォールバック: シナリオIDにcustomが含まれている場合
     // （既存のカスタムシナリオとの互換性のため）
     const isCustomScenario = scenario.scenarioId.includes("custom");
-    if (process.env.NODE_ENV !== "test") {
-      console.log(
-        `オーナー判定: フォールバック判定 ${isCustomScenario} (scenario: ${scenario.scenarioId})`,
-      );
-    }
     return isCustomScenario;
   };
 
@@ -541,10 +517,10 @@ const ScenarioSelectPage: React.FC = () => {
         {!loading && !error && filteredScenarios.length === 0 && (
           <Box sx={{ textAlign: "center", py: 5 }}>
             <Typography variant="h6" color="text.secondary">
-              条件に一致するシナリオが見つかりません
+              {t("scenarios.noMatchingScenarios")}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              検索条件やフィルターを変更してお試しください
+              {t("scenarios.noMatchingScenariosHint")}
             </Typography>
             <Button
               variant="contained"
@@ -561,7 +537,7 @@ const ScenarioSelectPage: React.FC = () => {
                 setCategoryFilter("all");
               }}
             >
-              フィルターをリセット
+              {t("scenarios.resetFilters")}
             </Button>
           </Box>
         )}
@@ -673,7 +649,7 @@ const ScenarioSelectPage: React.FC = () => {
                   {scenario.npcInfo && (
                     <Box>
                       <Typography variant="subtitle2" gutterBottom>
-                        対話相手 (NPC)
+                        {t("scenarios.npcPartner")}
                       </Typography>
                       <Box display="flex" alignItems="center" gap={2} mb={1}>
                         <Avatar

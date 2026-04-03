@@ -178,18 +178,20 @@ export class SessionAnalysisLambdaConstruct extends Construct {
       props.scenariosTable.grantReadData(func);
     });
 
-    // AgentCore Memory権限（start_handlerで会話履歴を取得するため）
+    // AgentCore Memory権限（start_handlerで会話履歴を取得、feedback_handlerでスライド提示履歴を取得）
     if (props.agentCoreMemoryId) {
-      this.startFunction.addToRolePolicy(new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: [
-          'bedrock-agentcore:ListEvents',
-          'bedrock-agentcore:GetEvent',
-        ],
-        resources: [
-          `arn:aws:bedrock-agentcore:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:memory/${props.agentCoreMemoryId}`,
-        ],
-      }));
+      [this.startFunction, this.feedbackFunction].forEach(func => {
+        func.addToRolePolicy(new iam.PolicyStatement({
+          effect: iam.Effect.ALLOW,
+          actions: [
+            'bedrock-agentcore:ListEvents',
+            'bedrock-agentcore:GetEvent',
+          ],
+          resources: [
+            `arn:aws:bedrock-agentcore:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:memory/${props.agentCoreMemoryId}`,
+          ],
+        }));
+      });
     }
 
     // S3権限（動画ファイル用）

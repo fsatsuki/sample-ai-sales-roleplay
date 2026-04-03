@@ -50,11 +50,11 @@ app = APIGatewayRestResolver(cors=cors_config)
 # 環境変数
 SCENARIOS_TABLE = os.environ.get('SCENARIOS_TABLE')
 PDF_BUCKET = os.environ.get('PDF_BUCKET')
+SLIDE_BUCKET = os.environ.get('SLIDE_BUCKET')
 KNOWLEDGE_BASE_ID = os.environ.get('KNOWLEDGE_BASE_ID')
 
 # DynamoDB クライアント
 dynamodb = boto3.resource('dynamodb')
-scenarios_table = dynamodb.Table(SCENARIOS_TABLE)
 
 # S3クライアント（PDF保存用） - リージョン指定と署名バージョン設定
 if PDF_BUCKET:
@@ -71,10 +71,23 @@ if PDF_BUCKET:
 else:
     s3_client = None
 
+# スライド画像用S3クライアント
+if SLIDE_BUCKET:
+    slide_s3_client = boto3.client(
+        's3',
+        region_name=os.environ.get('AWS_REGION'),
+        config=Config(
+            signature_version='s3v4',
+            s3={'addressing_style': 'virtual'},
+            retries={'max_attempts': 3}
+        )
+    )
+else:
+    slide_s3_client = None
+
 # Bedrock Agentクライアント（Knowledge Base ingestion用）
 bedrock_agent_client = boto3.client('bedrock-agent') if KNOWLEDGE_BASE_ID else None
 
-dynamodb = boto3.resource('dynamodb')
 scenarios_table = None
 
 def init_tables():
@@ -195,6 +208,116 @@ def validate_and_check_scenario_id(scenario_id: str, exclude_id: str = None) -> 
     # 重複チェック（exclude_idが指定されている場合は、そのIDは除外）
     if exclude_id != scenario_id and check_scenario_id_exists(scenario_id):
         raise BadRequestError(f"シナリオID '{scenario_id}' は既に使用されています。別のIDを指定してください")
+
+
+def relocate_temp_files(temp_upload_id: str, scenario_id: str, pdf_files: list = None, presentation_file: dict = None) -> tuple:
+    """
+    S3上のtempパスから正式パスにファイルを移動する
+    
+    Args:
+        temp_upload_id: 一時アップロードID（例: temp-1234567890）
+        scenario_id: 確定したシナリオID
+        pdf_files: PDFファイル情報のリスト
+        presentation_file: 提案資料ファイル情報
+        
+    Returns:
+        tuple: (更新されたpdf_files, 更新されたpresentation_file)
+    """
+    relocated_pdf_files = None
+    relocated_presentation = None
+    
+    # PDF評価資料の移動（PDFバケット）
+    if pdf_files and s3_client and PDF_BUCKET:
+        relocated_pdf_files = []
+        src_prefix = f"scenarios/{temp_upload_id}/"
+        dst_prefix = f"scenarios/{scenario_id}/"
+        
+        # Phase 1: 全ファイルをコピー
+        copied_keys = []  # (src_key, dst_key) のリスト
+        try:
+            list_resp = s3_client.list_objects_v2(Bucket=PDF_BUCKET, Prefix=src_prefix)
+            for obj in list_resp.get("Contents", []):
+                src_key = obj["Key"]
+                dst_key = src_key.replace(src_prefix, dst_prefix, 1)
+                
+                # メタデータJSONの場合、scenarioIdを更新してコピー
+                if src_key.endswith(".metadata.json"):
+                    try:
+                        meta_resp = s3_client.get_object(Bucket=PDF_BUCKET, Key=src_key)
+                        meta_content = json.loads(meta_resp["Body"].read().decode("utf-8"))
+                        if "metadataAttributes" in meta_content:
+                            meta_content["metadataAttributes"]["scenarioId"] = scenario_id
+                        s3_client.put_object(
+                            Bucket=PDF_BUCKET, Key=dst_key,
+                            Body=json.dumps(meta_content).encode("utf-8"),
+                            ContentType="application/json"
+                        )
+                    except Exception as e:
+                        logger.error(f"メタデータ更新エラー: {src_key} -> {dst_key}: {e}")
+                        # フォールバック: そのままコピー
+                        s3_client.copy_object(Bucket=PDF_BUCKET, CopySource={"Bucket": PDF_BUCKET, "Key": src_key}, Key=dst_key)
+                else:
+                    s3_client.copy_object(Bucket=PDF_BUCKET, CopySource={"Bucket": PDF_BUCKET, "Key": src_key}, Key=dst_key)
+                
+                copied_keys.append((src_key, dst_key))
+            
+            # Phase 2: 全コピー成功後にのみ元ファイルを削除
+            for src_key, _ in copied_keys:
+                s3_client.delete_object(Bucket=PDF_BUCKET, Key=src_key)
+                logger.info(f"S3ファイル移動完了: {src_key}")
+            
+            # pdfFilesのkeyを更新
+            for pf in pdf_files:
+                if pf.get("key", "").startswith(src_prefix):
+                    pf["key"] = pf["key"].replace(src_prefix, dst_prefix, 1)
+                relocated_pdf_files.append(pf)
+                
+        except Exception as e:
+            logger.error(f"PDF評価資料の移動エラー: {e}")
+            # コピー済みファイルをロールバック
+            for _, dst_key in copied_keys:
+                try:
+                    s3_client.delete_object(Bucket=PDF_BUCKET, Key=dst_key)
+                except Exception:
+                    pass
+            relocated_pdf_files = pdf_files  # エラー時は元のまま
+    
+    # 提案資料の移動（スライドバケット）
+    if presentation_file and slide_s3_client and SLIDE_BUCKET:
+        src_prefix = f"presentations/{temp_upload_id}/"
+        dst_prefix = f"presentations/{scenario_id}/"
+        
+        # Phase 1: 全ファイルをコピー
+        copied_keys = []  # (src_key, dst_key) のリスト
+        try:
+            list_resp = slide_s3_client.list_objects_v2(Bucket=SLIDE_BUCKET, Prefix=src_prefix)
+            for obj in list_resp.get("Contents", []):
+                src_key = obj["Key"]
+                dst_key = src_key.replace(src_prefix, dst_prefix, 1)
+                slide_s3_client.copy_object(Bucket=SLIDE_BUCKET, CopySource={"Bucket": SLIDE_BUCKET, "Key": src_key}, Key=dst_key)
+                copied_keys.append((src_key, dst_key))
+            
+            # Phase 2: 全コピー成功後にのみ元ファイルを削除
+            for src_key, _ in copied_keys:
+                slide_s3_client.delete_object(Bucket=SLIDE_BUCKET, Key=src_key)
+                logger.info(f"S3ファイル移動完了（スライド）: {src_key}")
+            
+            # presentationFileのkeyを更新
+            relocated_presentation = dict(presentation_file)
+            if relocated_presentation.get("key", "").startswith(src_prefix):
+                relocated_presentation["key"] = relocated_presentation["key"].replace(src_prefix, dst_prefix, 1)
+                
+        except Exception as e:
+            logger.error(f"提案資料の移動エラー: {e}")
+            # コピー済みファイルをロールバック
+            for _, dst_key in copied_keys:
+                try:
+                    slide_s3_client.delete_object(Bucket=SLIDE_BUCKET, Key=dst_key)
+                except Exception:
+                    pass
+            relocated_presentation = presentation_file  # エラー時は元のまま
+    
+    return relocated_pdf_files, relocated_presentation
 
 
 def start_knowledge_base_ingestion():
@@ -368,6 +491,46 @@ def delete_scenario_s3_files(scenario_id: str, scenario_data: dict = None) -> tu
         })
     
     return deleted_files, failed_deletions
+
+
+def delete_scenario_slide_files(scenario_id: str) -> tuple:
+    """
+    シナリオに関連する提案資料スライドファイルをS3から削除する
+
+    Args:
+        scenario_id (str): シナリオID
+
+    Returns:
+        tuple: (削除されたファイルのリスト, 削除に失敗したファイルのリスト)
+    """
+    deleted_files = []
+    failed_deletions = []
+
+    if not SLIDE_BUCKET or not slide_s3_client:
+        return deleted_files, failed_deletions
+
+    try:
+        prefix = f"presentations/{scenario_id}/"
+        logger.info(f"S3からスライドファイルを削除開始: bucket={SLIDE_BUCKET}, prefix={prefix}")
+
+        list_response = slide_s3_client.list_objects_v2(Bucket=SLIDE_BUCKET, Prefix=prefix)
+
+        if 'Contents' in list_response:
+            objects = [{'Key': obj['Key']} for obj in list_response['Contents']]
+            delete_response = slide_s3_client.delete_objects(
+                Bucket=SLIDE_BUCKET, Delete={'Objects': objects, 'Quiet': False}
+            )
+            if 'Deleted' in delete_response:
+                deleted_files = [d['Key'] for d in delete_response['Deleted']]
+            if 'Errors' in delete_response:
+                failed_deletions = [{'key': e['Key'], 'code': e['Code'], 'message': e['Message']} for e in delete_response['Errors']]
+            logger.info(f"スライドファイル削除完了: 成功={len(deleted_files)}, 失敗={len(failed_deletions)}")
+    except Exception as e:
+        logger.error(f"スライドファイル削除エラー: {str(e)}")
+        failed_deletions.append({'error': str(e)})
+
+    return deleted_files, failed_deletions
+
 
 @app.get("/scenarios")
 def get_scenarios():
@@ -762,7 +925,7 @@ def create_scenario():
             scenario_data["pdfFiles"] = pdf_files
         
         # オプションフィールドの追加
-        optional_fields = ["goals", "initialMetrics", "objectives", "maxTurns", "avatarId"]
+        optional_fields = ["goals", "initialMetrics", "objectives", "maxTurns", "avatarId", "presentationFile"]
         for field in optional_fields:
             if field in body and body[field]:
                 scenario_data[field] = body[field]
@@ -779,11 +942,44 @@ def create_scenario():
         
         # DynamoDBに保存
         if scenarios_table:
+            # tempUploadIdが指定されている場合、S3ファイルをtempパスから正式パスに移動
+            temp_upload_id = body.get("tempUploadId")
+            if temp_upload_id and temp_upload_id.startswith("temp-"):
+                relocated_pdf_files, relocated_presentation = relocate_temp_files(
+                    temp_upload_id, scenario_id, scenario_data.get("pdfFiles"), scenario_data.get("presentationFile")
+                )
+                # 移動後のパスでscenario_dataを更新
+                if relocated_pdf_files is not None:
+                    scenario_data["pdfFiles"] = relocated_pdf_files
+                if relocated_presentation is not None:
+                    scenario_data["presentationFile"] = relocated_presentation
+            
             scenarios_table.put_item(Item=scenario_data)
             
             # Knowledge Base ingestion jobを開始
             ingestion_result = start_knowledge_base_ingestion()
             logger.info(f"シナリオ作成後のingestion job結果: {ingestion_result}")
+            
+            # 提案資料がある場合、スライド変換をトリガー
+            if scenario_data.get("presentationFile") and scenario_data["presentationFile"].get("key"):
+                try:
+                    convert_function_name = os.environ.get('SLIDE_CONVERT_FUNCTION', '')
+                    if convert_function_name:
+                        lambda_client = boto3.client('lambda')
+                        lambda_client.invoke(
+                            FunctionName=convert_function_name,
+                            InvocationType='Event',
+                            Payload=json.dumps({
+                                'body': json.dumps({
+                                    'scenarioId': scenario_id,
+                                    'pdfKey': scenario_data["presentationFile"]["key"],
+                                    'sourceBucket': SLIDE_BUCKET,
+                                })
+                            }),
+                        )
+                        logger.info(f"シナリオ作成後のスライド変換トリガー完了: {scenario_id}")
+                except Exception as slide_err:
+                    logger.warning(f"スライド変換トリガーエラー（シナリオ作成は成功）: {slide_err}")
             
             # 成功レスポンス
             response = {
@@ -882,7 +1078,8 @@ def update_scenario(scenario_id: str):
                 "pdfFiles": "pdfFiles",  # PDF資料情報
                 "maxTurns": "maxTurns",  # 最大ターン数
                 "avatarId": "avatarId",  # アバターID
-                "enableAvatar": "enableAvatar"  # アバター表示On/Off
+                "enableAvatar": "enableAvatar",  # アバター表示On/Off
+                "presentationFile": "presentationFile"  # 提案資料情報
             }
             
             for request_field, db_field in field_mappings.items():
@@ -988,6 +1185,11 @@ def delete_scenario(scenario_id: str):
             
             # S3からPDFファイルを削除
             deleted_files, failed_deletions = delete_scenario_s3_files(scenario_id, existing_scenario)
+            
+            # S3からスライドファイルを削除
+            slide_deleted, slide_failed = delete_scenario_slide_files(scenario_id)
+            deleted_files.extend(slide_deleted)
+            failed_deletions.extend(slide_failed)
             
             # DynamoDBから削除
             scenarios_table.delete_item(
@@ -1405,6 +1607,10 @@ def generate_pdf_upload_url(scenario_id: str):
     file_name = body["fileName"]
     content_type = body["contentType"]
     
+    # パストラバーサル防止: ファイル名に不正な文字が含まれていないか検証
+    if '..' in file_name or '/' in file_name or '\\' in file_name:
+        raise BadRequestError("ファイル名に不正な文字が含まれています")
+    
     # ファイル形式チェック（PDFファイルまたはメタデータJSONファイル）
     allowed_content_types = ["application/pdf", "application/json"]
     if content_type not in allowed_content_types:
@@ -1510,6 +1716,289 @@ def delete_scenario_file(scenario_id: str, file_name: str):
     except Exception as e:
         logger.error(f"ファイル削除エラー: {str(e)}")
         raise InternalServerError(f"ファイルの削除中にエラーが発生しました: {str(e)}")
+
+
+# ========================================
+# 提案資料（プレゼンテーション）関連エンドポイント
+# ========================================
+
+
+@app.post("/scenarios/<scenario_id>/presentation-upload-url")
+def generate_presentation_upload_url(scenario_id: str):
+    """
+    提案資料PDFアップロード用の署名付きPOST URLを発行する
+
+    リクエストボディ:
+    - fileName: ファイル名（PDFファイル）
+    - contentType: application/pdf
+
+    戻り値:
+    - uploadUrl: アップロード用のS3エンドポイントURL
+    - formData: POSTリクエストで送信するフォームデータ
+    - key: S3内のオブジェクトキー
+    """
+    # 認証チェック
+    user_id = get_user_id_from_token()
+    if not user_id:
+        raise BadRequestError("認証されていないユーザーです")
+
+    # 所有者チェック（temp-で始まる場合は新規作成中のためスキップ）
+    if not scenario_id.startswith("temp-"):
+        if scenarios_table:
+            response = scenarios_table.get_item(Key={"scenarioId": scenario_id})
+            if "Item" not in response:
+                raise NotFoundError(f"シナリオが見つかりません: {scenario_id}")
+            if response["Item"].get("createdBy") != user_id:
+                raise BadRequestError("このシナリオへのアクセス権がありません")
+
+    if not SLIDE_BUCKET or not slide_s3_client:
+        raise InternalServerError("スライド保存用のS3バケットが設定されていません")
+
+    try:
+        body = app.current_event.json_body
+    except (json.JSONDecodeError, TypeError):
+        raise BadRequestError("無効なJSONリクエストです")
+
+    if "fileName" not in body:
+        raise BadRequestError("fileName is required")
+    if "contentType" not in body:
+        raise BadRequestError("contentType is required")
+
+    content_type = body["contentType"]
+    if content_type != "application/pdf":
+        raise BadRequestError("提案資料はPDF形式のみアップロード可能です")
+
+    # S3キー: presentations/{scenarioId}/original.pdf
+    s3_key = f"presentations/{scenario_id}/original.pdf"
+
+    try:
+        post_data = slide_s3_client.generate_presigned_post(
+            Bucket=SLIDE_BUCKET,
+            Key=s3_key,
+            Fields={'Content-Type': content_type},
+            Conditions=[
+                ['content-length-range', 1, 104857600],  # 最大100MB
+                {'Content-Type': content_type}
+            ],
+            ExpiresIn=300
+        )
+
+        logger.info(f"提案資料署名付きURL生成成功: key={s3_key}")
+
+        return {
+            "uploadUrl": post_data['url'],
+            "formData": post_data['fields'],
+            "key": s3_key,
+            "fileName": body["fileName"],
+            "contentType": content_type
+        }
+    except Exception as e:
+        logger.error(f"提案資料署名付きURL生成エラー: {str(e)}")
+        raise InternalServerError("署名付きURLの生成に失敗しました")
+
+
+@app.delete("/scenarios/<scenario_id>/presentation")
+def delete_presentation(scenario_id: str):
+    """
+    シナリオの提案資料を削除する（元PDF + 変換済みスライド画像）
+    """
+    # 認証チェック
+    user_id = get_user_id_from_token()
+    if not user_id:
+        raise BadRequestError("認証されていないユーザーです")
+
+    # 所有者チェック
+    if scenarios_table:
+        response = scenarios_table.get_item(Key={"scenarioId": scenario_id})
+        if "Item" not in response:
+            raise NotFoundError(f"シナリオが見つかりません: {scenario_id}")
+        if response["Item"].get("createdBy") != user_id:
+            raise BadRequestError("このシナリオへのアクセス権がありません")
+
+    if not SLIDE_BUCKET or not slide_s3_client:
+        raise InternalServerError("スライド保存用のS3バケットが設定されていません")
+
+    try:
+        # presentations/{scenarioId}/ 配下のすべてのオブジェクトを削除
+        prefix = f"presentations/{scenario_id}/"
+        list_response = slide_s3_client.list_objects_v2(Bucket=SLIDE_BUCKET, Prefix=prefix)
+
+        if 'Contents' in list_response:
+            objects = [{'Key': obj['Key']} for obj in list_response['Contents']]
+            slide_s3_client.delete_objects(
+                Bucket=SLIDE_BUCKET,
+                Delete={'Objects': objects, 'Quiet': True}
+            )
+            logger.info(f"提案資料削除完了: {len(objects)}ファイル")
+
+        # DynamoDBからpresentationFileフィールドを削除
+        if scenarios_table:
+            scenarios_table.update_item(
+                Key={'scenarioId': scenario_id},
+                UpdateExpression='REMOVE presentationFile',
+            )
+
+        return {"success": True, "message": "提案資料を削除しました"}
+    except Exception as e:
+        logger.error(f"提案資料削除エラー: {str(e)}")
+        raise InternalServerError(f"提案資料の削除中にエラーが発生しました: {str(e)}")
+
+
+@app.get("/scenarios/<scenario_id>/slides")
+def get_slides(scenario_id: str):
+    """
+    シナリオのスライド画像一覧を取得する（署名付きURL付き）
+    公開シナリオは誰でも閲覧可能、非公開は所有者のみ、共有は所有者+共有先ユーザーのみ
+    """
+    # 認証チェック
+    user_id = get_user_id_from_token()
+
+    if not SLIDE_BUCKET or not slide_s3_client:
+        raise InternalServerError("スライド保存用のS3バケットが設定されていません")
+
+    try:
+        # DynamoDBからシナリオ情報を取得
+        if not scenarios_table:
+            raise InternalServerError("シナリオテーブルが初期化されていません")
+
+        response = scenarios_table.get_item(Key={'scenarioId': scenario_id})
+        if 'Item' not in response:
+            raise NotFoundError(f"シナリオが見つかりません: {scenario_id}")
+
+        item = response['Item']
+
+        # visibility/所有者に基づくアクセス権チェック
+        visibility = item.get('visibility', 'public')
+        created_by = item.get('createdBy')
+
+        if visibility == 'private':
+            # 非公開シナリオは所有者のみ閲覧可能
+            if not user_id or created_by != user_id:
+                raise BadRequestError("このシナリオへのアクセス権がありません")
+        elif visibility == 'shared':
+            # 共有シナリオは所有者+共有先ユーザーのみ閲覧可能
+            shared_with_users = item.get('sharedWithUsers', [])
+            if not user_id or (created_by != user_id and user_id not in shared_with_users):
+                raise BadRequestError("このシナリオへのアクセス権がありません")
+        # visibility == 'public' の場合は認証不要で誰でも閲覧可能
+        presentation = item.get('presentationFile', {})
+        slides = presentation.get('slides', [])
+        status = presentation.get('status', 'none')
+
+        if status != 'ready' or not slides:
+            return {
+                "success": True,
+                "scenarioId": scenario_id,
+                "status": status,
+                "totalPages": 0,
+                "slides": []
+            }
+
+        # 各スライドに署名付きURLを付与
+        slides_with_urls = []
+        for slide in slides:
+            slide_data = convert_decimal_to_json_serializable(slide)
+            # フルサイズ画像の署名付きURL
+            slide_data['imageUrl'] = slide_s3_client.generate_presigned_url(
+                'get_object',
+                Params={'Bucket': SLIDE_BUCKET, 'Key': slide['imageKey']},
+                ExpiresIn=3600
+            )
+            # サムネイルの署名付きURL
+            if 'thumbnailKey' in slide:
+                slide_data['thumbnailUrl'] = slide_s3_client.generate_presigned_url(
+                    'get_object',
+                    Params={'Bucket': SLIDE_BUCKET, 'Key': slide['thumbnailKey']},
+                    ExpiresIn=3600
+                )
+            slides_with_urls.append(slide_data)
+
+        return {
+            "success": True,
+            "scenarioId": scenario_id,
+            "status": "ready",
+            "totalPages": int(presentation.get('totalPages', len(slides))),
+            "slides": slides_with_urls
+        }
+    except NotFoundError:
+        raise
+    except Exception as e:
+        logger.error(f"スライド一覧取得エラー: {str(e)}")
+        raise InternalServerError(f"スライド一覧の取得中にエラーが発生しました: {str(e)}")
+
+
+@app.post("/scenarios/<scenario_id>/convert-slides")
+def trigger_slide_conversion(scenario_id: str):
+    """
+    PDF→スライド画像変換を手動トリガーする
+    （アップロード完了後にフロントエンドから呼び出す）
+    """
+    # 認証チェック
+    user_id = get_user_id_from_token()
+    if not user_id:
+        raise BadRequestError("認証されていないユーザーです")
+
+    # 所有者チェック
+    if scenarios_table:
+        response = scenarios_table.get_item(Key={"scenarioId": scenario_id})
+        if "Item" not in response:
+            raise NotFoundError(f"シナリオが見つかりません: {scenario_id}")
+        if response["Item"].get("createdBy") != user_id:
+            raise BadRequestError("このシナリオへのアクセス権がありません")
+
+    try:
+        body = app.current_event.json_body or {}
+        # パストラバーサル防止: pdfKeyはユーザー入力から取らず固定値を使用
+        pdf_key = f"presentations/{scenario_id}/original.pdf"
+
+        # DynamoDBにpresentationFile情報を保存（既存シナリオのみ）
+        if scenarios_table:
+            try:
+                scenarios_table.update_item(
+                    Key={'scenarioId': scenario_id},
+                    UpdateExpression='SET presentationFile = :pf',
+                    ConditionExpression='attribute_exists(scenarioId) AND attribute_exists(title)',
+                    ExpressionAttributeValues={
+                        ':pf': {
+                            'key': pdf_key,
+                            'fileName': body.get('fileName', 'presentation.pdf'),
+                            'contentType': 'application/pdf',
+                            'status': 'uploading',
+                        }
+                    },
+                )
+            except Exception as update_err:
+                # シナリオ未作成の場合はスキップ（ゴーストレコード防止）
+                logger.info(f"シナリオ {scenario_id} のpresentationFile更新をスキップ（未作成の可能性）: {update_err}")
+
+        # SlideConvert Lambdaを非同期呼び出し
+        lambda_client = boto3.client('lambda')
+        convert_function_name = os.environ.get('SLIDE_CONVERT_FUNCTION', '')
+
+        if convert_function_name:
+            lambda_client.invoke(
+                FunctionName=convert_function_name,
+                InvocationType='Event',  # 非同期呼び出し
+                Payload=json.dumps({
+                    'body': json.dumps({
+                        'scenarioId': scenario_id,
+                        'pdfKey': pdf_key,
+                        'sourceBucket': SLIDE_BUCKET,
+                    })
+                }),
+            )
+            logger.info(f"スライド変換Lambda非同期呼び出し完了: {scenario_id}")
+        else:
+            logger.warning("SLIDE_CONVERT_FUNCTION環境変数が未設定です")
+
+        return {
+            "success": True,
+            "message": "スライド変換を開始しました",
+            "scenarioId": scenario_id,
+        }
+    except Exception as e:
+        logger.error(f"スライド変換トリガーエラー: {str(e)}")
+        raise InternalServerError(f"スライド変換の開始に失敗しました: {str(e)}")
 
 
 @logger.inject_lambda_context(correlation_id_path=correlation_paths.API_GATEWAY_REST)

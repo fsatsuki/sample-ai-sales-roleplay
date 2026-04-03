@@ -9,6 +9,7 @@ export * from "./components";
 import type {
   DifficultyLevel,
   ComplianceViolation,
+  ComplianceCheck,
   NPCInfo,
   GoalInfo,
   MetricsInfo,
@@ -57,18 +58,9 @@ export interface Message {
   content: string;
   timestamp: Date;
   metrics?: ExtendedMetrics;
-  compliance?: {
-    violations?: {
-      rule_id: string;
-      rule_name: string;
-      severity: "high" | "medium" | "low";
-      message: string;
-      context: string;
-      confidence: number;
-    }[];
-    score: number;
-    analysis: string;
-  };
+  compliance?: ComplianceCheck;
+  /** このメッセージ送信時に選択されていたスライドページ番号リスト */
+  presentedSlides?: number[];
 }
 
 // セッション情報

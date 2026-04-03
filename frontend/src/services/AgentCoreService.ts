@@ -10,6 +10,7 @@
 import { getCurrentUser, fetchAuthSession } from "aws-amplify/auth";
 import type { Message, NPC, Goal, GoalStatus } from "../types/index";
 import type { ComplianceCheck } from "../types/api";
+import { transformComplianceCheck } from "../utils/apiTransformers";
 
 // 環境変数からAgentCore Runtime設定を取得
 const AGENTCORE_ENABLED = import.meta.env.VITE_AGENTCORE_ENABLED === 'true';
@@ -92,12 +93,6 @@ export class AgentCoreService {
     // エンドポイント形式: /runtimes/{encodedArn}/invocations
     // 注意: qualifierパラメータは不要（エンドポイントが見つからないエラーの原因）
     const url = `${AGENTCORE_ENDPOINT}/runtimes/${encodedArn}/invocations`;
-
-    console.log('AgentCore Runtime呼び出し:', {
-      url,
-      runtimeArn,
-      sessionId,
-    });
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 120000); // 120秒タイムアウト
@@ -218,7 +213,8 @@ export class AgentCoreService {
       progressLevel?: number;
     },
     scenarioId?: string,
-    language?: string
+    language?: string,
+    presentedSlides?: Array<{ pageNumber: number; imageKey: string }>,
   ): Promise<{ response: string; sessionId: string; messageId: string }> {
     if (!this.isAvailable()) {
       throw new Error('AgentCore Runtimeが利用できません');
@@ -260,6 +256,7 @@ export class AgentCoreService {
         },
       } : {}),
       ...(language ? { language } : {}),
+      ...(presentedSlides && presentedSlides.length > 0 ? { presentedSlides } : {}),
     };
 
     try {
@@ -437,7 +434,7 @@ export class AgentCoreService {
           },
           analysis: result.analysis || "",
           goalStatuses: convertedGoalStatuses,
-          ...(result.compliance ? { compliance: result.compliance } : {}),
+          ...(result.compliance ? { compliance: transformComplianceCheck(result.compliance) } : {}),
           npcEmotion: result.npcEmotion || 'neutral',
           npcEmotionIntensity: result.npcEmotionIntensity ?? 0.5,
           gesture: result.gesture || 'none',

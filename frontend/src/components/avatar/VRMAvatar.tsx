@@ -47,8 +47,7 @@ const VRMAvatar: React.FC<VRMAvatarProps> = ({
   emotion,
   isSpeaking,
   visemeData,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  directEmotion,
+  // directEmotionはVRMAvatarContainerが統合済みのemotionに含まれるため、ここでは使用しない
   gesture,
   onLoad,
   onError,
@@ -72,7 +71,7 @@ const VRMAvatar: React.FC<VRMAvatarProps> = ({
   // アニメーション Refs
   const animationFrameRef = useRef<number | null>(null);
   const lastFrameTimeRef = useRef<number>(0);
-  const clockRef = useRef<THREE.Clock>(new THREE.Clock());
+  const timerRef = useRef<THREE.Timer>(new THREE.Timer());
   const isMountedRef = useRef<boolean>(false);
   const cleanupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -103,7 +102,8 @@ const VRMAvatar: React.FC<VRMAvatarProps> = ({
 
       if (elapsed >= FRAME_INTERVAL) {
         lastFrameTimeRef.current = currentTime - (elapsed % FRAME_INTERVAL);
-        const deltaTime = clockRef.current.getDelta();
+        timerRef.current.update();
+        const deltaTime = timerRef.current.getDelta();
 
         // コントローラーの更新（vrm.update()より先に実行）
         expressionControllerRef.current?.update(deltaTime);
@@ -183,6 +183,8 @@ const VRMAvatar: React.FC<VRMAvatarProps> = ({
     vrmLoaderRef.current = null;
 
     // Three.jsリソースを解放
+    timerRef.current.dispose();
+
     if (rendererRef.current) {
       rendererRef.current.dispose();
       rendererRef.current = null;
@@ -280,8 +282,8 @@ const VRMAvatar: React.FC<VRMAvatarProps> = ({
     fillLight.position.set(LIGHT_CONFIG.fill.position.x, LIGHT_CONFIG.fill.position.y, LIGHT_CONFIG.fill.position.z);
     scene.add(fillLight);
 
-    // クロック開始
-    clockRef.current.start();
+    // Timer: Page Visibility APIを有効化
+    timerRef.current.connect(document);
 
     // === VRMモデル読み込み ===
     const loadModel = async () => {

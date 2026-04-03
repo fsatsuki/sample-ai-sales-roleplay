@@ -22,9 +22,10 @@ import BasicInfoStep from "./creation/BasicInfoStep";
 import NPCInfoStep from "./creation/NPCInfoStep";
 import GoalsStep from "./creation/GoalsStep";
 import PdfFilesStep from "./creation/PdfFilesStep";
+import PresentationStep from "./creation/PresentationStep";
 import SharingStep from "./creation/SharingStep";
 import PreviewStep from "./creation/PreviewStep";
-import { DifficultyLevel } from "../../types/api";
+import { DifficultyLevel, PresentationFileInfo } from "../../types/api";
 
 // シナリオ編集ページ
 const ScenarioEditPage: React.FC = () => {
@@ -103,6 +104,9 @@ const ScenarioEditPage: React.FC = () => {
     sharedWithUsers: [] as string[],
     guardrail: "",
     initialMessage: "",
+
+    // 提案資料
+    presentationFile: undefined as PresentationFileInfo | undefined,
   });
 
   // 初期化処理
@@ -160,6 +164,9 @@ const ScenarioEditPage: React.FC = () => {
 
           // PDF資料情報
           pdfFiles: scenarioData.pdfFiles || [],
+
+          // 提案資料情報
+          presentationFile: scenarioData.presentationFile || undefined,
 
           goals: (scenarioData.goals || []).map((goal) => ({
             id: goal.id,
@@ -286,6 +293,23 @@ const ScenarioEditPage: React.FC = () => {
       ),
     },
     {
+      label: t("scenarios.create.steps.presentation"),
+      component: (
+        <PresentationStep
+          formData={{
+            scenarioId: scenarioId || "",
+            presentationFile: formData.presentationFile,
+          }}
+          updateFormData={(data) =>
+            setFormData({
+              ...formData,
+              presentationFile: data.presentationFile,
+            })
+          }
+        />
+      ),
+    },
+    {
       label: t("scenarios.create.steps.sharing"),
       component: (
         <SharingStep
@@ -378,6 +402,7 @@ const ScenarioEditPage: React.FC = () => {
         initialMetrics: formData.initialMetrics,
         goals: formData.goals,
         pdfFiles: formData.pdfFiles?.length > 0 ? formData.pdfFiles : undefined,
+        presentationFile: formData.presentationFile || undefined,
         visibility: formData.visibility,
         guardrail: formData.guardrail,
         initialMessage: formData.initialMessage,

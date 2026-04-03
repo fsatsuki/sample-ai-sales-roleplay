@@ -9,6 +9,7 @@ import * as cognito from 'aws-cdk-lib/aws-cognito';
 import { DatabaseTables } from './constructs/storage/database-tables';
 import { GuardrailsConstruct } from './constructs/guardrails';
 import { PdfStorageConstruct } from './constructs/storage/pdf-storage';
+import { SlideStorageConstruct } from './constructs/storage/slide-storage';
 import { Polly } from './constructs/polly';
 import { VectorKB } from './constructs/knowledgebase';
 import { BedrockModelsConfig } from './types/bedrock-models';
@@ -96,6 +97,11 @@ export class InfrastructureStack extends cdk.Stack {
       resourceNamePrefix: resourcePrefix
     });
 
+    // 提案資料スライド画像保存用S3バケット
+    const slideStorage = new SlideStorageConstruct(this, 'SlideStorage', {
+      resourceNamePrefix: resourcePrefix
+    });
+
     // knowledge baseをデプロイ
     const kb = new VectorKB(this, "VectorKB", {
       resourceNamePrefix: resourcePrefix,
@@ -131,7 +137,16 @@ export class InfrastructureStack extends cdk.Stack {
       memoryId: this.sessionMemory.memoryId,
       additionalEnvironmentVariables: {
         BEDROCK_MODEL_CONVERSATION: props!.bedrockModels.conversation,
+        SLIDE_BUCKET: slideStorage.bucket.bucketName,
       },
+      additionalPolicies: [
+        new cdk.aws_iam.PolicyStatement({
+          sid: 'SlideStorageReadAccess',
+          effect: cdk.aws_iam.Effect.ALLOW,
+          actions: ['s3:GetObject'],
+          resources: [`${slideStorage.bucket.bucketArn}/*`],
+        }),
+      ],
     });
 
     // リアルタイムスコアリングエージェント（フロントエンド直接呼び出し - JWT認証）
@@ -217,6 +232,7 @@ export class InfrastructureStack extends cdk.Stack {
       databaseTables: databaseTables,
       guardrails: guardrails,
       pdfStorageBucket: pdfStorage.bucket,
+      slideStorageBucket: slideStorage.bucket,
       knowledgeBaseId: kb.knowledgeBaseId,
       bedrockModels: props!.bedrockModels,
       agentCoreMemoryId: this.sessionMemory.memoryId,

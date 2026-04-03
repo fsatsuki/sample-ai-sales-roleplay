@@ -1831,3 +1831,223 @@
 - build-and-test-summary.md（更新）
 
 ---
+
+
+---
+
+## New Workflow Session: 提案資料スライド連動ロールプレイ機能
+**Timestamp**: 2026-03-22T10:00:00Z
+
+---
+
+## Workspace Detection
+**Timestamp**: 2026-03-22T10:00:01Z
+**User Input**: "ai-dlc workflowで新しいInceptionを開始します。code knowledge baseのspace idは "sample-ai-sales-roleplay-1fd8" です。NPCと会話をするときに、提案資料のパワーポイントを使いながら、相手に説明をする感じのロールプレイができるようにしたいです。パワーポイントの資料を全部見せるのではなく、話をしている最中に表示したスライドだけをNPC役のAIに渡します。スライド切り替えの途中で一瞬だけ表示されたものはAIには渡しません。一連のトークの中で複数のスライドを表示することがあります。トークと表示されたスライドのページを明確に分けて、NCPの会話を生成するAIに渡す必要があります。資料はシナリオの作成画面でアップロードします。さて、パワーポイントとこれまで説明していましたが、pptxとpdf形式のどちらが実装しやすいかは調査が必要です。"
+**AI Response**: ワークスペース検出を開始。既存のBrownfieldプロジェクトを確認。
+**Context**: 新規Inceptionフェーズ開始、提案資料スライド連動ロールプレイ機能リクエスト
+
+---
+
+## Workspace Detection Complete
+**Timestamp**: 2026-03-22T10:01:00Z
+**AI Response**: ワークスペース検出完了
+**Context**: Brownfieldプロジェクト、既存のリバースエンジニアリング成果物あり
+
+### 検出結果:
+- **プロジェクトタイプ**: Brownfield
+- **既存コード**: あり（React 19 + TypeScript フロントエンド、AWS CDK バックエンド）
+- **既存PDF機能**: シナリオ作成画面でPDFアップロード済み（Knowledge Base連携用）
+- **NPC会話エージェント**: AgentCore Runtime + Strands Agents（cdk/agents/npc-conversation/）
+- **リバースエンジニアリング成果物**: 存在（前回のワークフローで作成済み）
+
+### 技術調査結果（pptx vs pdf）:
+- **PDF**: pdf.js（Mozilla）でブラウザ内レンダリング可能。Canvas APIで各ページを画像化。成熟したライブラリ。Lambda側ではpdf2image+popplerで画像変換可能。
+- **PPTX**: ブラウザ内での忠実なレンダリングは困難。pptxgenjsは生成専用。商用SDKが必要。Lambda側でもLibreOffice等の重い依存が必要。
+- **結論**: PDF形式が圧倒的に実装しやすい
+
+---
+
+## Requirements Analysis Start
+**Timestamp**: 2026-03-22T10:02:00Z
+**User Request**: "NPCと会話をするときに、提案資料のパワーポイントを使いながら、相手に説明をする感じのロールプレイができるようにしたい。話をしている最中に表示したスライドだけをNPC役のAIに渡す。スライド切り替えの途中で一瞬だけ表示されたものはAIには渡さない。一連のトークの中で複数のスライドを表示することがある。トークと表示されたスライドのページを明確に分けて、NCPの会話を生成するAIに渡す必要がある。資料はシナリオの作成画面でアップロード。pptxとpdf形式のどちらが実装しやすいかは調査が必要。"
+**AI Response**: 要件分析を開始。技術調査完了。要件確認質問書を作成。
+**Context**: Requirements Analysis stage - Intent analysis and clarifying questions
+
+---
+
+## Requirements Verification Answers Received
+**Timestamp**: 2026-03-22T11:30:00Z
+**User Input**: 質問ファイルに回答を記入 + 「Q4は下部トレイの案を採用します」
+
+### 回答サマリー:
+- Q1: A - PDF形式のみ対応
+- Q2: B - ユーザーの明示的アクション（手動ボタン）
+- Q3: A - 画像（Bedrock Vision）でAIに渡す
+- Q4: D相当 - 下部スライドトレイ（モックで確認後に決定）
+- Q5: B - シナリオ作成画面に新しいステップ「提案資料」を追加（既存PDFとは別管理）
+- Q6: A - 1ファイルのみ
+- Q7: A - 提案資料は任意（オプション）
+- Q8: A - スライド表示履歴をフィードバックに含める
+- Q9: A - メッセージごとに提示スライド番号を付与
+- Q10: B - 段階的実装（Phase 1: 表示+提示、Phase 2: AI連携+フィードバック）
+
+### モック確認:
+- Q2: 3パターン（時間ベース/手動ボタン/ハイブリッド）のインタラクティブモック作成・確認済み
+- Q3: 3パターン（Vision/テキスト/ハイブリッド）の比較モック作成・確認済み
+- Q4: 4パターン（左右分割/サイドパネル/アバター切替/下部トレイ）のモック作成・確認済み
+  - アバター表示エリアとの共存、スライド拡大機能を考慮
+  - 下部トレイ案を採用
+
+### 矛盾チェック: なし
+
+**AI Response**: 要件定義書を作成
+**File**: aidlc-docs/inception/requirements/requirements-slide-roleplay.md
+
+---
+
+## Requirements Analysis Approved
+**Timestamp**: 2026-03-22T12:00:00Z
+**User Input**: "approve"
+**AI Response**: 要件承認完了。User Stories評価→Workflow Planningに進む。
+**Status**: Approved
+**Context**: Requirements Analysis完了、Workflow Planningへ遷移
+
+---
+
+## User Stories Assessment
+**Timestamp**: 2026-03-22T12:00:30Z
+**User Input**: N/A (自動評価)
+**AI Response**: User Storiesステージをスキップと判定。
+**Context**: User Stories stage - Intelligent assessment
+
+### Assessment Result:
+- **Decision**: SKIP
+- **Reasoning**:
+  - 本リクエストは既存システムへの新機能追加だが、ユーザータイプは既存（営業担当者、研修担当者）のまま
+  - 要件定義書で機能要件・非機能要件・段階的実装計画が十分に明確
+  - ユーザーがPhase 1/Phase 2の段階的実装を選択しており、スコープが明確
+  - 新しいペルソナや複雑なユーザージャーニーは不要
+
+---
+
+## INCEPTION - Workflow Planning
+**Timestamp**: 2026-03-22T12:01:00Z
+**User Input**: N/A (自動実行)
+**AI Response**: 実行計画書を作成。
+**Context**: Workflow Planning stage
+
+---
+
+## Workflow Planning Approved
+**Timestamp**: 2026-03-22T12:10:00Z
+**User Input**: "approve"
+**AI Response**: 実行計画承認。Code Generation Phase 1に進む。
+**Status**: Approved
+**Context**: Workflow Planning完了、Code Generation Phase 1へ遷移
+
+---
+
+## CONSTRUCTION - Code Generation Phase 1 (Part 1: Planning)
+**Timestamp**: 2026-03-22T12:10:30Z
+**User Input**: N/A (自動実行)
+**AI Response**: Phase 1のコード生成プランを作成。
+**Context**: Code Generation Part 1 - Planning
+
+---
+
+## Code Generation Phase 1 Plan Approved
+**Timestamp**: 2026-03-22T12:20:00Z
+**User Input**: "approve"
+**AI Response**: Phase 1コード生成計画承認。Part 2 (Generation) を開始。
+**Status**: Approved
+**Context**: Code Generation Phase 1 Part 1完了、Part 2開始
+
+---
+
+## Code Generation Phase 1 Complete
+**Timestamp**: 2026-03-22T13:00:00Z
+**AI Response**: Phase 1コード生成完了（10/11ステップ、Step 9はPhase 2で実施）
+**Context**: 型定義、CDKストレージ、Lambda、API、フロントエンドコンポーネント、i18n実装完了
+
+---
+
+## CONSTRUCTION - Code Generation Phase 2 (Part 1: Planning)
+**Timestamp**: 2026-03-22T13:01:00Z
+**User Input**: "続けます"
+**AI Response**: Phase 2のコード生成プランを作成。6ステップ。
+**Context**: Code Generation Phase 2 Part 1 - Planning
+
+---
+
+## Code Generation Phase 2 Complete
+**Timestamp**: 2026-03-22T13:30:00Z
+**AI Response**: Phase 2コード生成完了（4/6ステップ、Step 3,5は大規模変更のため別途実施）
+**Context**: NPC会話エージェントのマルチモーダル対応、AgentCoreService/ApiServiceのpresentedSlides対応、セッション分析プロンプトのスライド評価追加
+
+### 実装内容:
+- `cdk/agents/npc-conversation/prompts.py`: スライドコンテキストセクション追加、`_build_slide_context`関数
+- `cdk/agents/npc-conversation/agent.py`: presentedSlides受け取り、`_build_multimodal_message`関数（Bedrock Vision対応）
+- `frontend/src/services/AgentCoreService.ts`: chatWithNPCにpresentedSlides引数追加
+- `frontend/src/services/ApiService.ts`: chatWithNPCにpresentedSlides引数追加
+- `cdk/lambda/sessionAnalysis/prompts.py`: slide_historyパラメータ + スライド提示評価セクション追加
+
+### 未実施（別途実施）:
+- Step 3: ConversationPage.tsxへのSlideTray/SlideZoomModal統合（大規模変更）
+- Step 5: ResultPage.tsxへのスライド評価セクション追加（フィードバックデータに含まれるため既存UIで表示可能）
+
+---
+
+## ConversationPage スライドトレイ統合完了
+**Timestamp**: 2026-03-22T14:00:00Z
+**AI Response**: ConversationPage.tsxにスライドトレイ統合完了
+**Context**: Phase 2 Step 3 - ConversationPage統合
+
+### 変更内容:
+- import追加: SlideTray, SlideZoomModal, SlideImageInfo
+- state追加: slideImages, currentSlideIndex, presentedSlidePages, isSlideZoomOpen, presentedSlidePagesRef
+- シナリオ読み込み時: presentationFileがある場合にgetSlideImages APIでスライド画像取得
+- handleSlidePresent: 提示ボタン押下時にpresentedSlidePagesを更新
+- chatWithNPC: presentedSlidePagesRefから提示済みスライドの画像URLを渡す
+- JSX: SlideTrayをアバターステージとチャットログの間に配置
+- JSX: SlideZoomModalを設定モーダルの前に配置
+- 型チェック: エラーなし
+
+---
+
+## Build and Test Stage
+**Timestamp**: 2026-03-22T14:10:00Z
+**Build Status**: Success
+- リントエラー: 0件（PresentationStep.tsxの未使用import修正、ConversationPage.tsxのuseCallback依存関係修正）
+- 型エラー: 0件（全13変更ファイル確認済み）
+**Test Status**: 型チェック・リント通過
+
+### 変更ファイル一覧（全機能）:
+
+**バックエンド（CDK/Lambda）:**
+- `cdk/lib/constructs/storage/slide-storage.ts` - 新規: スライド画像用S3バケット
+- `cdk/lib/constructs/api/slide-convert-lambda.ts` - 新規: PDF→画像変換Lambda CDKコンストラクト
+- `cdk/lib/constructs/api/scenario-lambda.ts` - 変更: slideBucket追加
+- `cdk/lib/constructs/api/api-gateway.ts` - 変更: 4つの新エンドポイント追加
+- `cdk/lib/constructs/api.ts` - 変更: slideStorageBucket、SlideConvertLambda追加
+- `cdk/lib/infrastructure-stack.ts` - 変更: SlideStorageConstruct追加
+- `cdk/lambda/slideConvert/index.py` - 新規: PDF→画像変換Lambda
+- `cdk/lambda/slideConvert/requirements.txt` - 新規
+- `cdk/lambda/slideConvert/Dockerfile` - 新規
+- `cdk/lambda/scenarios/index.py` - 変更: 4つの提案資料エンドポイント追加
+- `cdk/agents/npc-conversation/prompts.py` - 変更: スライドコンテキスト追加
+- `cdk/agents/npc-conversation/agent.py` - 変更: マルチモーダルメッセージ対応
+- `cdk/lambda/sessionAnalysis/prompts.py` - 変更: スライド提示評価追加
+
+**フロントエンド:**
+- `frontend/src/types/api.ts` - 変更: SlideImageInfo、PresentationFileInfo型追加
+- `frontend/src/services/ApiService.ts` - 変更: 提案資料関連メソッド5つ追加、chatWithNPC拡張
+- `frontend/src/services/AgentCoreService.ts` - 変更: chatWithNPCにpresentedSlides追加
+- `frontend/src/pages/scenarios/creation/PresentationStep.tsx` - 新規: 提案資料アップロードステップ
+- `frontend/src/pages/scenarios/ScenarioCreatePage.tsx` - 変更: 提案資料ステップ追加
+- `frontend/src/components/conversation/SlideTray.tsx` - 新規: スライドトレイ
+- `frontend/src/components/conversation/SlideZoomModal.tsx` - 新規: スライド拡大モーダル
+- `frontend/src/pages/ConversationPage.tsx` - 変更: スライドトレイ統合
+- `frontend/src/i18n/locales/ja.json` - 変更: スライド関連i18nキー追加
+- `frontend/src/i18n/locales/en.json` - 変更: スライド関連i18nキー追加
+
+---

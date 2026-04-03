@@ -140,6 +140,18 @@
     },
     "metrics": {
       "angerLevel": "Anger Level"
+    },
+    "pdfUploader": {
+      "uploadPrompt": "Click to select a PDF file",
+      "uploadHint": "PDF format, max 100MB (up to {{max}} files)",
+      "uploadArea": "Upload PDF file",
+      "uploading": "Uploading...",
+      "maxFilesError": "Maximum {{max}} files can be uploaded",
+      "onlyPdfError": "Only PDF files can be uploaded",
+      "tooLargeError": "File size exceeds 100MB",
+      "uploadError": "Upload failed",
+      "deleteError": "Deletion failed",
+      "maxReached": "Maximum number of files ({{max}}) reached"
     }
   },
   "conversation": {
@@ -158,6 +170,28 @@
     "endSessionNo": "No, continue",
     "negotiationGoal": "Negotiation Goal",
     "negotiationObjective": "Negotiation Objective",
+    "slideTray": {
+      "label": "Presentation Slides",
+      "title": "Presentation",
+      "slide": "Slide",
+      "present": "Select this slide",
+      "presentBtn": "Select",
+      "presented": "Selected",
+      "alreadyPresented": "Already selected slide",
+      "unpresent": "Deselect slide",
+      "unpresentBtn": "Deselect",
+      "clearAll": "Clear all",
+      "selectedCount": "{{count}} selected",
+      "clickToToggle": "Click to select/deselect",
+      "zoom": "Zoom in"
+    },
+    "slideZoom": {
+      "title": "Slide {{current}} / {{total}}",
+      "slideAlt": "Slide {{page}}",
+      "noImage": "Unable to load image",
+      "prev": "Previous slide",
+      "next": "Next slide"
+    },
     "audioSettings": {
       "title": "Audio Settings",
       "outputOn": "Audio Output ON",
@@ -234,6 +268,18 @@
     "angerLevel": "Anger Level",
     "overlay": {
       "title": "Realtime Evaluation"
+    },
+    "status": {
+      "anger": {
+        "veryHigh": "Very High (Danger)",
+        "moderate": "Moderate (Caution)",
+        "low": "Low (Good)"
+      },
+      "positive": {
+        "veryHigh": "Very High (Good)",
+        "moderate": "Moderate (Normal)",
+        "low": "Low (Needs Improvement)"
+      }
     }
   },
   "speech": {
@@ -368,7 +414,8 @@
         "basicInfo": "Basic Information",
         "npcInfo": "NPC Settings",
         "goals": "Goals Settings",
-        "pdfs": "Sales Materials & Evaluation",
+        "pdfs": "Evaluation Materials",
+        "presentation": "Presentation",
         "sharing": "Sharing Settings",
         "preview": "Preview & Save"
       },
@@ -377,6 +424,23 @@
       "goalsDescription": "Set goals for this scenario. You can adjust conditions and difficulty for goal achievement.",
       "sharingDescription": "Configure sharing settings for the scenario. You can specify visibility and sharing targets.",
       "previewDescription": "Review the content of the created scenario. Save if everything looks correct.",
+      "presentation": {
+        "title": "Presentation Materials",
+        "description": "Upload presentation materials (PDF) to use during roleplay. Upload is optional.",
+        "uploadPrompt": "Click to select a PDF file",
+        "uploadHint": "PDF format, max 100MB",
+        "uploadArea": "Upload presentation materials",
+        "uploading": "Uploading...",
+        "converting": "Converting slides...",
+        "ready": "Conversion complete",
+        "conversionError": "Conversion error",
+        "delete": "Delete presentation",
+        "errorNotPdf": "Only PDF files can be uploaded",
+        "errorTooLarge": "File size exceeds 100MB",
+        "errorUpload": "Upload failed",
+        "errorDelete": "Deletion failed",
+        "note": "* Presentation materials are optional. When uploaded, you can display slides during the conversation roleplay."
+      },
       "scenarioIdHelp": "Enter a unique identifier for the scenario (optional, alphanumeric characters and hyphens only)",
       "titleHelp": "Scenario title should be specific and easy to understand (within 50 characters)",
       "descriptionHelp": "Describe the scenario overview, background, purpose, etc. (within 300 characters)",
@@ -556,6 +620,10 @@
       "mine": "My Scenarios"
     },
     "noMyScenarios": "No scenarios found",
+    "noMatchingScenarios": "No matching scenarios found",
+    "noMatchingScenariosHint": "Try changing your search criteria or filters",
+    "resetFilters": "Reset Filters",
+    "npcPartner": "Conversation Partner (NPC)",
     "error": {
       "loadFailed": "Failed to load scenarios",
       "saveFailed": "Failed to save scenario",
@@ -897,5 +965,26 @@
     "explanationTitle": "About Reference Check",
     "explanation1": "Reference check is a feature that verifies whether sales representatives' statements are consistent with the content of documents set in the scenario.",
     "explanation2": "By providing accurate information, you can build trust with customers and enhance sales effectiveness. If issues are found, please recheck the document content and strive to provide accurate information."
+  },
+  "emotion": {
+    "description": {
+      "angry": "Angry",
+      "annoyed": "Annoyed",
+      "neutral": "Neutral",
+      "satisfied": "Satisfied",
+      "happy": "Happy"
+    },
+    "detailedDescription": {
+      "angry": "The conversation partner is very angry. Immediate action is required.",
+      "annoyed": "The conversation partner is dissatisfied. Consider a different approach.",
+      "neutral": "The conversation partner is in a neutral state. No strong emotions are shown.",
+      "satisfied": "The conversation partner is satisfied. Things are going well.",
+      "happy": "The conversation partner is very happy. Keep up the good work."
+    },
+    "stateLabel": "Emotion State",
+    "stateWithValue": "Emotion state: {{state}}",
+    "changed": "Emotion state changed from {{from}} to {{to}}",
+    "currentState": "Current emotion state: {{state}}",
+    "feedbackLabel": "Emotion Feedback"
   }
 }

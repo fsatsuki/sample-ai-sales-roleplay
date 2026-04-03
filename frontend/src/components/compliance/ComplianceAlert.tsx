@@ -115,8 +115,8 @@ const ComplianceAlert: React.FC<ComplianceAlertProps> = ({
           <Typography
             sx={{ fontSize: "0.8125rem", lineHeight: 1.5, color: "text.primary" }}
           >
-            {violation.message_key
-              ? String(t(violation.message_key, violation.message_params || {}))
+            {violation.messageKey
+              ? String(t(violation.messageKey, violation.messageParams || {}))
               : violation.message}
           </Typography>
         </Box>

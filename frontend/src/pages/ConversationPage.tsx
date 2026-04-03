@@ -44,6 +44,9 @@ import RightPanelContainer from "../components/conversation/RightPanelContainer"
 import CoachingHintBar from "../components/conversation/CoachingHintBar";
 import AvatarStage from "../components/conversation/AvatarStage";
 import SessionSettingsPanel from "../components/conversation/SessionSettingsPanel";
+import SlideTray from "../components/conversation/SlideTray";
+import SlideZoomModal from "../components/conversation/SlideZoomModal";
+import type { SlideImageInfo } from "../types/api";
 import { Dialog, DialogTitle, DialogContent } from "@mui/material";
 
 /**
@@ -102,6 +105,12 @@ const ConversationPage: React.FC = () => {
   const [enableAvatar, setEnableAvatar] = useState<boolean>(false);
   // セッション中のアバター表示切替（ランタイムトグル）
   const [avatarVisible, setAvatarVisible] = useState<boolean>(false);
+  // スライド関連state
+  const [slideImages, setSlideImages] = useState<SlideImageInfo[]>([]);
+  const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+  const [presentedSlidePages, setPresentedSlidePages] = useState<number[]>([]);
+  const [isSlideZoomOpen, setIsSlideZoomOpen] = useState(false);
+  const presentedSlidePagesRef = useRef<number[]>([]);
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [audioVolume, setAudioVolume] = useState<number>(80);
   const [speechRate, setSpeechRate] = useState<number>(1.15);
@@ -129,6 +138,10 @@ const ConversationPage: React.FC = () => {
   // isSpeaking/currentMetricsをrefで管理（sendMessageの依存配列から除外するため）
   const isSpeakingRef = useRef(isSpeaking);
   const currentMetricsRef = useRef<Metrics>({ angerLevel: 0, trustLevel: 0, progressLevel: 0 });
+  // goalStatuses/goals/slideImagesをrefで管理（sendMessageの依存配列から除外するため）
+  const goalStatusesRef = useRef<GoalStatus[]>([]);
+  const goalsRef = useRef<Goal[]>([]);
+  const slideImagesRef = useRef<SlideImageInfo[]>([]);
 
   // userInputの変更をrefに同期
   useEffect(() => {
@@ -144,6 +157,19 @@ const ConversationPage: React.FC = () => {
   useEffect(() => {
     currentMetricsRef.current = currentMetrics;
   }, [currentMetrics]);
+
+  // goalStatuses/goals/slideImagesの変更をrefに同期
+  useEffect(() => {
+    goalStatusesRef.current = goalStatuses;
+  }, [goalStatuses]);
+
+  useEffect(() => {
+    goalsRef.current = goals;
+  }, [goals]);
+
+  useEffect(() => {
+    slideImagesRef.current = slideImages;
+  }, [slideImages]);
   // コンプライアンス違反の通知管理
   const [activeViolation, setActiveViolation] =
     useState<ComplianceViolation | null>(null);
@@ -315,6 +341,23 @@ const ConversationPage: React.FC = () => {
                 }
               } catch {
                 // アバターs3Key取得失敗時はCloudFrontフォールバックを使用
+              }
+            }
+
+            // 提案資料のスライド画像を取得
+            if (scenarioInfo.presentationFile) {
+              try {
+                const slidesResponse = await apiService.getSlideImages(scenarioInfo.scenarioId);
+                if (slidesResponse.status === 'ready' && slidesResponse.slides.length > 0) {
+                  setSlideImages(slidesResponse.slides.map(s => ({
+                    pageNumber: s.pageNumber,
+                    imageKey: s.imageKey,
+                    imageUrl: s.imageUrl,
+                    thumbnailUrl: s.thumbnailUrl,
+                  })));
+                }
+              } catch {
+                // スライド取得失敗時は無視（提案資料なしとして動作）
               }
             }
 
@@ -545,6 +588,9 @@ const ConversationPage: React.FC = () => {
       sender: "user",
       content: messageText,
       timestamp: new Date(),
+      presentedSlides: presentedSlidePagesRef.current.length > 0
+        ? [...presentedSlidePagesRef.current]
+        : undefined,
     };
 
     // リファレンスを使用して確実に最新のメッセージ履歴を維持（バグ修正）
@@ -620,6 +666,12 @@ const ConversationPage: React.FC = () => {
             String(scenario.id),
             // 言語設定を追加
             scenario?.language || 'ja',
+            // 選択済みスライドのS3キーを送信（AgentCore RuntimeがS3から直接読み取り）
+            presentedSlidePagesRef.current.length > 0
+              ? slideImagesRef.current
+                .filter(s => presentedSlidePagesRef.current.includes(s.pageNumber))
+                .map(s => ({ pageNumber: s.pageNumber, imageKey: s.imageKey }))
+              : undefined,
           );
 
           const { response } = result;
@@ -694,8 +746,8 @@ const ConversationPage: React.FC = () => {
               }));
 
               // ゴール状態を純粋なデータ構造に変換（GoalStatus型に合わせる）
-              const cleanGoalStatuses = Array.isArray(goalStatuses) ?
-                goalStatuses.map(status => ({
+              const cleanGoalStatuses = Array.isArray(goalStatusesRef.current) ?
+                goalStatusesRef.current.map(status => ({
                   goalId: String(status.goalId || ""),
                   achieved: Boolean(status.achieved),
                   progress: Number(status.progress || 0),
@@ -703,8 +755,8 @@ const ConversationPage: React.FC = () => {
                 })) : [];
 
               // ゴールを純粋なデータ構造に変換（Goal型に合わせる）
-              const cleanGoals = Array.isArray(goals) ?
-                goals.map(goal => ({
+              const cleanGoals = Array.isArray(goalsRef.current) ?
+                goalsRef.current.map(goal => ({
                   id: String(goal.id || ""),
                   description: String(goal.description || ""),
                   isRequired: Boolean(goal.isRequired),
@@ -820,7 +872,7 @@ const ConversationPage: React.FC = () => {
                       }
                       return prev;
                     });
-                    setGoalScore(calculateGoalScore(merged, goals));
+                    setGoalScore(calculateGoalScore(merged, goalsRef.current));
                     return merged;
                   });
                 }
@@ -849,7 +901,7 @@ const ConversationPage: React.FC = () => {
       },
       NPC_RESPONSE_BASE_DELAY + Math.random() * NPC_RESPONSE_RANDOM_DELAY,
     ); // NPC応答遅延（設定可能: VITE_NPC_RESPONSE_DELAY環境変数で制御）
-  }, [scenario, isProcessing, sessionId, audioEnabled, goalStatuses, goals, scenarioVoiceId]);
+  }, [scenario, isProcessing, sessionId, audioEnabled, scenarioVoiceId]);
 
   /**
    * セッション終了処理
@@ -1000,6 +1052,28 @@ const ConversationPage: React.FC = () => {
       navigate("/scenarios");
     }
   };
+
+  // スライド提示ハンドラー
+  const handleSlidePresent = useCallback((pageNumber: number) => {
+    if (!presentedSlidePagesRef.current.includes(pageNumber)) {
+      const updated = [...presentedSlidePagesRef.current, pageNumber];
+      presentedSlidePagesRef.current = updated;
+      setPresentedSlidePages(updated);
+    }
+  }, []);
+
+  // スライド提示取消ハンドラー
+  const handleSlideUnpresent = useCallback((pageNumber: number) => {
+    const updated = presentedSlidePagesRef.current.filter(p => p !== pageNumber);
+    presentedSlidePagesRef.current = updated;
+    setPresentedSlidePages(updated);
+  }, []);
+
+  // スライド全選択解除ハンドラー
+  const handleSlideClearAll = useCallback(() => {
+    presentedSlidePagesRef.current = [];
+    setPresentedSlidePages([]);
+  }, []);
 
   // Enter キー処理
   const handleKeyDown = (event: CompositionEventType) => {
@@ -1317,6 +1391,20 @@ const ConversationPage: React.FC = () => {
         )}
 
 
+        {/* スライドトレイ（提案資料がある場合のみ表示） */}
+        {sessionStarted && slideImages.length > 0 && (
+          <SlideTray
+            slides={slideImages}
+            currentIndex={currentSlideIndex}
+            presentedPages={presentedSlidePages}
+            onSlideSelect={setCurrentSlideIndex}
+            onPresent={handleSlidePresent}
+            onUnpresent={handleSlideUnpresent}
+            onClearAll={handleSlideClearAll}
+            onZoom={() => setIsSlideZoomOpen(true)}
+          />
+        )}
+
         {/* チャットログ（下部） */}
         <Box
           sx={{
@@ -1364,6 +1452,8 @@ const ConversationPage: React.FC = () => {
             onStartConversation={startConversation}
             isCameraInitialized={isCameraInitialized}
             cameraError={cameraError}
+            slideImages={slideImages}
+            onSlideClick={(idx) => { setCurrentSlideIndex(idx); setIsSlideZoomOpen(true); }}
           />
         </Box>
 
@@ -1388,6 +1478,20 @@ const ConversationPage: React.FC = () => {
         sessionEnded={sessionEnded}
         continuousListening={continuousListening}
       />
+
+      {/* スライド拡大モーダル */}
+      {slideImages.length > 0 && (
+        <SlideZoomModal
+          open={isSlideZoomOpen}
+          slides={slideImages}
+          currentIndex={currentSlideIndex}
+          presentedPages={presentedSlidePages}
+          onSlideChange={setCurrentSlideIndex}
+          onPresent={handleSlidePresent}
+          onUnpresent={handleSlideUnpresent}
+          onClose={() => setIsSlideZoomOpen(false)}
+        />
+      )}
 
       {/* 設定モーダル（音声設定 + アバター表示切替） */}
       <Dialog

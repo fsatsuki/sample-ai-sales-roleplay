@@ -168,11 +168,13 @@ const VideoRecorder = forwardRef<VideoRecorderRef, VideoRecorderProps>(({
 
     try {
       // MP4形式のみをサポート
-      let options;
+      // ビットレートを制限してファイルサイズを抑制（S3アップロード上限対策）
+      const videoBitsPerSecond = 1_500_000; // 1.5Mbps（10分録画で約112MB以内）
+      let options: MediaRecorderOptions;
       if (MediaRecorder.isTypeSupported("video/mp4; codecs=h264")) {
-        options = { mimeType: "video/mp4; codecs=h264" };
+        options = { mimeType: "video/mp4; codecs=h264", videoBitsPerSecond };
       } else if (MediaRecorder.isTypeSupported("video/mp4")) {
-        options = { mimeType: "video/mp4" };
+        options = { mimeType: "video/mp4", videoBitsPerSecond };
       } else {
         throw new Error(t("recording.browserNotSupported"));
       }

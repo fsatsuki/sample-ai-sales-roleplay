@@ -360,6 +360,50 @@ export class ApiGatewayConstruct extends Construct {
       }
     );
 
+    // POST /scenarios/{scenario_id}/presentation-upload-url - 提案資料アップロード
+    const presentationUploadResource = scenarioDetailResource.addResource('presentation-upload-url');
+    presentationUploadResource.addMethod(
+      'POST',
+      new apigateway.LambdaIntegration(props.scenarioFunction),
+      {
+        authorizer: auth,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      }
+    );
+
+    // DELETE /scenarios/{scenario_id}/presentation - 提案資料削除
+    const presentationResource = scenarioDetailResource.addResource('presentation');
+    presentationResource.addMethod(
+      'DELETE',
+      new apigateway.LambdaIntegration(props.scenarioFunction),
+      {
+        authorizer: auth,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      }
+    );
+
+    // GET /scenarios/{scenario_id}/slides - スライド画像一覧取得
+    const slidesResource = scenarioDetailResource.addResource('slides');
+    slidesResource.addMethod(
+      'GET',
+      new apigateway.LambdaIntegration(props.scenarioFunction),
+      {
+        authorizer: auth,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      }
+    );
+
+    // POST /scenarios/{scenario_id}/convert-slides - スライド変換トリガー
+    const convertSlidesResource = scenarioDetailResource.addResource('convert-slides');
+    convertSlidesResource.addMethod(
+      'POST',
+      new apigateway.LambdaIntegration(props.scenarioFunction),
+      {
+        authorizer: auth,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      }
+    );
+
     // Guardrails API endpoints (ガードレールAPI)
     if (props.guardrailsFunction) {
       // ガードレールのルート

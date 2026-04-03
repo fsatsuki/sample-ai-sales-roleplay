@@ -67,30 +67,6 @@ function getApiClient(domainName: string, stage: string): ApiGatewayManagementAp
 }
 
 /**
- * シナリオ言語設定をTranscribe言語コードにマッピング
- */
-function mapLanguageCodeToTranscribe(scenarioLanguage: string): string {
-  const languageMapping: { [key: string]: string } = {
-    'en': 'en-US',
-    'ja': 'ja-JP'
-  };
-
-  return languageMapping[scenarioLanguage] || 'ja-JP'; // デフォルトは日本語
-}
-
-/**
- * 旧版：セッションIDからシナリオ言語設定を取得（リトライ機能付き） - 廃止予定
- * 新しい実装では、WebSocketメッセージに言語情報を直接含めるため、この関数は不要になりました
- */
-/* 
-async function getLanguageFromSession(sessionId: string, connectionId: string, retryCount: number = 0): Promise<string> {
-  // この関数は WebSocket言語情報方式の実装により不要になりました
-  // 言語情報は音声データと一緒に WebSocket メッセージで送信されます
-  return 'ja-JP'; // デフォルト
-}
-*/
-
-/**
  * WebSocket接続ハンドラ
  * クエリパラメータのトークンを検証してから接続を確立
  */
@@ -131,7 +107,7 @@ export const connectHandler = async (event: APIGatewayProxyEvent): Promise<APIGa
     }
 
     // JWT トークンを検証
-    let decodedToken: any;
+    let decodedToken: CognitoJwtPayload;
     try {
       decodedToken = await verifyToken(token);
       console.log('JWT検証成功:', {
@@ -139,7 +115,7 @@ export const connectHandler = async (event: APIGatewayProxyEvent): Promise<APIGa
         hasEmail: !!decodedToken.email,
         tokenType: decodedToken.token_use
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('JWT検証失敗:', error);
       return {
         statusCode: 403,
@@ -207,14 +183,14 @@ export const connectHandler = async (event: APIGatewayProxyEvent): Promise<APIGa
         'Access-Control-Allow-Methods': 'GET,OPTIONS,POST'
       }
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('接続エラー:', error);
     return {
       statusCode: 500,
       body: JSON.stringify({
         error: 'Connection failed',
         code: 'CONNECTION_ERROR',
-        message: error.message || 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error'
       })
     };
   }
@@ -579,9 +555,9 @@ async function verifyToken(token: string): Promise<CognitoJwtPayload> {
     console.log('JWT検証成功');
     return decoded as CognitoJwtPayload;
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('JWT検証エラー:', error);
-    throw new Error(`JWT verification failed: ${error.message}`);
+    throw new Error(`JWT verification failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
@@ -591,16 +567,18 @@ async function verifyToken(token: string): Promise<CognitoJwtPayload> {
 async function sendToClient(
   apiClient: ApiGatewayManagementApiClient,
   connectionId: string,
-  message: any
+  message: Record<string, unknown>
 ): Promise<void> {
   try {
     await apiClient.send(new PostToConnectionCommand({
       ConnectionId: connectionId,
       Data: Buffer.from(JSON.stringify(message))
     }));
-  } catch (error: any) {
+  } catch (error: unknown) {
     // 接続が既に閉じられている場合はDynamoDBから削除
-    if (error.statusCode === 410 || error.$metadata?.httpStatusCode === 410) {
+    const statusCode = (error as { statusCode?: number }).statusCode;
+    const httpStatusCode = (error as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode;
+    if (statusCode === 410 || httpStatusCode === 410) {
       console.log(`接続閉鎖済み: ${connectionId}、DBから削除します`);
       try {
         await ddbDocClient.send(new DeleteCommand({

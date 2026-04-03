@@ -2,6 +2,7 @@ import React, { useRef, useEffect } from "react";
 import { Box, Typography, Paper, LinearProgress, Button } from "@mui/material";
 import { Send as SendIcon } from "@mui/icons-material";
 import { Message, Metrics, Scenario } from "../../types/index";
+import type { SlideImageInfo } from "../../types/api";
 import { getSessionEndReason } from "../../utils/dialogueEngine";
 import { useTranslation } from "react-i18next";
 
@@ -13,8 +14,12 @@ interface MessageListProps {
   currentMetrics: Metrics;
   scenario: Scenario;
   onStartConversation: () => void;
-  isCameraInitialized?: boolean; // カメラ初期化状態
-  cameraError?: boolean; // カメラエラー状態
+  isCameraInitialized?: boolean;
+  cameraError?: boolean;
+  /** スライド画像一覧（サムネイル表示用） */
+  slideImages?: SlideImageInfo[];
+  /** スライドサムネイルクリック時のコールバック */
+  onSlideClick?: (slideIndex: number) => void;
 }
 
 /**
@@ -30,6 +35,8 @@ const MessageList: React.FC<MessageListProps> = ({
   onStartConversation,
   isCameraInitialized = false,
   cameraError = false,
+  slideImages = [],
+  onSlideClick,
 }) => {
   const { t } = useTranslation();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -138,6 +145,36 @@ const MessageList: React.FC<MessageListProps> = ({
                   }}
                 >
                   <Typography variant="body1">{message.content}</Typography>
+                  {/* スライド添付サムネイル */}
+                  {message.presentedSlides && message.presentedSlides.length > 0 && slideImages.length > 0 && (
+                    <Box sx={{ mt: 0.5, display: "flex", gap: 0.5, flexWrap: "wrap" }}>
+                      {message.presentedSlides.map((page) => {
+                        const slide = slideImages.find(s => s.pageNumber === page);
+                        if (!slide) return null;
+                        const idx = slideImages.indexOf(slide);
+                        return (
+                          <Box
+                            key={page}
+                            onClick={(e) => { e.stopPropagation(); onSlideClick?.(idx); }}
+                            sx={{
+                              width: 48, height: 34, borderRadius: 0.5, overflow: "hidden",
+                              cursor: "pointer", border: 1, borderColor: "rgba(255,255,255,0.4)",
+                              "&:hover": { opacity: 0.8 },
+                            }}
+                          >
+                            {slide.thumbnailUrl ? (
+                              <Box component="img" src={slide.thumbnailUrl} alt={`Slide ${page}`}
+                                sx={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            ) : (
+                              <Box sx={{ width: "100%", height: "100%", bgcolor: "#1a1a2e", display: "flex", alignItems: "center", justifyContent: "center", color: "#aaa", fontSize: "0.5rem" }}>
+                                {page}
+                              </Box>
+                            )}
+                          </Box>
+                        );
+                      })}
+                    </Box>
+                  )}
                   <Typography
                     variant="caption"
                     sx={{

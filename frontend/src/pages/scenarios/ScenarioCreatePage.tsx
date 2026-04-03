@@ -28,6 +28,7 @@ import BasicInfoStep from "./creation/BasicInfoStep";
 import NPCInfoStep from "./creation/NPCInfoStep";
 import GoalsStep from "./creation/GoalsStep";
 import PdfFilesStep from "./creation/PdfFilesStep";
+import PresentationStep from "./creation/PresentationStep";
 import SharingStep from "./creation/SharingStep";
 import PreviewStep from "./creation/PreviewStep";
 import { ScenarioInfo, DifficultyLevel } from "../../types/api";
@@ -43,6 +44,8 @@ const ScenarioCreatePage: React.FC = () => {
 
   // ステップ管理
   const [activeStep, setActiveStep] = useState(0);
+  // アップロード用の一時ID（シナリオ作成前のファイルアップロードに使用）
+  const [tempUploadId] = useState(() => `temp-${Date.now()}`);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [guardrailsList, setGuardrailsList] = useState<
@@ -120,6 +123,17 @@ const ScenarioCreatePage: React.FC = () => {
     sharedWithUsers: [] as string[],
     guardrail: "",
     initialMessage: "",
+
+    // 提案資料
+    presentationFile: undefined as
+      | {
+        key: string;
+        fileName: string;
+        contentType: string;
+        size?: number;
+        status?: 'uploading' | 'converting' | 'ready' | 'error';
+      }
+      | undefined,
   });
 
   // 初期化処理
@@ -152,6 +166,7 @@ const ScenarioCreatePage: React.FC = () => {
     { label: t("scenarios.create.steps.npcInfo") },
     { label: t("scenarios.create.steps.goals") },
     { label: t("scenarios.create.steps.pdfs") },
+    { label: t("scenarios.create.steps.presentation") },
     { label: t("scenarios.create.steps.sharing") },
     { label: t("scenarios.create.steps.preview") },
   ];
@@ -196,6 +211,9 @@ const ScenarioCreatePage: React.FC = () => {
       // PDF資料ステップは特別なバリデーションは不要
       isValid = true;
     } else if (activeStep === 4) {
+      // 提案資料ステップは特別なバリデーションは不要（任意項目）
+      isValid = true;
+    } else if (activeStep === 5) {
       // 共有設定のバリデーション
       const errors = validateSharing(
         formData.visibility,
@@ -245,7 +263,7 @@ const ScenarioCreatePage: React.FC = () => {
       }
 
       // APIリクエスト用にデータを整形
-      const scenarioData: Partial<ScenarioInfo> = {
+      const scenarioData: Partial<ScenarioInfo> & { tempUploadId?: string } = {
         scenarioId: formData.scenarioId,
         title: formData.title,
         description: formData.description,
@@ -256,6 +274,7 @@ const ScenarioCreatePage: React.FC = () => {
         initialMetrics: formData.initialMetrics,
         goals: formData.goals,
         pdfFiles: formData.pdfFiles.length > 0 ? formData.pdfFiles : undefined,
+        presentationFile: formData.presentationFile || undefined,
         visibility: formData.visibility,
         guardrail: formData.guardrail,
         language: formData.language,
@@ -266,6 +285,7 @@ const ScenarioCreatePage: React.FC = () => {
         ...(formData.visibility === "shared"
           ? { sharedWithUsers: formData.sharedWithUsers }
           : {}),
+        tempUploadId,
       };
 
       // APIでシナリオを作成
@@ -368,7 +388,7 @@ const ScenarioCreatePage: React.FC = () => {
           {activeStep === 3 && (
             <PdfFilesStep
               formData={{
-                scenarioId: formData.scenarioId,
+                scenarioId: tempUploadId,
                 pdfFiles: formData.pdfFiles,
               }}
               updateFormData={(data) =>
@@ -380,6 +400,20 @@ const ScenarioCreatePage: React.FC = () => {
             />
           )}
           {activeStep === 4 && (
+            <PresentationStep
+              formData={{
+                scenarioId: tempUploadId,
+                presentationFile: formData.presentationFile,
+              }}
+              updateFormData={(data) =>
+                setFormData({
+                  ...formData,
+                  presentationFile: data.presentationFile,
+                })
+              }
+            />
+          )}
+          {activeStep === 5 && (
             <SharingStep
               formData={{
                 visibility: formData.visibility,
@@ -399,7 +433,7 @@ const ScenarioCreatePage: React.FC = () => {
               validationErrors={validationErrors.sharing}
             />
           )}
-          {activeStep === 5 && <PreviewStep formData={formData} />}
+          {activeStep === 6 && <PreviewStep formData={formData} />}
         </Box>
 
         {/* ナビゲーションボタン */}
