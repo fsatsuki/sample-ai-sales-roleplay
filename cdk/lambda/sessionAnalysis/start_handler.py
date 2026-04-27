@@ -80,6 +80,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         session_id = event.get("sessionId")
         user_id = event.get("userId")
         language = event.get("language", "ja")
+        realtime_goal_statuses = event.get("realtimeGoalStatuses", [])
         
         logger.info("セッション分析開始", extra={
             "session_id": session_id,
@@ -146,6 +147,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             "sessionInfo": session_info,
             "scenarioInfo": scenario_info,
             "scenarioGoals": scenario_goals,
+            "realtimeGoalStatuses": realtime_goal_statuses,
             "messages": messages,
             "realtimeMetrics": realtime_metrics,
             "finalMetrics": final_metrics,

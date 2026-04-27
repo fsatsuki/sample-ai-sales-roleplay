@@ -71,17 +71,6 @@ export class AvatarStorageConstruct extends Construct {
       pointInTimeRecovery: true,
     });
 
-    // 出力
-    new cdk.CfnOutput(this, 'AvatarStorageBucketName', {
-      value: this.bucket.bucketName,
-      description: 'アバターVRMファイル用S3バケット名',
-      exportName: `${props.resourceNamePrefix || ''}AvatarStorageBucketName`,
-    });
 
-    new cdk.CfnOutput(this, 'AvatarMetadataTableName', {
-      value: this.table.tableName,
-      description: 'アバターメタデータ用DynamoDBテーブル名',
-      exportName: `${props.resourceNamePrefix || ''}AvatarMetadataTableName`,
-    });
   }
 }

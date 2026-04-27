@@ -16,6 +16,7 @@ import type {
   SessionCompleteDataResponse,
 } from "../types/api";
 import { AgentCoreService } from "./AgentCoreService";
+import { serializeGoalStatus } from "../utils/goalUtils";
 import {
   transformImportResponse,
   transformVideoAnalysisResult,
@@ -1678,7 +1679,8 @@ export class ApiService {
    */
   public async startSessionAnalysis(
     sessionId: string,
-    language: string = "ja"
+    language: string = "ja",
+    goalStatuses?: GoalStatus[]
   ): Promise<{
     success: boolean;
     message: string;
@@ -1687,7 +1689,12 @@ export class ApiService {
     executionArn?: string;
   }> {
     try {
-      const requestBody = { language };
+      const requestBody: Record<string, unknown> = { language };
+
+      // セッション中のゴール進捗を渡す
+      if (goalStatuses && goalStatuses.length > 0) {
+        requestBody.goalStatuses = goalStatuses.map(status => serializeGoalStatus(status));
+      }
 
       const response = await this.apiPost<{
         success: boolean;

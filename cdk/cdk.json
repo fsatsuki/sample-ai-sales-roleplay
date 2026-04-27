@@ -39,7 +39,7 @@
       }
     },
     "env:dev": {
-      "selfSignUpEnabled": true,
+      "selfSignUpEnabled": false,
       "allowedSignUpEmailDomains": null,
       "bedrockModels": {
         "conversation": "global.anthropic.claude-haiku-4-5-20251001-v1:0",

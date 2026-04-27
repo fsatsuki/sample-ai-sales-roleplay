@@ -102,6 +102,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         final_metrics = event.get("finalMetrics", {})
         scenario_goals = event.get("scenarioGoals", [])
         language = event.get("language", "ja")
+        realtime_goal_statuses = event.get("realtimeGoalStatuses", [])
         
         logger.info("フィードバック生成開始", extra={
             "session_id": session_id,
@@ -115,7 +116,8 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             metrics=final_metrics,
             messages=messages,
             scenario_goals=scenario_goals,
-            language=language
+            language=language,
+            realtime_goal_statuses=realtime_goal_statuses
         )
         
         logger.info("フィードバック生成完了", extra={
@@ -146,7 +148,8 @@ def generate_feedback_with_strands(
     metrics: Dict[str, Any],
     messages: List[Dict[str, Any]],
     scenario_goals: List[Dict[str, Any]],
-    language: str
+    language: str,
+    realtime_goal_statuses: List[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """Strands Agentsを使用してフィードバックを生成"""
     
@@ -160,7 +163,7 @@ def generate_feedback_with_strands(
             slide_history = _get_slide_history_from_memory(session_id)
 
             # プロンプト作成
-            prompt = build_feedback_prompt(metrics, messages, scenario_goals, language, slide_history=slide_history if slide_history else None)
+            prompt = build_feedback_prompt(metrics, messages, scenario_goals, language, slide_history=slide_history if slide_history else None, realtime_goal_statuses=realtime_goal_statuses)
             
             logger.info("Strands Agentでフィードバック生成を実行", extra={
                 "model_id": BEDROCK_MODEL_FEEDBACK,

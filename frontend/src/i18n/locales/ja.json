@@ -38,7 +38,6 @@
     "description": "実際の営業シーンを模したAI対話で、安全な環境で営業スキルを向上させましょう。様々な業界・性格の顧客との商談を体験できます。",
     "startButton": "営業ロールプレイを開始",
     "audioAnalysisButton": "音声分析",
-    "demoGuideButton": "デモガイドを見る",
     "recentScenarios": "最近のシナリオ",
     "noRecentScenarios": "最近プレイしたシナリオはありません",
     "viewAllScenarios": "すべてのシナリオを表示",

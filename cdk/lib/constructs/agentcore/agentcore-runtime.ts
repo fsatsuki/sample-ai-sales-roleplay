@@ -141,9 +141,6 @@ export class AgentCoreRuntime extends Construct {
     this.endpointArn = runtime.agentRuntimeArn;
     this.role = runtime.role;
 
-    new cdk.CfnOutput(this, 'RuntimeArn', {
-      value: this.runtimeArn,
-      exportName: `${props.resourceNamePrefix}${props.agentName}-runtime-arn`,
-    });
+
   }
 }

@@ -59,11 +59,6 @@ export class VideoStorageConstruct extends Construct {
       })
     );
 
-    // 出力の定義
-    new cdk.CfnOutput(this, 'VideoStorageBucketName', {
-      value: this.bucket.bucketName,
-      description: '録画動画ファイル用S3バケット名',
-      exportName: `${props.resourceNamePrefix || ''}VideoStorageBucketName`
-    });
+
   }
 }

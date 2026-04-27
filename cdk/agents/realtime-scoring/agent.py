@@ -181,11 +181,21 @@ def handle_invocation(payload: Dict[str, Any]) -> Dict[str, Any]:
             previous_messages = get_conversation_history(session_id, actor_id, limit=5)
             logger.info(f"Retrieved {len(previous_messages)} messages from AgentCore Memory")
         
+        # goalsにgoalStatusesの達成状態をマージ（LLMが現在の状態を正確に把握できるようにする）
+        goals = payload.get('goals', [])
+        goal_statuses = payload.get('goalStatuses', [])
+        if goal_statuses:
+            status_map = {s.get('goalId', ''): s for s in goal_statuses}
+            for goal in goals:
+                status = status_map.get(goal.get('id', ''))
+                if status:
+                    goal['achieved'] = status.get('achieved', False)
+        
         prompt = build_scoring_prompt(
             payload.get('message', ''),
             previous_messages,
             payload.get('currentScores', get_default_scores()),
-            payload.get('goals', []),
+            goals,
             payload.get('language', 'ja')
         )
         

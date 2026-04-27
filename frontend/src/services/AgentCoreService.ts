@@ -11,6 +11,7 @@ import { getCurrentUser, fetchAuthSession } from "aws-amplify/auth";
 import type { Message, NPC, Goal, GoalStatus } from "../types/index";
 import type { ComplianceCheck } from "../types/api";
 import { transformComplianceCheck } from "../utils/apiTransformers";
+import { mergeGoalStatus, serializeGoalStatus } from "../utils/goalUtils";
 
 // 環境変数からAgentCore Runtime設定を取得
 const AGENTCORE_ENABLED = import.meta.env.VITE_AGENTCORE_ENABLED === 'true';
@@ -348,18 +349,7 @@ export class AgentCoreService {
       },
       sessionId: currentSessionId,
       ...(goalStatuses ? {
-        goalStatuses: goalStatuses.map(status => ({
-          goalId: status.goalId,
-          progress: typeof status.progress === "number" ? status.progress : 0,
-          achieved: Boolean(status.achieved),
-          ...(status.achievedAt ? {
-            achievedAt: status.achievedAt instanceof Date
-              ? status.achievedAt.toISOString()
-              : typeof status.achievedAt === "string"
-                ? status.achievedAt
-                : undefined
-          } : {})
-        }))
+        goalStatuses: goalStatuses.map(status => serializeGoalStatus(status))
       } : {}),
       ...(goals ? {
         goals: goals.map(goal => ({
@@ -414,12 +404,23 @@ export class AgentCoreService {
         // goalUpdatesをgoalStatusesに変換（AgentCore Runtime形式: { goalId, achieved, reason }）
         let convertedGoalStatuses: GoalStatus[] | undefined;
         if (result.goalUpdates && Array.isArray(result.goalUpdates)) {
-          convertedGoalStatuses = result.goalUpdates.map((update) => ({
-            goalId: update.goalId,
-            progress: update.achieved ? 100 : 0,
-            achieved: update.achieved,
-            reason: update.reason || '',
-          }));
+          // goalStatusesから現在のprogressを参照し、共通関数でマージする
+          const currentStatusMap = new Map(
+            (goalStatuses || []).map(s => [s.goalId, s])
+          );
+          convertedGoalStatuses = result.goalUpdates.map((update) => {
+            const currentStatus = currentStatusMap.get(update.goalId);
+            const updateStatus: GoalStatus = {
+              goalId: update.goalId,
+              progress: update.achieved ? 100 : 0,
+              achieved: update.achieved,
+              reason: update.reason || '',
+            };
+            if (currentStatus) {
+              return mergeGoalStatus(currentStatus, updateStatus);
+            }
+            return updateStatus;
+          });
         }
 
         return {

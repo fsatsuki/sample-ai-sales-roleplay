@@ -401,6 +401,7 @@ const ScenarioEditPage: React.FC = () => {
         npc: { ...formData.npc, voiceId },
         initialMetrics: formData.initialMetrics,
         goals: formData.goals,
+        // undefinedを送信してバックエンドで「フィールド未更新」と解釈させる（[]は全PDF削除を意味する）
         pdfFiles: formData.pdfFiles?.length > 0 ? formData.pdfFiles : undefined,
         presentationFile: formData.presentationFile || undefined,
         visibility: formData.visibility,

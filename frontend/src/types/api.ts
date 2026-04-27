@@ -65,7 +65,8 @@ export interface NPCInfo {
 export interface GoalInfo {
   id: string;
   description: string;
-  hint?: string;
+  /** ゴール達成のためのヒント（複数） */
+  hints?: string[];
   isRequired: boolean;
   priority: number;
   criteria: string[];

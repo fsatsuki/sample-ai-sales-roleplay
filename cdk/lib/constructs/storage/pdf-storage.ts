@@ -60,11 +60,6 @@ export class PdfStorageConstruct extends Construct {
       })
     );
 
-    // 出力の定義
-    new cdk.CfnOutput(this, 'PdfStorageBucketName', {
-      value: this.bucket.bucketName,
-      description: 'PDF資料保存用S3バケット名',
-      exportName: `${props.resourceNamePrefix || ''}PdfStorageBucketName`
-    });
+
   }
 }

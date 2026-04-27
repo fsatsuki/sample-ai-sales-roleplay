@@ -13,7 +13,8 @@ def build_feedback_prompt(
     messages: List[Dict[str, Any]],
     scenario_goals: List[Dict[str, Any]],
     language: str,
-    slide_history: List[Dict[str, Any]] = None
+    slide_history: List[Dict[str, Any]] = None,
+    realtime_goal_statuses: List[Dict[str, Any]] = None
 ) -> str:
     """
     フィードバック生成用プロンプトを構築
@@ -50,11 +51,50 @@ def build_feedback_prompt(
     # ゴール分析セクション
     goal_section = ""
     if scenario_goals:
-        goals_text = "\n".join([f"- {g.get('description', '')}" for g in scenario_goals])
+        # セッション中のゴール進捗をマップに変換
+        status_map = {}
+        if realtime_goal_statuses:
+            for s in realtime_goal_statuses:
+                status_map[s.get("goalId", "")] = s
+        
+        # ゴールIDのマッチング状況をログ出力（不一致の早期検出）
+        scenario_goal_ids = {g.get("id", "") for g in scenario_goals}
+        realtime_goal_ids = set(status_map.keys())
+        unmatched_ids = realtime_goal_ids - scenario_goal_ids
+        if unmatched_ids:
+            logger.warning("リアルタイム進捗にシナリオゴールと一致しないIDが存在します", extra={
+                "unmatched_goal_ids": list(unmatched_ids),
+                "scenario_goal_ids": list(scenario_goal_ids),
+            })
+        
+        goal_lines = []
+        for g in scenario_goals:
+            goal_id = g.get("id", "")
+            description = g.get("description", "")
+            status = status_map.get(goal_id, {})
+            achieved = status.get("achieved", False)
+            progress = status.get("progress", 0)
+            
+            if language == "en":
+                if achieved:
+                    goal_lines.append(f"- {description} [Achieved during session, progress: {progress}%]")
+                elif progress > 0:
+                    goal_lines.append(f"- {description} [Partially achieved during session, progress: {progress}%]")
+                else:
+                    goal_lines.append(f"- {description} [Not achieved during session]")
+            else:
+                if achieved:
+                    goal_lines.append(f"- {description} [セッション中に達成済み、進捗: {progress}%]")
+                elif progress > 0:
+                    goal_lines.append(f"- {description} [セッション中に部分達成、進捗: {progress}%]")
+                else:
+                    goal_lines.append(f"- {description} [セッション中に未達成]")
+        
+        goals_text = "\n".join(goal_lines)
         if language == "en":
-            goal_section = f"\n## Scenario Goals\n{goals_text}\n"
+            goal_section = f"\n## Scenario Goals (with realtime progress from session)\n{goals_text}\n"
         else:
-            goal_section = f"\n## シナリオのゴール\n{goals_text}\n"
+            goal_section = f"\n## シナリオのゴール（セッション中のリアルタイム進捗付き）\n{goals_text}\n"
     
     # スライド提示履歴セクション
     slide_section = ""

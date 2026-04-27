@@ -211,10 +211,6 @@ export class TranscribeWebSocketConstruct extends Construct {
     // WebSocketエンドポイントURLの設定
     this.webSocketApiEndpoint = `wss://${this.webSocketApi.ref}.execute-api.${cdk.Stack.of(this).region}.amazonaws.com/${stage.stageName}`;
 
-    // 出力の作成
-    new cdk.CfnOutput(this, 'WebSocketApiEndpoint', {
-      value: this.webSocketApiEndpoint,
-      description: 'WebSocket API Endpoint URL'
-    });
+
   }
 }

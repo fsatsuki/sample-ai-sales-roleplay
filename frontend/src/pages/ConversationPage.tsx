@@ -26,6 +26,7 @@ import {
   initializeGoalStatuses,
   calculateGoalScore,
   areAllRequiredGoalsAchieved,
+  mergeGoalStatus,
 } from "../utils/goalUtils";
 import VideoManager from "../components/recording/v2/VideoManager";
 
@@ -48,6 +49,18 @@ import SlideTray from "../components/conversation/SlideTray";
 import SlideZoomModal from "../components/conversation/SlideZoomModal";
 import type { SlideImageInfo } from "../types/api";
 import { Dialog, DialogTitle, DialogContent } from "@mui/material";
+
+/**
+ * 右パネル（ゴール・メトリクス等）の占有幅
+ * RightPanelContainer の maxWidth(260px) + right(12px) + 余白(8px) = 280px
+ */
+const RIGHT_PANEL_OFFSET = "280px";
+
+/**
+ * 左側メトリクス・カメラ領域の占有幅
+ * アバター非表示時にチャットログが重ならないための左パディング
+ */
+const LEFT_METRICS_OFFSET = "200px";
 
 /**
  * NPC応答遅延設定（ミリ秒）
@@ -860,15 +873,7 @@ const ConversationPage: React.FC = () => {
                         (u) => u.goalId === prev.goalId,
                       );
                       if (update) {
-                        return {
-                          ...prev,
-                          ...update,
-                          // 達成時にタイムスタンプを記録（未設定の場合のみ）
-                          achievedAt:
-                            update.achieved && !prev.achievedAt
-                              ? new Date()
-                              : prev.achievedAt,
-                        };
+                        return mergeGoalStatus(prev, update);
                       }
                       return prev;
                     });
@@ -1020,7 +1025,8 @@ const ConversationPage: React.FC = () => {
         const apiService = ApiService.getInstance();
         await apiService.startSessionAnalysis(
           session.id,
-          i18n.language || "ja"
+          i18n.language || "ja",
+          goalStatuses
         );
 
         // 分析開始情報をlocalStorageに保存
@@ -1393,16 +1399,18 @@ const ConversationPage: React.FC = () => {
 
         {/* スライドトレイ（提案資料がある場合のみ表示） */}
         {sessionStarted && slideImages.length > 0 && (
-          <SlideTray
-            slides={slideImages}
-            currentIndex={currentSlideIndex}
-            presentedPages={presentedSlidePages}
-            onSlideSelect={setCurrentSlideIndex}
-            onPresent={handleSlidePresent}
-            onUnpresent={handleSlideUnpresent}
-            onClearAll={handleSlideClearAll}
-            onZoom={() => setIsSlideZoomOpen(true)}
-          />
+          <Box sx={{ mr: rightPanelsVisible ? RIGHT_PANEL_OFFSET : 0 }}>
+            <SlideTray
+              slides={slideImages}
+              currentIndex={currentSlideIndex}
+              presentedPages={presentedSlidePages}
+              onSlideSelect={setCurrentSlideIndex}
+              onPresent={handleSlidePresent}
+              onUnpresent={handleSlideUnpresent}
+              onClearAll={handleSlideClearAll}
+              onZoom={() => setIsSlideZoomOpen(true)}
+            />
+          </Box>
         )}
 
         {/* チャットログ（下部） */}
@@ -1416,9 +1424,9 @@ const ConversationPage: React.FC = () => {
                 // アバター非表示時はmaxHeight制限を解除してチャットログを拡張
                 ...(avatarVisible ? { maxHeight: "30vh" } : {}),
                 // 右パネルと重ならないようにマージンを追加
-                mr: rightPanelsVisible ? "280px" : 0,
+                mr: rightPanelsVisible ? RIGHT_PANEL_OFFSET : 0,
                 // アバター非表示時はメトリクス・カメラとの重なりを防ぐため左パディング追加
-                ...(!avatarVisible ? { pl: "200px" } : {}),
+                ...(!avatarVisible ? { pl: LEFT_METRICS_OFFSET } : {}),
                 display: "flex",
                 flexDirection: "column",
               }

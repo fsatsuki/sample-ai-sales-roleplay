@@ -1,4 +1,4 @@
-import { Stack, CfnOutput, RemovalPolicy, Duration } from 'aws-cdk-lib';
+import { Stack, RemovalPolicy, Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { CloudFrontToS3 } from '@aws-solutions-constructs/aws-cloudfront-s3';
 import { CfnDistribution, Distribution, ViewerProtocolPolicy, CachePolicy, AllowedMethods, ResponseHeadersPolicy, HeadersFrameOption, HeadersReferrerPolicy } from 'aws-cdk-lib/aws-cloudfront';
@@ -151,15 +151,6 @@ export class Web extends Construct {
         VITE_AGENTCORE_NPC_CONVERSATION_ARN: props.npcConversationAgentArn ?? '',
         VITE_AGENTCORE_REALTIME_SCORING_ARN: props.realtimeScoringAgentArn ?? '',
       },
-    });
-
-    new CfnOutput(this, 'WebUrl', {
-      value: `https://${cloudFrontWebDistribution.domainName}`,
-    });
-
-    new CfnOutput(this, 'AvatarCdnUrl', {
-      value: `https://${cloudFrontWebDistribution.domainName}/avatars`,
-      description: 'Avatar CDN URL (VITE_AVATAR_CDN_URL)',
     });
 
     this.distribution = cloudFrontWebDistribution;

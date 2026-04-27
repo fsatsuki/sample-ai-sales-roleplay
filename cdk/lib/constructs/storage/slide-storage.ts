@@ -43,10 +43,6 @@ export class SlideStorageConstruct extends Construct {
       ],
     });
 
-    new cdk.CfnOutput(this, 'SlideStorageBucketName', {
-      value: this.bucket.bucketName,
-      description: 'スライド画像保存用S3バケット名',
-      exportName: `${props.resourceNamePrefix || ''}SlideStorageBucketName`,
-    });
+
   }
 }

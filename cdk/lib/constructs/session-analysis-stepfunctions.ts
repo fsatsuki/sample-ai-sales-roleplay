@@ -178,11 +178,6 @@ export class SessionAnalysisStepFunctionsConstruct extends Construct {
     // Lambda関数群にStep Functions権限を付与
     props.sessionAnalysisLambda.grantStepFunctionsInvoke(this.stateMachine);
 
-    // 出力
-    new cdk.CfnOutput(this, 'SessionAnalysisStateMachineArn', {
-      value: this.stateMachine.stateMachineArn,
-      description: 'セッション分析Step Functions ARN',
-      exportName: `${resourcePrefix}SessionAnalysisStateMachineArn`,
-    });
+
   }
 }

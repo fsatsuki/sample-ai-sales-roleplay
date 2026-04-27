@@ -308,56 +308,6 @@ export class InfrastructureStack extends cdk.Stack {
       exportName: `${prefix}CloudFrontURL`
     });
 
-    // Lexicon名をエクスポート
-    new cdk.CfnOutput(this, 'JapaneseLexiconName', {
-      value: `${resourcePrefix}JapaneseLexicon`,
-      description: 'Japanese Lexicon Name for Amazon Polly',
-      exportName: `${prefix}JapaneseLexiconName`
-    });
-
-    new cdk.CfnOutput(this, 'EnglishLexiconName', {
-      value: `${resourcePrefix}EnglishLexicon`,
-      description: 'English Lexicon Name for Amazon Polly',
-      exportName: `${prefix}EnglishLexiconName`
-    });
-
-    // AgentCore Runtime ARNs
-    new cdk.CfnOutput(this, 'NpcConversationAgentArn', {
-      value: this.npcConversationAgent.runtimeArn,
-      description: 'NPC Conversation AgentCore Runtime ARN',
-      exportName: `${prefix}NpcConversationAgentArn`
-    });
-
-    new cdk.CfnOutput(this, 'RealtimeScoringAgentArn', {
-      value: this.realtimeScoringAgent.runtimeArn,
-      description: 'Realtime Scoring AgentCore Runtime ARN',
-      exportName: `${prefix}RealtimeScoringAgentArn`
-    });
-
-    new cdk.CfnOutput(this, 'FeedbackAnalysisAgentArn', {
-      value: this.feedbackAnalysisAgent.runtimeArn,
-      description: 'Feedback Analysis AgentCore Runtime ARN',
-      exportName: `${prefix}FeedbackAnalysisAgentArn`
-    });
-
-    new cdk.CfnOutput(this, 'VideoAnalysisAgentArn', {
-      value: this.videoAnalysisAgent.runtimeArn,
-      description: 'Video Analysis AgentCore Runtime ARN',
-      exportName: `${prefix}VideoAnalysisAgentArn`
-    });
-
-    new cdk.CfnOutput(this, 'AudioAnalysisAgentArn', {
-      value: this.audioAnalysisAgent.runtimeArn,
-      description: 'Audio Analysis AgentCore Runtime ARN',
-      exportName: `${prefix}AudioAnalysisAgentArn`
-    });
-
-    new cdk.CfnOutput(this, 'SessionMemoryId', {
-      value: this.sessionMemory.memoryId,
-      description: 'AgentCore Memory ID for session management',
-      exportName: `${prefix}SessionMemoryId`
-    });
-
     this.userPool = auth.userPool;
     this.userPoolClient = auth.client;
   }
