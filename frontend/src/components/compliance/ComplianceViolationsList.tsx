@@ -181,19 +181,19 @@ const ComplianceViolationsList: React.FC<ComplianceViolationsListProps> = ({
     }
   };
 
-  // 違反のグループ化（同じrule_nameごと）
+  // 違反のグループ化（同じruleNameごと）
   const groupedViolations = hasViolations
     ? violations.reduce(
-        (groups, violation) => {
-          const ruleName = violation.rule_name;
-          if (!groups[ruleName]) {
-            groups[ruleName] = [];
-          }
-          groups[ruleName].push(violation);
-          return groups;
-        },
-        {} as Record<string, ComplianceViolation[]>,
-      )
+      (groups, violation) => {
+        const ruleName = violation.ruleName;
+        if (!groups[ruleName]) {
+          groups[ruleName] = [];
+        }
+        groups[ruleName].push(violation);
+        return groups;
+      },
+      {} as Record<string, ComplianceViolation[]>,
+    )
     : {};
 
   return (
@@ -244,14 +244,14 @@ const ComplianceViolationsList: React.FC<ComplianceViolationsListProps> = ({
                     mb={1}
                   >
                     <Typography variant="subtitle1" fontWeight="medium">
-                      {/* Use translation key if available, otherwise try to translate legacy Japanese text */}
-                      {violations[0].rule_name_key
+                      {/* 翻訳キーがある場合はそれを使用、なければレガシー日本語テキストを翻訳 */}
+                      {violations[0].ruleNameKey
                         ? String(
-                            t(
-                              violations[0].rule_name_key,
-                              violations[0].rule_name_params || {},
-                            ),
-                          )
+                          t(
+                            violations[0].ruleNameKey,
+                            violations[0].ruleNameParams || {},
+                          ),
+                        )
                         : translateLegacyRuleName(ruleName)}
                     </Typography>
                     <Chip
@@ -259,10 +259,10 @@ const ComplianceViolationsList: React.FC<ComplianceViolationsListProps> = ({
                       size="small"
                       color={
                         getSeverityInfo(violations[0].severity).color as
-                          | "error"
-                          | "warning"
-                          | "info"
-                          | "success"
+                        | "error"
+                        | "warning"
+                        | "info"
+                        | "success"
                       }
                       variant="filled"
                     />
@@ -275,14 +275,14 @@ const ComplianceViolationsList: React.FC<ComplianceViolationsListProps> = ({
                         <ListItem alignItems="flex-start" sx={{ px: 0 }}>
                           <Box sx={{ width: "100%" }}>
                             <Typography variant="body1" sx={{ mb: 1 }}>
-                              {/* Use translation key if available, otherwise try to translate legacy Japanese text */}
-                              {violation.message_key
+                              {/* 翻訳キーがある場合はそれを使用、なければレガシー日本語テキストを翻訳 */}
+                              {violation.messageKey
                                 ? String(
-                                    t(
-                                      violation.message_key,
-                                      violation.message_params || {},
-                                    ),
-                                  )
+                                  t(
+                                    violation.messageKey,
+                                    violation.messageParams || {},
+                                  ),
+                                )
                                 : translateLegacyMessage(violation.message)}
                             </Typography>
                             <Box sx={{ mt: 1 }}>

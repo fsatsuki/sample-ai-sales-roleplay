@@ -20,7 +20,7 @@ from aws_lambda_powertools.event_handler.exceptions import (
 import boto3.dynamodb.conditions
 
 from utils import get_user_id_from_event, sessions_table, messages_table, scenarios_table, dynamodb
-from feedback_service import generate_feedback_with_bedrock, save_feedback_to_dynamodb
+
 from realtime_scoring import calculate_realtime_scores
 from datetime import datetime
 from decimal import Decimal
@@ -213,15 +213,23 @@ def get_session_data_from_memory(session_id: str, actor_id: str):
             
             # Strands Agents Session Managerのペイロード形式を優先的に処理
             if role_from_payload:
+                # メタデータからスライド提示情報を抽出
+                event_metadata = event.get('metadata', {})
+                presented_slides_str = event_metadata.get('presentedSlides', {}).get('stringValue', '') if isinstance(event_metadata, dict) else ''
+                presented_slides = [int(p) for p in presented_slides_str.split() if p] if presented_slides_str else None
+
                 if role_from_payload in ['USER', 'HUMAN']:
                     if content_text:
-                        messages.append({
+                        msg = {
                             'messageId': event_id,
                             'sessionId': session_id,
                             'sender': 'user',
                             'content': content_text,
                             'timestamp': timestamp,
-                        })
+                        }
+                        if presented_slides:
+                            msg['presentedSlides'] = presented_slides
+                        messages.append(msg)
                 elif role_from_payload in ['ASSISTANT', 'AI', 'AGENT']:
                     if content_text:
                         messages.append({
@@ -792,6 +800,7 @@ def register_analysis_results_routes(app: APIGatewayRestResolver):
             feedback_items = feedback_response.get('Items', [])
             
             # フィードバックデータを分類
+            # ScanIndexForward=Falseで降順ソート済みのため、最初に見つかったfinal-feedbackが最新
             final_feedback = None
             dynamodb_realtime_metrics = []
             
@@ -799,7 +808,8 @@ def register_analysis_results_routes(app: APIGatewayRestResolver):
                 data_type = item.get('dataType')
                 
                 if data_type == 'final-feedback':
-                    final_feedback = item
+                    if final_feedback is None:
+                        final_feedback = item
                 elif data_type == 'realtime-metrics':
                     dynamodb_realtime_metrics.append(item)
             

@@ -80,6 +80,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         session_id = event.get("sessionId")
         user_id = event.get("userId")
         language = event.get("language", "ja")
+        realtime_goal_statuses = event.get("realtimeGoalStatuses", [])
         
         logger.info("セッション分析開始", extra={
             "session_id": session_id,
@@ -146,6 +147,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             "sessionInfo": session_info,
             "scenarioInfo": scenario_info,
             "scenarioGoals": scenario_goals,
+            "realtimeGoalStatuses": realtime_goal_statuses,
             "messages": messages,
             "realtimeMetrics": realtime_metrics,
             "finalMetrics": final_metrics,
@@ -341,12 +343,22 @@ def get_messages_from_agentcore_memory(session_id: str, actor_id: str = "default
                         sender = "user" if role in ["USER", "HUMAN"] else "npc"
                         # event_timestampがdatetimeオブジェクトの場合は文字列に変換
                         timestamp_str = event_timestamp.isoformat() if hasattr(event_timestamp, 'isoformat') else str(event_timestamp)
-                        messages.append({
+                        
+                        # メタデータからスライド提示情報を抽出
+                        event_metadata = event.get("metadata", {})
+                        presented_slides_str = event_metadata.get("presentedSlides", {}).get("stringValue", "")
+                        presented_slides = [int(p) for p in presented_slides_str.split() if p] if presented_slides_str else None
+                        
+                        msg_data = {
                             "sender": sender,
                             "content": actual_content,
                             "timestamp": timestamp_str,
-                        })
-                        logger.debug(f"  メッセージ追加: sender={sender}, content={actual_content[:50]}...")
+                        }
+                        if presented_slides:
+                            msg_data["presentedSlides"] = presented_slides
+                        
+                        messages.append(msg_data)
+                        logger.debug(f"  メッセージ追加: sender={sender}, content={actual_content[:50]}..." + (f", slides={presented_slides}" if presented_slides else ""))
         
         # タイムスタンプでソート（古い順）
         messages.sort(key=lambda x: x.get("timestamp", ""))

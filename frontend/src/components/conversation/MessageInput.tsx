@@ -63,11 +63,12 @@ const MessageInput: React.FC<MessageInputProps> = ({
       />
 
       {/* 入力エリア */}
-      <Box display="flex" gap={2} mt={2}>
+      <Box display="flex" gap={1} px={1} py={0.5} alignItems="center">
         <TextField
           fullWidth
           multiline
-          maxRows={3}
+          maxRows={2}
+          size="small"
           value={userInput}
           onChange={(e) => setUserInput(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -80,7 +81,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
               <Button
                 variant="contained"
                 onClick={() => sendMessage()}
-                disabled={!userInput.trim() || isProcessing || isListening}
+                disabled={!userInput.trim() || isProcessing}
                 sx={{ minWidth: "auto", px: 3, flex: 1 }}
                 aria-label={t("conversation.input.send")}
               >
@@ -119,6 +120,9 @@ const MessageInput: React.FC<MessageInputProps> = ({
                         '0%': { transform: 'scale(1)', opacity: 0.7 },
                         '50%': { transform: 'scale(1.1)', opacity: 0.4 },
                         '100%': { transform: 'scale(1)', opacity: 0.7 },
+                      },
+                      '@media (prefers-reduced-motion: reduce)': {
+                        animation: 'none',
                       },
                     }}
                   />

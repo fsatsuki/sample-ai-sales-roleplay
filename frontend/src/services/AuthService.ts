@@ -25,6 +25,10 @@ export class AuthService {
     preferredUsername?: string;
     userId?: string; // Cognito ID (sub属性)
   } | null = null;
+  private cachedIsAdmin: boolean | null = null;
+  private cachedIsAdminAt: number = 0;
+  /** 管理者キャッシュの有効期間（5分） */
+  private static readonly ADMIN_CACHE_TTL_MS = 5 * 60 * 1000;
 
   private constructor() {
     // シングルトンパターン
@@ -85,6 +89,8 @@ export class AuthService {
     try {
       await signOut();
       this.cachedUser = null;
+      this.cachedIsAdmin = null;
+      this.cachedIsAdminAt = 0;
       console.log("ログアウト完了");
     } catch (error) {
       console.error("ログアウト中にエラーが発生しました:", error);
@@ -127,6 +133,41 @@ export class AuthService {
       await this.fetchAndCacheUserInfo();
     }
     return this.cachedUser?.userId || null;
+  }
+
+  /**
+   * 現在のユーザーが管理者グループに所属しているかを判定する
+   * CognitoのIDトークンに含まれる cognito:groups クレームを確認する。
+   * 結果はキャッシュされ、ログアウトまで保持される。
+   */
+  public async isAdmin(): Promise<boolean> {
+    // キャッシュが有効期間内ならそのまま返す
+    if (
+      this.cachedIsAdmin !== null &&
+      Date.now() - this.cachedIsAdminAt < AuthService.ADMIN_CACHE_TTL_MS
+    ) {
+      return this.cachedIsAdmin;
+    }
+
+    try {
+      const session = await fetchAuthSession();
+      const idToken = session.tokens?.idToken;
+      if (!idToken) {
+        this.cachedIsAdmin = false;
+        this.cachedIsAdminAt = Date.now();
+        return false;
+      }
+
+      const groups = idToken.payload["cognito:groups"];
+      this.cachedIsAdmin = Array.isArray(groups) && groups.includes("admin");
+      this.cachedIsAdminAt = Date.now();
+      return this.cachedIsAdmin;
+    } catch (error) {
+      console.error("管理者判定エラー:", error);
+      this.cachedIsAdmin = false;
+      this.cachedIsAdminAt = Date.now();
+      return false;
+    }
   }
 
   /**

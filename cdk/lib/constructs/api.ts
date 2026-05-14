@@ -8,10 +8,13 @@ import { Runtime, Architecture } from 'aws-cdk-lib/aws-lambda';
 import { ApiGatewayConstruct } from './api/api-gateway';
 import { AudioStorageConstruct } from './storage/audio-storage';
 import { VideoStorageConstruct } from './storage/video-storage';
+import { AvatarStorageConstruct } from './storage/avatar-storage';
 import { VideosLambdaConstruct } from './api/videos-lambda';
+import { AvatarLambdaConstruct } from './api/avatar-lambda';
 import { ScoringLambdaConstruct } from './api/scoring-lambda';
 import { SessionLambdaConstruct } from './api/session-lambda';
 import { ScenarioLambdaConstruct } from './api/scenario-lambda';
+import { SlideConvertLambdaConstruct } from './api/slide-convert-lambda';
 import { RankingsLambdaConstruct } from './api/rankings-lambda';
 import { GuardrailsLambdaConstruct } from './api/guardrails-lambda';
 import { AudioAnalysisLambdaConstruct } from './api/audio-analysis-lambda';
@@ -35,6 +38,7 @@ export interface BackendApiProps {
   knowledgeBaseId: string;
   databaseTables: DatabaseTables;
   pdfStorageBucket: s3.IBucket;
+  slideStorageBucket: s3.IBucket;
   bedrockModels: BedrockModelsConfig;
   agentCoreMemoryId?: string;
 }
@@ -51,6 +55,12 @@ export class Api extends Construct {
   /** 動画ストレージ */
   public readonly videoStorage: VideoStorageConstruct;
 
+  /** アバターストレージ */
+  public readonly avatarStorage: AvatarStorageConstruct;
+
+  /** アバター管理Lambda */
+  public readonly avatarLambda: AvatarLambdaConstruct;
+
   /** 動画分析Lambda */
   public readonly videosLambda: VideosLambdaConstruct;
 
@@ -65,6 +75,9 @@ export class Api extends Construct {
 
   /** シナリオ管理Lambda */
   public readonly scenarioLambda: ScenarioLambdaConstruct;
+
+  /** PDF→スライド画像変換Lambda */
+  public readonly slideConvertLambda: SlideConvertLambdaConstruct;
 
   /** ガードレール管理Lambda */
   public readonly guardrailsLambda: GuardrailsLambdaConstruct;
@@ -122,8 +135,20 @@ export class Api extends Construct {
     this.scenarioLambda = new ScenarioLambdaConstruct(this, 'ScenarioLambda', {
       scenariosTable: this.databaseTables.scenariosTable,
       pdfBucket: props.pdfStorageBucket,
+      slideBucket: props.slideStorageBucket,
       knowledgeBaseId: props.knowledgeBaseId,
     });
+
+    // PDF→スライド画像変換Lambda関数
+    this.slideConvertLambda = new SlideConvertLambdaConstruct(this, 'SlideConvertLambda', {
+      scenariosTable: this.databaseTables.scenariosTable,
+      slideBucket: props.slideStorageBucket,
+    });
+
+    // ScenarioLambdaにSlideConvert Lambda関数名を環境変数として設定
+    this.scenarioLambda.function.addEnvironment('SLIDE_CONVERT_FUNCTION', this.slideConvertLambda.function.functionName);
+    // ScenarioLambdaにSlideConvert Lambdaの呼び出し権限を付与
+    this.slideConvertLambda.function.grantInvoke(this.scenarioLambda.function);
 
     // SessionLambdaに各テーブル名を環境変数として設定
     this.sessionLambda.function.addEnvironment('SESSION_FEEDBACK_TABLE', this.databaseTables.sessionFeedbackTable.tableName);
@@ -189,6 +214,17 @@ export class Api extends Construct {
       feedbackTableName: this.databaseTables.sessionFeedbackTable.tableName,
       videoBucket: this.videoStorage.bucket,
       videoAnalysisModelId: bedrockModels.video // 環境設定から動画分析モデルIDを取得
+    });
+
+    // アバターストレージの作成（VRMファイル + メタデータ）
+    this.avatarStorage = new AvatarStorageConstruct(this, 'AvatarStorage', {
+      resourceNamePrefix: props.resourceNamePrefix,
+    });
+
+    // アバター管理Lambda関数
+    this.avatarLambda = new AvatarLambdaConstruct(this, 'AvatarLambda', {
+      avatarBucket: this.avatarStorage.bucket,
+      avatarTable: this.avatarStorage.table,
     });
 
     // ガードレールLambda関数を作成
@@ -270,6 +306,7 @@ export class Api extends Construct {
       guardrailsFunction: this.guardrailsLambda.function,
       audioAnalysisFunction: this.audioAnalysisLambda.apiFunction,
       sessionAnalysisFunction: this.sessionAnalysisLambda.apiFunction,
+      avatarFunction: this.avatarLambda.function,
     });
   }
 }

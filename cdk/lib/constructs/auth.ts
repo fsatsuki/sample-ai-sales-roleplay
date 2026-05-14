@@ -3,6 +3,7 @@ import {
   UserPool,
   UserPoolClient,
   UserPoolOperation,
+  CfnUserPoolGroup,
 } from 'aws-cdk-lib/aws-cognito';
 import { IdentityPool, UserPoolAuthenticationProvider } from 'aws-cdk-lib/aws-cognito-identitypool';
 import { Effect, Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam';
@@ -155,5 +156,13 @@ export class Auth extends Construct {
     this.client = client;
     this.userPool = userPool;
     this.idPool = idPool;
+
+    // 管理者グループを作成
+    new CfnUserPoolGroup(this, 'AdminGroup', {
+      userPoolId: userPool.userPoolId,
+      groupName: 'admin',
+      description: 'システムシナリオの編集権限を持つ管理者グループ',
+      precedence: 0,
+    });
   }
 }

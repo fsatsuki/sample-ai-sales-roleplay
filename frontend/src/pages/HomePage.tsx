@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Container,
@@ -7,34 +7,19 @@ import {
   Card,
   CardContent,
   Box,
-  Dialog,
 } from "@mui/material";
 import {
   PlayArrow as PlayIcon,
   School as SchoolIcon,
   TrendingUp as TrendingUpIcon,
-  MenuBook as MenuBookIcon,
   Psychology as PsychologyIcon,
   Audiotrack as AudiotrackIcon,
 } from "@mui/icons-material";
 import { useTranslation } from "react-i18next";
 
-// DemoStarter コンポーネントのインポート
-import DemoStarter from "../components/DemoStarter";
-
 const HomePage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [demoGuideOpen, setDemoGuideOpen] = useState(false);
-
-  const handleOpenDemoGuide = () => {
-    setDemoGuideOpen(true);
-  };
-
-  const handleCloseDemoGuide = () => {
-    setDemoGuideOpen(false);
-  };
-
   const features = [
     {
       icon: <PsychologyIcon color="primary" sx={{ fontSize: 40 }} />,
@@ -212,30 +197,7 @@ const HomePage: React.FC = () => {
           {t("home.audioAnalysisButton")}
         </Button>
 
-        <Button
-          variant="outlined"
-          size="large"
-          startIcon={<MenuBookIcon />}
-          onClick={handleOpenDemoGuide}
-          sx={{
-            fontSize: "1.2rem",
-            py: 2,
-            px: 4,
-          }}
-        >
-          {t("home.demoGuideButton")}
-        </Button>
       </Box>
-
-      {/* デモガイドダイアログ */}
-      <Dialog
-        open={demoGuideOpen}
-        onClose={handleCloseDemoGuide}
-        maxWidth="lg"
-        fullWidth
-      >
-        <DemoStarter onClose={handleCloseDemoGuide} />
-      </Dialog>
     </Container>
   );
 };

@@ -13,9 +13,6 @@ export class LanguageService {
    * Constructor - Singleton pattern
    */
   private constructor() {
-    if (process.env.NODE_ENV !== "test") {
-      console.log("=== Language Service Initialized ===");
-    }
   }
 
   /**
@@ -41,9 +38,6 @@ export class LanguageService {
    */
   public async changeLanguage(languageCode: string): Promise<string> {
     if (!supportedLanguages.includes(languageCode)) {
-      if (process.env.NODE_ENV !== "test") {
-        console.warn(`Unsupported language code: ${languageCode}`);
-      }
       throw new Error(`Unsupported language code: ${languageCode}`);
     }
 
@@ -53,9 +47,6 @@ export class LanguageService {
     // Change language in i18next
     await i18next.changeLanguage(languageCode);
 
-    if (process.env.NODE_ENV !== "test") {
-      console.log("Language setting changed:", languageCode);
-    }
     return languageCode;
   }
 
@@ -69,12 +60,6 @@ export class LanguageService {
 
       if (savedLanguage && supportedLanguages.includes(savedLanguage)) {
         await i18next.changeLanguage(savedLanguage);
-        if (process.env.NODE_ENV !== "test") {
-          console.log(
-            "Language setting loaded from local storage:",
-            savedLanguage,
-          );
-        }
       }
     } catch (error) {
       console.error("Error loading language settings:", error);

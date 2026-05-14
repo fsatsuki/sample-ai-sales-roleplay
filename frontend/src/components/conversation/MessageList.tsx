@@ -2,6 +2,7 @@ import React, { useRef, useEffect } from "react";
 import { Box, Typography, Paper, LinearProgress, Button } from "@mui/material";
 import { Send as SendIcon } from "@mui/icons-material";
 import { Message, Metrics, Scenario } from "../../types/index";
+import type { SlideImageInfo } from "../../types/api";
 import { getSessionEndReason } from "../../utils/dialogueEngine";
 import { useTranslation } from "react-i18next";
 
@@ -13,8 +14,12 @@ interface MessageListProps {
   currentMetrics: Metrics;
   scenario: Scenario;
   onStartConversation: () => void;
-  isCameraInitialized?: boolean; // カメラ初期化状態
-  cameraError?: boolean; // カメラエラー状態
+  isCameraInitialized?: boolean;
+  cameraError?: boolean;
+  /** スライド画像一覧（サムネイル表示用） */
+  slideImages?: SlideImageInfo[];
+  /** スライドサムネイルクリック時のコールバック */
+  onSlideClick?: (slideIndex: number) => void;
 }
 
 /**
@@ -30,27 +35,41 @@ const MessageList: React.FC<MessageListProps> = ({
   onStartConversation,
   isCameraInitialized = false,
   cameraError = false,
+  slideImages = [],
+  onSlideClick,
 }) => {
   const { t } = useTranslation();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // メッセージ自動スクロール
+  // メッセージ自動スクロール（親要素のスクロールを防止）
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    const container = scrollContainerRef.current;
+    if (container) {
+      // requestAnimationFrameでレンダリング後にスクロール
+      requestAnimationFrame(() => {
+        container.scrollTop = container.scrollHeight;
+      });
+    }
+  }, [messages, isProcessing]);
 
   return (
     <Paper
+      ref={scrollContainerRef}
       sx={{
-        flexGrow: 1,
+        flex: 1,
+        minHeight: 0,
         p: 2,
         overflow: "auto",
-        backgroundColor: "#fafafa",
-        border: "1px solid #e0e0e0",
+        backgroundColor: sessionStarted ? "#fafafa" : "transparent",
+        border: sessionStarted ? "1px solid #e0e0e0" : "none",
+        boxShadow: sessionStarted ? undefined : "none",
+        display: "flex",
+        flexDirection: "column",
       }}
     >
       {!sessionStarted ? (
-        <Box textAlign="center" py={4}>
+        <Box textAlign="center" py={4} sx={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
           <Typography variant="h6" gutterBottom>
             {t("conversation.startQuestion")}
           </Typography>
@@ -126,6 +145,36 @@ const MessageList: React.FC<MessageListProps> = ({
                   }}
                 >
                   <Typography variant="body1">{message.content}</Typography>
+                  {/* スライド添付サムネイル */}
+                  {message.presentedSlides && message.presentedSlides.length > 0 && slideImages.length > 0 && (
+                    <Box sx={{ mt: 0.5, display: "flex", gap: 0.5, flexWrap: "wrap" }}>
+                      {message.presentedSlides.map((page) => {
+                        const slide = slideImages.find(s => s.pageNumber === page);
+                        if (!slide) return null;
+                        const idx = slideImages.indexOf(slide);
+                        return (
+                          <Box
+                            key={page}
+                            onClick={(e) => { e.stopPropagation(); onSlideClick?.(idx); }}
+                            sx={{
+                              width: 48, height: 34, borderRadius: 0.5, overflow: "hidden",
+                              cursor: "pointer", border: 1, borderColor: "rgba(255,255,255,0.4)",
+                              "&:hover": { opacity: 0.8 },
+                            }}
+                          >
+                            {slide.thumbnailUrl ? (
+                              <Box component="img" src={slide.thumbnailUrl} alt={`Slide ${page}`}
+                                sx={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            ) : (
+                              <Box sx={{ width: "100%", height: "100%", bgcolor: "#1a1a2e", display: "flex", alignItems: "center", justifyContent: "center", color: "#aaa", fontSize: "0.5rem" }}>
+                                {page}
+                              </Box>
+                            )}
+                          </Box>
+                        );
+                      })}
+                    </Box>
+                  )}
                   <Typography
                     variant="caption"
                     sx={{

@@ -159,11 +159,6 @@ export class AudioAnalysisStepFunctionsConstruct extends Construct {
     // Lambda関数群にStep Functions権限を付与
     props.audioAnalysisLambda.grantStepFunctionsInvoke(this.stateMachine);
 
-    // 出力
-    new cdk.CfnOutput(this, 'AudioAnalysisStateMachineArn', {
-      value: this.stateMachine.stateMachineArn,
-      description: '音声分析Step Functions ARN',
-      exportName: `${resourcePrefix}AudioAnalysisStateMachineArn`
-    });
+
   }
 }

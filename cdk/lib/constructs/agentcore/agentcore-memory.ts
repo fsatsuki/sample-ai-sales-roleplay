@@ -36,17 +36,6 @@ export class AgentCoreMemory extends Construct {
     this.memoryId = this.memory.memoryId;
     this.memoryArn = this.memory.memoryArn;
 
-    // Export名はアンダースコア禁止のため、ハイフンに変換
-    const exportNameBase = `${props.resourceNamePrefix}${props.memoryName}`.replace(/_/g, '-');
 
-    new cdk.CfnOutput(this, 'MemoryId', {
-      value: this.memoryId,
-      exportName: `${exportNameBase}-memory-id`,
-    });
-
-    new cdk.CfnOutput(this, 'MemoryArn', {
-      value: this.memoryArn,
-      exportName: `${exportNameBase}-memory-arn`,
-    });
   }
 }

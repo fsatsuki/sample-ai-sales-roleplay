@@ -1,8 +1,11 @@
 import * as cdk from 'aws-cdk-lib';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as logs from 'aws-cdk-lib/aws-logs';
 import * as agentcore from '@aws-cdk/aws-bedrock-agentcore-alpha';
 import * as ecr_assets from 'aws-cdk-lib/aws-ecr-assets';
+import { aws_logs as mixinLogs } from '@aws-cdk/mixins-preview';
+import { mixins as bedrockagentcoreMixins } from '@aws-cdk/mixins-preview/aws-bedrockagentcore';
 import * as path from 'path';
 import { Construct } from 'constructs';
 
@@ -67,12 +70,40 @@ export class AgentCoreRuntime extends Construct {
     // Runtime Endpointを追加
     runtime.addEndpoint('DefaultEndpoint', {});
 
-    // Bedrock InvokeModel権限を付与
+    // アプリケーションログ用CloudWatch LogGroup
+    const appLogGroup = new logs.LogGroup(this, 'AppLogGroup', {
+      logGroupName: `/aws/bedrock-agentcore/app/${runtimeName}`,
+      retention: logs.RetentionDays.ONE_WEEK,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    // CfnRuntimeLogsMixin でアプリケーションログを有効化
+    const appLogsMixin = bedrockagentcoreMixins.CfnRuntimeLogsMixin.APPLICATION_LOGS
+      .toLogGroup(appLogGroup);
+    appLogsMixin.applyTo(runtime);
+
+    // Bedrock InvokeModel権限を付与（Cross-region inference profile対応）
     runtime.addToRolePolicy(new iam.PolicyStatement({
       sid: 'BedrockModelInvocation',
       effect: iam.Effect.ALLOW,
       actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
-      resources: ['arn:aws:bedrock:*::foundation-model/*', `arn:aws:bedrock:${region}:${account}:*`],
+      resources: [
+        'arn:aws:bedrock:*::foundation-model/*',
+        `arn:aws:bedrock:*:${account}:inference-profile/*`,
+        `arn:aws:bedrock:${region}:${account}:*`,
+      ],
+    }));
+
+    // AWS Marketplace権限（サードパーティモデルの自動サブスクリプションに必要）
+    runtime.addToRolePolicy(new iam.PolicyStatement({
+      sid: 'MarketplaceModelAccess',
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'aws-marketplace:Subscribe',
+        'aws-marketplace:Unsubscribe',
+        'aws-marketplace:ViewSubscriptions',
+      ],
+      resources: ['*'],
     }));
 
     // AgentCore Memory権限を付与（Memory IDが指定されている場合）
@@ -110,9 +141,6 @@ export class AgentCoreRuntime extends Construct {
     this.endpointArn = runtime.agentRuntimeArn;
     this.role = runtime.role;
 
-    new cdk.CfnOutput(this, 'RuntimeArn', {
-      value: this.runtimeArn,
-      exportName: `${props.resourceNamePrefix}${props.agentName}-runtime-arn`,
-    });
+
   }
 }

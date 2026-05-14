@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Box, Tabs, Tab, IconButton, Tooltip } from "@mui/material";
 import { ChevronLeft, ChevronRight } from "@mui/icons-material";
-import AudioSettingsPanel from "./AudioSettingsPanel";
+import SessionSettingsPanel from "./SessionSettingsPanel";
 import MetricsPanel from "./MetricsPanel";
 import GoalsPanel from "./GoalsPanel";
 import { Metrics, Goal, GoalStatus } from "../../types/index";
@@ -14,8 +14,6 @@ interface SidebarPanelProps {
   setAudioVolume: (volume: number) => void;
   speechRate: number;
   setSpeechRate: (rate: number) => void;
-  silenceThreshold: number;
-  setSilenceThreshold: (threshold: number) => void;
   currentMetrics: Metrics;
   prevMetrics: Metrics | null;
   metricsUpdating: boolean;
@@ -34,8 +32,6 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
   setAudioVolume,
   speechRate,
   setSpeechRate,
-  silenceThreshold,
-  setSilenceThreshold,
   currentMetrics,
   prevMetrics,
   metricsUpdating,
@@ -150,15 +146,13 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
 
           {/* 設定パネル - 常に表示 */}
           <Box mt={2}>
-            <AudioSettingsPanel
+            <SessionSettingsPanel
               audioEnabled={audioEnabled}
               setAudioEnabled={setAudioEnabled}
               audioVolume={audioVolume}
               setAudioVolume={setAudioVolume}
               speechRate={speechRate}
               setSpeechRate={setSpeechRate}
-              silenceThreshold={silenceThreshold}
-              setSilenceThreshold={setSilenceThreshold}
             />
           </Box>
         </>

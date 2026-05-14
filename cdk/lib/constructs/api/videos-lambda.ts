@@ -63,7 +63,7 @@ export class VideosLambdaConstruct extends Construct {
       environment: {
         SESSION_FEEDBACK_TABLE: props.feedbackTableName,
         VIDEO_BUCKET: props.videoBucket.bucketName,
-        MAX_VIDEO_SIZE_MB: '100',  // 100MB
+        MAX_VIDEO_SIZE_MB: '200',  // 200MB
         DEFAULT_PRESIGNED_URL_EXPIRY: '600', // 10分
         VIDEO_ANALYSIS_MODEL_ID: props.videoAnalysisModelId || 'global.amazon.nova-2-lite-v1:0',
         POWERTOOLS_LOG_LEVEL: "DEBUG",

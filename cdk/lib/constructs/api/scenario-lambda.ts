@@ -22,6 +22,11 @@ export interface ScenarioLambdaConstructProps {
   pdfBucket: s3.IBucket;
 
   /**
+   * スライド画像保存用S3バケット
+   */
+  slideBucket: s3.IBucket;
+
+  /**
    * knowledgeBaseId ID
    */
   knowledgeBaseId: string
@@ -53,6 +58,8 @@ export class ScenarioLambdaConstruct extends Construct {
         SCENARIOS_TABLE: props.scenariosTable.tableName,
         // PDF保存用S3バケット名
         PDF_BUCKET: props.pdfBucket.bucketName,
+        // スライド画像保存用S3バケット名
+        SLIDE_BUCKET: props.slideBucket.bucketName,
         // ログレベル
         POWERTOOLS_LOG_LEVEL: "DEBUG",
         // Knowledge Base ID
@@ -63,6 +70,7 @@ export class ScenarioLambdaConstruct extends Construct {
 
     props.scenariosTable.grantReadWriteData(this.function)
     props.pdfBucket.grantReadWrite(this.function)
+    props.slideBucket.grantReadWrite(this.function)
 
     // Bedrockアクセス権限を付与（フィードバック生成用）
     this.function.addToRolePolicy(
