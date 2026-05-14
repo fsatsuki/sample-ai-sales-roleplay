@@ -13,6 +13,7 @@ import {
   getFocusStyles,
   getAccessibleAnimation,
 } from "../utils/accessibilityUtils";
+import { useTranslation } from "react-i18next";
 
 interface AnimatedMetricsProgressProps {
   value: number;
@@ -47,13 +48,6 @@ interface AnimatedMetricsProgressProps {
  * アクセシビリティ対応済み：スクリーンリーダー互換、キーボードナビゲーション、
  * 色覚異常を考慮した色のコントラスト、ARIA属性を適切に設定しています。
  */
-/**
- * アニメーション付きメトリクス進捗表示コンポーネント
- *
- * リアルタイム評価指標を視覚的に表示し、値の変化をアニメーションで強調します。
- * アクセシビリティ対応済み：スクリーンリーダー互換、キーボードナビゲーション、
- * 色覚異常を考慮した色のコントラスト、ARIA属性を適切に設定しています。
- */
 const AnimatedMetricsProgress: React.FC<AnimatedMetricsProgressProps> = ({
   value,
   prevValue,
@@ -68,6 +62,7 @@ const AnimatedMetricsProgress: React.FC<AnimatedMetricsProgressProps> = ({
   animationSpeed = 30,
   alertLevel = "medium",
 }) => {
+  const { t } = useTranslation();
   // アニメーション用の現在値
   const [animatedValue, setAnimatedValue] = useState<number>(
     prevValue !== undefined ? prevValue : value,
@@ -170,7 +165,7 @@ const AnimatedMetricsProgress: React.FC<AnimatedMetricsProgressProps> = ({
   const getAriaValueText = () => {
     const percentage = Math.round((value / maxValue) * 100);
     const metricType = getMetricType();
-    const status = getMetricsStatus(value, metricType);
+    const status = getMetricsStatus(value, metricType, t);
 
     return `${label}は${value}/${maxValue}で、${percentage}パーセント。状態: ${status}`;
   };
@@ -191,24 +186,24 @@ const AnimatedMetricsProgress: React.FC<AnimatedMetricsProgressProps> = ({
         "&::after":
           thresholdReached && alertLevel !== "none"
             ? {
-                content: '""',
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                border: alertLevel === "high" ? "3px solid" : "2px solid",
-                borderColor:
-                  alertLevel === "high"
-                    ? "error.main"
-                    : alertLevel === "medium"
-                      ? "warning.main"
-                      : "info.main",
-                borderRadius: 1,
-                animation: `pulse-border-${alertLevel} 1.5s infinite`,
-                pointerEvents: "none",
-                opacity: alertLevel === "high" ? 0.8 : 0.7,
-              }
+              content: '""',
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              border: alertLevel === "high" ? "3px solid" : "2px solid",
+              borderColor:
+                alertLevel === "high"
+                  ? "error.main"
+                  : alertLevel === "medium"
+                    ? "warning.main"
+                    : "info.main",
+              borderRadius: 1,
+              animation: `pulse-border-${alertLevel} 1.5s infinite`,
+              pointerEvents: "none",
+              opacity: alertLevel === "high" ? 0.8 : 0.7,
+            }
             : {},
         "@keyframes pulse-border-high": {
           "0%": { opacity: 0.8 },

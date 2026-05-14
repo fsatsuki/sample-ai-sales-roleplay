@@ -18,7 +18,7 @@ export class AudioStorageConstruct extends Construct {
 
   constructor(scope: Construct, id: string, props: AudioStorageConstructProps = {}) {
     super(scope, id);
-    
+
     // アクセスログ用S3バケット
     this.accessLogsBucket = new s3.Bucket(this, 'AudioStorageAccessLogsBucket', {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
@@ -27,7 +27,7 @@ export class AudioStorageConstruct extends Construct {
       encryption: s3.BucketEncryption.S3_MANAGED,
       enforceSSL: true,
     });
-    
+
     // 音声ファイル用S3バケット
     this.bucket = new s3.Bucket(this, 'AudioStorageBucket', {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL, // パブリックアクセスを禁止
@@ -87,12 +87,7 @@ export class AudioStorageConstruct extends Construct {
         }
       })
     );
-    
-    // 出力の定義
-    new cdk.CfnOutput(this, 'AudioStorageBucketName', {
-      value: this.bucket.bucketName,
-      description: '音声ファイル用S3バケット名',
-      exportName: `${props.resourceNamePrefix || ''}AudioStorageBucketName`
-    });
+
+
   }
 }

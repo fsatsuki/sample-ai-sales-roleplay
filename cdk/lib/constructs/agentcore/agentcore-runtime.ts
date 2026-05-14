@@ -1,8 +1,11 @@
 import * as cdk from 'aws-cdk-lib';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as logs from 'aws-cdk-lib/aws-logs';
 import * as agentcore from '@aws-cdk/aws-bedrock-agentcore-alpha';
 import * as ecr_assets from 'aws-cdk-lib/aws-ecr-assets';
+import { aws_logs as mixinLogs } from '@aws-cdk/mixins-preview';
+import { mixins as bedrockagentcoreMixins } from '@aws-cdk/mixins-preview/aws-bedrockagentcore';
 import * as path from 'path';
 import { Construct } from 'constructs';
 
@@ -67,6 +70,18 @@ export class AgentCoreRuntime extends Construct {
     // Runtime Endpointを追加
     runtime.addEndpoint('DefaultEndpoint', {});
 
+    // アプリケーションログ用CloudWatch LogGroup
+    const appLogGroup = new logs.LogGroup(this, 'AppLogGroup', {
+      logGroupName: `/aws/bedrock-agentcore/app/${runtimeName}`,
+      retention: logs.RetentionDays.ONE_WEEK,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    // CfnRuntimeLogsMixin でアプリケーションログを有効化
+    const appLogsMixin = bedrockagentcoreMixins.CfnRuntimeLogsMixin.APPLICATION_LOGS
+      .toLogGroup(appLogGroup);
+    appLogsMixin.applyTo(runtime);
+
     // Bedrock InvokeModel権限を付与（Cross-region inference profile対応）
     runtime.addToRolePolicy(new iam.PolicyStatement({
       sid: 'BedrockModelInvocation',
@@ -126,9 +141,6 @@ export class AgentCoreRuntime extends Construct {
     this.endpointArn = runtime.agentRuntimeArn;
     this.role = runtime.role;
 
-    new cdk.CfnOutput(this, 'RuntimeArn', {
-      value: this.runtimeArn,
-      exportName: `${props.resourceNamePrefix}${props.agentName}-runtime-arn`,
-    });
+
   }
 }

@@ -1,18 +1,12 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import {
-  Alert,
-  AlertTitle,
   Box,
-  Snackbar,
   IconButton,
   Typography,
   Collapse,
 } from "@mui/material";
 import {
-  Error as ErrorIcon,
-  Warning as WarningIcon,
-  Info as InfoIcon,
   Close as CloseIcon,
 } from "@mui/icons-material";
 import { ComplianceViolation } from "../../types/api";
@@ -26,6 +20,7 @@ interface ComplianceAlertProps {
 
 /**
  * コンプライアンス違反を通知するアラートコンポーネント
+ * ヘッダー下にスライドインするバナー形式
  */
 const ComplianceAlert: React.FC<ComplianceAlertProps> = ({
   violation,
@@ -35,93 +30,114 @@ const ComplianceAlert: React.FC<ComplianceAlertProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  // 違反の重大度に応じてアイコンと色を選択
-  const getSeverityInfo = (severity: string) => {
+  // 自動非表示タイマー
+  React.useEffect(() => {
+    if (open && autoHideDuration > 0) {
+      const timer = setTimeout(onClose, autoHideDuration);
+      return () => clearTimeout(timer);
+    }
+  }, [open, autoHideDuration, onClose]);
+
+  // 重大度に応じたスタイル
+  const getSeverityStyles = (severity: string) => {
     switch (severity) {
       case "high":
         return {
-          icon: <ErrorIcon />,
-          color: "error",
-          label: t("compliance.severityHigh", "High"),
+          background: "#fef2f2",
+          borderColor: "#fca5a5",
+          icon: "🚨",
+          label: t("compliance.severityHigh"),
         };
       case "medium":
         return {
-          icon: <WarningIcon />,
-          color: "warning",
-          label: t("compliance.severityMedium", "Medium"),
+          background: "#fffbeb",
+          borderColor: "#fde68a",
+          icon: "⚠️",
+          label: t("compliance.severityMedium"),
         };
       default:
         return {
-          icon: <InfoIcon />,
-          color: "info",
-          label: t("compliance.severityLow", "Low"),
+          background: "#eef2ff",
+          borderColor: "#c7d2fe",
+          icon: "ℹ️",
+          label: t("compliance.severityLow"),
         };
     }
   };
 
-  const severityInfo = getSeverityInfo(violation.severity);
+  const styles = getSeverityStyles(violation.severity);
 
-  // アラートをSnackbarとして表示
   return (
-    <Snackbar
-      open={open}
-      autoHideDuration={autoHideDuration}
-      onClose={onClose}
-      anchorOrigin={{ vertical: "top", horizontal: "center" }}
-    >
-      <Alert
-        severity={
-          severityInfo.color as "error" | "warning" | "info" | "success"
-        }
-        variant="filled"
-        icon={severityInfo.icon}
-        action={
-          <IconButton
-            size="small"
-            aria-label="close"
-            color="inherit"
-            onClick={onClose}
-          >
-            <CloseIcon fontSize="small" />
-          </IconButton>
-        }
+    <Collapse in={open}>
+      <Box
         sx={{
-          width: "100%",
-          maxWidth: 500,
-          boxShadow: 3,
+          display: "flex",
+          alignItems: "center",
+          gap: 1.25,
+          background: styles.background,
+          borderBottom: `1px solid ${styles.borderColor}`,
+          px: 2,
+          py: 1.25,
+          boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+          zIndex: 50,
+          animation: "slideDown 0.3s ease",
+          "@keyframes slideDown": {
+            from: { opacity: 0, maxHeight: 0, paddingTop: 0, paddingBottom: 0 },
+            to: { opacity: 1, maxHeight: 60, paddingTop: 10, paddingBottom: 10 },
+          },
+          "@media (prefers-reduced-motion: reduce)": {
+            animation: "none",
+          },
         }}
+        role="alert"
       >
-        <AlertTitle>
-          {/* Use translation key if available, otherwise fallback to original text */}
-          {violation.rule_name_key
-            ? String(
-                t(violation.rule_name_key, violation.rule_name_params || {}),
-              )
-            : violation.rule_name ||
-              t("compliance.violation", "Compliance Violation")}
-        </AlertTitle>
-        <Typography variant="body2" sx={{ mb: 1 }}>
-          {/* Use translation key if available, otherwise fallback to original text */}
-          {violation.message_key
-            ? String(t(violation.message_key, violation.message_params || {}))
-            : violation.message}
+        {/* アイコン */}
+        <Typography
+          sx={{ fontSize: "1.25rem", flexShrink: 0 }}
+          aria-hidden="true"
+        >
+          {styles.icon}
         </Typography>
-        <Collapse in={Boolean(violation.context)}>
-          <Box
+
+        {/* メッセージ本文 */}
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography
             sx={{
-              mt: 1,
-              p: 1,
-              borderRadius: 1,
-              bgcolor: "rgba(0, 0, 0, 0.1)",
-              fontStyle: "italic",
-              fontSize: "0.9rem",
+              fontSize: "0.6875rem",
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.04em",
+              color: "text.secondary",
             }}
           >
-            "{violation.context}"
-          </Box>
-        </Collapse>
-      </Alert>
-    </Snackbar>
+            {styles.label}
+          </Typography>
+          <Typography
+            sx={{ fontSize: "0.8125rem", lineHeight: 1.5, color: "text.primary" }}
+          >
+            {violation.messageKey
+              ? String(t(violation.messageKey, violation.messageParams || {}))
+              : violation.message}
+          </Typography>
+        </Box>
+
+        {/* 閉じるボタン */}
+        <IconButton
+          size="small"
+          onClick={onClose}
+          aria-label={t("common.close")}
+          sx={{
+            width: 24,
+            height: 24,
+            flexShrink: 0,
+            backgroundColor: "rgba(0,0,0,0.06)",
+            "&:hover": { backgroundColor: "rgba(0,0,0,0.1)" },
+          }}
+        >
+          <CloseIcon sx={{ fontSize: "0.75rem" }} />
+        </IconButton>
+      </Box>
+    </Collapse>
   );
 };
 

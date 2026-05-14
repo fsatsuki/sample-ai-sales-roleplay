@@ -32,6 +32,7 @@ import {
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { ApiService } from "../../../services/ApiService";
+import { AuthService } from "../../../services/AuthService";
 import type { ScenarioInfo } from "../../../types/api";
 
 const ScenarioManagementPage: React.FC = () => {
@@ -51,6 +52,7 @@ const ScenarioManagementPage: React.FC = () => {
   const [importing, setImporting] = useState<boolean>(false);
   const [exporting, setExporting] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
 
   // シナリオ一覧を取得
   const fetchScenarios = useCallback(async () => {
@@ -80,6 +82,11 @@ const ScenarioManagementPage: React.FC = () => {
       if (user && user.userId) {
         setCurrentUserId(user.userId);
       }
+
+      // 管理者グループ所属を確認
+      const authService = AuthService.getInstance();
+      const adminStatus = await authService.isAdmin();
+      setIsAdmin(adminStatus);
     } catch (err) {
       console.error("ユーザー情報の取得に失敗しました:", err);
     }
@@ -242,13 +249,25 @@ const ScenarioManagementPage: React.FC = () => {
     return language === "en" ? "English" : "日本語";
   };
 
-  // シナリオの編集・削除権限をチェック
-  const canEditOrDeleteScenario = (scenario: ScenarioInfo): boolean => {
+  // シナリオの編集権限をチェック
+  const canEditScenario = (scenario: ScenarioInfo): boolean => {
     // 現在のユーザーIDが取得できていない場合は権限なし
     if (!currentUserId) return false;
 
-    // createdByが設定されていない場合（既存のシナリオ）は編集・削除を許可しない
-    if (!scenario.createdBy) return false;
+    // システム作成のデフォルトシナリオは管理者のみ編集可能
+    if (scenario.createdBy === "system") return isAdmin;
+
+    // 作成者と現在のユーザーが一致する場合のみ権限あり
+    return scenario.createdBy === currentUserId;
+  };
+
+  // シナリオの削除権限をチェック
+  const canDeleteScenario = (scenario: ScenarioInfo): boolean => {
+    // 現在のユーザーIDが取得できていない場合は権限なし
+    if (!currentUserId) return false;
+
+    // システム作成のデフォルトシナリオは削除不可
+    if (scenario.createdBy === "system") return false;
 
     // 作成者と現在のユーザーが一致する場合のみ権限あり
     return scenario.createdBy === currentUserId;
@@ -347,7 +366,7 @@ const ScenarioManagementPage: React.FC = () => {
                     />
                   </TableCell>
                   <TableCell>
-                    {scenario.category || scenario.industry}
+                    {scenario.category || ""}
                   </TableCell>
                   <TableCell>{getLanguageLabel(scenario.language)}</TableCell>
                   <TableCell>
@@ -366,7 +385,7 @@ const ScenarioManagementPage: React.FC = () => {
                   <TableCell align="right">
                     <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
                       {/* 編集ボタン - 権限がある場合のみ表示 */}
-                      {canEditOrDeleteScenario(scenario) && (
+                      {canEditScenario(scenario) && (
                         <Tooltip title={t("scenarios.management.edit")}>
                           <IconButton
                             size="small"
@@ -379,7 +398,7 @@ const ScenarioManagementPage: React.FC = () => {
                       )}
 
                       {/* 削除ボタン - 権限がある場合のみ表示 */}
-                      {canEditOrDeleteScenario(scenario) && (
+                      {canDeleteScenario(scenario) && (
                         <Tooltip title={t("scenarios.management.delete")}>
                           <IconButton
                             size="small"

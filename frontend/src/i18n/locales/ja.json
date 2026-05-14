@@ -1,11 +1,43 @@
 {
+  "avatar": {
+    "label": "3Dアバター表示エリア",
+    "description": "現在の感情状態を3Dアバターで表現しています",
+    "emotion": "感情",
+    "loading": "アバターを読み込み中...",
+    "loadError": "アバターの読み込みに失敗しました",
+    "loadErrorDetail": "エラーが発生しました。再読み込みしてください。",
+    "webglNotSupported": "お使いのブラウザはWebGLをサポートしていません。3Dアバターを表示するには、WebGL対応のブラウザをご使用ください。",
+    "speaking": "発話中",
+    "upload": {
+      "selectFile": "VRMファイルを選択",
+      "start": "アップロード開始",
+      "progress": "アップロード進捗",
+      "uploading": "アップロード中...",
+      "invalidFormat": "VRMファイルのみアップロード可能です",
+      "tooLarge": "ファイルサイズは50MB以下にしてください",
+      "success": "アバターのアップロードが完了しました",
+      "error": "アップロードに失敗しました"
+    },
+    "management": {
+      "title": "アバター管理",
+      "upload": "新しいアバターをアップロード",
+      "empty": "アップロードされたアバターはありません",
+      "loading": "読み込み中",
+      "select": "選択",
+      "selected": "選択中",
+      "delete": "削除",
+      "deleteConfirmTitle": "アバターの削除",
+      "deleteConfirmMessage": "「{{name}}」を削除しますか？この操作は取り消せません。",
+      "statusActive": "利用可能",
+      "statusUploading": "アップロード中"
+    }
+  },
   "home": {
     "title": "AI営業ロールプレイ",
     "subtitle": "AIと対話しながら営業スキルを磨こう",
     "description": "実際の営業シーンを模したAI対話で、安全な環境で営業スキルを向上させましょう。様々な業界・性格の顧客との商談を体験できます。",
     "startButton": "営業ロールプレイを開始",
     "audioAnalysisButton": "音声分析",
-    "demoGuideButton": "デモガイドを見る",
     "recentScenarios": "最近のシナリオ",
     "noRecentScenarios": "最近プレイしたシナリオはありません",
     "viewAllScenarios": "すべてのシナリオを表示",
@@ -107,6 +139,18 @@
     },
     "metrics": {
       "angerLevel": "怒りレベル"
+    },
+    "pdfUploader": {
+      "uploadPrompt": "クリックしてPDFファイルを選択",
+      "uploadHint": "PDF形式、最大100MB（最大{{max}}ファイル）",
+      "uploadArea": "PDFファイルをアップロード",
+      "uploading": "アップロード中...",
+      "maxFilesError": "ファイルは最大{{max}}つまでアップロードできます",
+      "onlyPdfError": "PDF形式のファイルのみアップロード可能です",
+      "tooLargeError": "ファイルサイズが100MBを超えています",
+      "uploadError": "アップロードに失敗しました",
+      "deleteError": "削除に失敗しました",
+      "maxReached": "最大ファイル数（{{max}}）に達しています"
     }
   },
   "conversation": {
@@ -125,6 +169,28 @@
     "endSessionNo": "いいえ、続けます",
     "negotiationGoal": "商談ゴール",
     "negotiationObjective": "商談目標",
+    "slideTray": {
+      "label": "提案資料スライド",
+      "title": "提案資料",
+      "slide": "スライド",
+      "present": "このスライドを選択",
+      "presentBtn": "選択",
+      "presented": "選択済み",
+      "alreadyPresented": "選択済みのスライド",
+      "unpresent": "選択を取り消す",
+      "unpresentBtn": "取消",
+      "clearAll": "全解除",
+      "selectedCount": "{{count}}件選択中",
+      "clickToToggle": "クリックで選択/解除",
+      "zoom": "拡大表示"
+    },
+    "slideZoom": {
+      "title": "スライド {{current}} / {{total}}",
+      "slideAlt": "スライド {{page}}",
+      "noImage": "画像を読み込めません",
+      "prev": "前のスライド",
+      "next": "次のスライド"
+    },
     "audioSettings": {
       "title": "音声設定",
       "outputOn": "音声出力 ON",
@@ -168,7 +234,22 @@
     "evaluationLabel": "評価",
     "voiceOutput": "音声出力",
     "npcVoicePlayback": "※NPCの応答が音声で再生されます",
-    "expandSettings": "展開して設定を表示"
+    "expandSettings": "展開して設定を表示",
+    "chatLog": {
+      "expand": "チャットログを展開",
+      "collapse": "チャットログを折りたたむ"
+    },
+    "header": {
+      "toggleRightPanels": "情報パネル表示切替",
+      "toggleMetrics": "メトリクス表示切替",
+      "openSettings": "設定を開く",
+      "endSession": "セッション終了"
+    },
+    "settings": {
+      "title": "設定",
+      "avatarOn": "3Dアバター表示 ON",
+      "avatarOff": "3Dアバター表示 OFF"
+    }
   },
   "metrics": {
     "realtimeEvaluation": "リアルタイム評価",
@@ -183,7 +264,22 @@
     "progressLevelTooltip": "高い値は商談が進んでいることを示します",
     "analysis": "分析",
     "analysisResult": "分析結果",
-    "angerLevel": "怒りレベル"
+    "angerLevel": "怒りレベル",
+    "overlay": {
+      "title": "リアルタイム評価"
+    },
+    "status": {
+      "anger": {
+        "veryHigh": "非常に高い（危険）",
+        "moderate": "中程度（注意）",
+        "low": "低い（良好）"
+      },
+      "positive": {
+        "veryHigh": "非常に高い（良好）",
+        "moderate": "中程度（普通）",
+        "low": "低い（要改善）"
+      }
+    }
   },
   "speech": {
     "processing": "音声を処理中...",
@@ -214,6 +310,17 @@
     "settingsNav": "設定",
     "profileNav": "プロフィール",
     "rankings": "ランキング"
+  },
+  "rightPanels": {
+    "scenarioTitle": "シナリオ",
+    "personaTitle": "ペルソナ"
+  },
+  "coachingHint": {
+    "label": "コーチングヒント"
+  },
+  "avatarStage": {
+    "label": "アバター表示エリア",
+    "speakingIndicator": "NPC発話中"
   },
   "sidebar": {
     "expand": "展開する",
@@ -306,7 +413,8 @@
         "basicInfo": "基本情報",
         "npcInfo": "NPC設定",
         "goals": "目標設定",
-        "pdfs": "営業資料・評価設定",
+        "pdfs": "評価設定",
+        "presentation": "提案資料",
         "sharing": "共有設定",
         "preview": "確認・保存"
       },
@@ -315,6 +423,23 @@
       "goalsDescription": "このシナリオでの目標を設定します。目標達成のための条件や難易度を調整できます。",
       "sharingDescription": "シナリオの共有設定を行います。公開範囲や共有相手を指定できます。",
       "previewDescription": "作成したシナリオの内容を確認します。問題がなければ保存してください。",
+      "presentation": {
+        "title": "提案資料",
+        "description": "ロールプレイ中に使用する提案資料（PDF）をアップロードしてください。アップロードは任意です。",
+        "uploadPrompt": "クリックしてPDFファイルを選択",
+        "uploadHint": "PDF形式、最大100MB",
+        "uploadArea": "提案資料をアップロード",
+        "uploading": "アップロード中...",
+        "converting": "スライド変換中...",
+        "ready": "変換完了",
+        "conversionError": "変換エラー",
+        "delete": "提案資料を削除",
+        "errorNotPdf": "PDF形式のファイルのみアップロード可能です",
+        "errorTooLarge": "ファイルサイズが100MBを超えています",
+        "errorUpload": "アップロードに失敗しました",
+        "errorDelete": "削除に失敗しました",
+        "note": "※ 提案資料は任意です。アップロードすると、会話中にスライドを表示しながらロールプレイできます。"
+      },
       "scenarioIdHelp": "シナリオの一意な識別子を入力してください（任意、英数字とハイフンのみ）",
       "titleHelp": "シナリオのタイトルは具体的で分かりやすいものにしましょう（50文字以内）",
       "descriptionHelp": "シナリオの概要や背景、目的などを記述してください（300文字以内）",
@@ -397,6 +522,25 @@
           }
         }
       },
+      "voice": {
+        "label": "音声モデル",
+        "help": "NPCの音声を選択してください",
+        "required": "音声モデルを選択してください",
+        "male": "男性",
+        "female": "女性",
+        "maleChild": "男の子",
+        "femaleChild": "女の子"
+      },
+      "avatar": {
+        "label": "VRMアバター（任意）",
+        "selectFile": "VRMファイルを選択",
+        "remove": "アバターを削除",
+        "help": "VRM形式のアバターファイルをアップロードできます（最大50MB）",
+        "invalidFormat": "VRM形式のファイルのみアップロードできます（.vrm）",
+        "fileTooLarge": "ファイルサイズが50MBを超えています",
+        "enableToggle": "3Dアバター表示",
+        "enableToggleHelp": "ONにすると会話画面で3Dアバターが表示されます"
+      },
       "error": {
         "guardrailsLoad": "ガードレールの読み込みに失敗しました",
         "unknown": "予期せぬエラーが発生しました"
@@ -475,6 +619,10 @@
       "mine": "マイシナリオ"
     },
     "noMyScenarios": "マイシナリオがありません",
+    "noMatchingScenarios": "条件に一致するシナリオが見つかりません",
+    "noMatchingScenariosHint": "検索条件やフィルターを変更してお試しください",
+    "resetFilters": "フィルターをリセット",
+    "npcPartner": "対話相手 (NPC)",
     "error": {
       "loadFailed": "シナリオの読み込みに失敗しました",
       "saveFailed": "シナリオの保存に失敗しました",
@@ -508,7 +656,8 @@
       "goalsRequired": "ゴールを少なくとも1つ設定してください",
       "goalsCriteriaRequired": "すべてのゴールに判定基準を設定してください",
       "sharedUsersRequired": "共有シナリオには少なくとも1人のユーザーを指定してください",
-      "guardrailRequired": "ガードレールの選択は必須です"
+      "guardrailRequired": "ガードレールの選択は必須です",
+      "voiceIdRequired": "音声モデルの選択は必須です"
     },
     "visibility": {
       "private": "非公開",
@@ -815,5 +964,26 @@
     "explanationTitle": "リファレンスチェックについて",
     "explanation1": "リファレンスチェックは、営業担当者の発言がシナリオに設定されたドキュメントの内容と整合性があるかを確認する機能です。",
     "explanation2": "正確な情報提供により、顧客との信頼関係を構築し、営業効果を高めることができます。問題が発見された場合は、ドキュメントの内容を再確認し、正確な情報を提供するよう心がけましょう。"
+  },
+  "emotion": {
+    "description": {
+      "angry": "怒っている",
+      "annoyed": "不満を感じている",
+      "neutral": "中立的",
+      "satisfied": "満足している",
+      "happy": "喜んでいる"
+    },
+    "detailedDescription": {
+      "angry": "対話相手は非常に怒っています。即座に対応が必要です。",
+      "annoyed": "対話相手は不満を感じています。別のアプローチを考えるべきです。",
+      "neutral": "対話相手は中立的な状態です。特に強い感情は示していません。",
+      "satisfied": "対話相手は満足しています。良い方向に進んでいます。",
+      "happy": "対話相手は非常に喜んでいます。この調子を維持しましょう。"
+    },
+    "stateLabel": "感情状態",
+    "stateWithValue": "感情状態: {{state}}",
+    "changed": "感情状態が{{from}}から{{to}}に変化しました",
+    "currentState": "現在の感情状態: {{state}}",
+    "feedbackLabel": "感情フィードバック"
   }
 }

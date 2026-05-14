@@ -63,11 +63,12 @@ const MessageInput: React.FC<MessageInputProps> = ({
       />
 
       {/* 入力エリア */}
-      <Box display="flex" gap={2} mt={2}>
+      <Box display="flex" gap={1} px={1} py={0.5} alignItems="center">
         <TextField
           fullWidth
           multiline
-          maxRows={3}
+          maxRows={2}
+          size="small"
           value={userInput}
           onChange={(e) => setUserInput(e.target.value)}
           onKeyDown={handleKeyDown}

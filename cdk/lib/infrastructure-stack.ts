@@ -9,6 +9,7 @@ import * as cognito from 'aws-cdk-lib/aws-cognito';
 import { DatabaseTables } from './constructs/storage/database-tables';
 import { GuardrailsConstruct } from './constructs/guardrails';
 import { PdfStorageConstruct } from './constructs/storage/pdf-storage';
+import { SlideStorageConstruct } from './constructs/storage/slide-storage';
 import { Polly } from './constructs/polly';
 import { VectorKB } from './constructs/knowledgebase';
 import { BedrockModelsConfig } from './types/bedrock-models';
@@ -96,6 +97,11 @@ export class InfrastructureStack extends cdk.Stack {
       resourceNamePrefix: resourcePrefix
     });
 
+    // 提案資料スライド画像保存用S3バケット
+    const slideStorage = new SlideStorageConstruct(this, 'SlideStorage', {
+      resourceNamePrefix: resourcePrefix
+    });
+
     // knowledge baseをデプロイ
     const kb = new VectorKB(this, "VectorKB", {
       resourceNamePrefix: resourcePrefix,
@@ -129,6 +135,18 @@ export class InfrastructureStack extends cdk.Stack {
       enableJwtAuth: true,
       sessionBucket: undefined,
       memoryId: this.sessionMemory.memoryId,
+      additionalEnvironmentVariables: {
+        BEDROCK_MODEL_CONVERSATION: props!.bedrockModels.conversation,
+        SLIDE_BUCKET: slideStorage.bucket.bucketName,
+      },
+      additionalPolicies: [
+        new cdk.aws_iam.PolicyStatement({
+          sid: 'SlideStorageReadAccess',
+          effect: cdk.aws_iam.Effect.ALLOW,
+          actions: ['s3:GetObject'],
+          resources: [`${slideStorage.bucket.bucketArn}/*`],
+        }),
+      ],
     });
 
     // リアルタイムスコアリングエージェント（フロントエンド直接呼び出し - JWT認証）
@@ -145,6 +163,7 @@ export class InfrastructureStack extends cdk.Stack {
       memoryId: this.sessionMemory.memoryId,
       additionalEnvironmentVariables: {
         SESSION_FEEDBACK_TABLE: databaseTables.sessionFeedbackTable.tableName,
+        BEDROCK_MODEL_SCORING: props!.bedrockModels.scoring,
       },
       additionalPolicies: [
         new cdk.aws_iam.PolicyStatement({
@@ -168,6 +187,9 @@ export class InfrastructureStack extends cdk.Stack {
       enableJwtAuth: false,
       sessionBucket: undefined,
       memoryId: this.sessionMemory.memoryId,
+      additionalEnvironmentVariables: {
+        BEDROCK_MODEL_FEEDBACK: props!.bedrockModels.feedback,
+      },
     });
 
     // 動画分析エージェント（Step Functions呼び出し - IAMロール認証）
@@ -181,6 +203,9 @@ export class InfrastructureStack extends cdk.Stack {
       description: `動画分析エージェント - ${props!.bedrockModels.video}使用`,
       enableJwtAuth: false,
       sessionBucket: undefined,
+      additionalEnvironmentVariables: {
+        VIDEO_ANALYSIS_MODEL_ID: props!.bedrockModels.video,
+      },
     });
 
     // 音声分析エージェント（Step Functions呼び出し - IAMロール認証）
@@ -194,6 +219,9 @@ export class InfrastructureStack extends cdk.Stack {
       description: `音声分析エージェント - ${props!.bedrockModels.guardrail}使用（コンプライアンスチェック）`,
       enableJwtAuth: false,
       sessionBucket: undefined,
+      additionalEnvironmentVariables: {
+        BEDROCK_MODEL_ANALYSIS: props!.bedrockModels.guardrail,
+      },
     });
 
     const api = new Api(this, 'API', {
@@ -204,6 +232,7 @@ export class InfrastructureStack extends cdk.Stack {
       databaseTables: databaseTables,
       guardrails: guardrails,
       pdfStorageBucket: pdfStorage.bucket,
+      slideStorageBucket: slideStorage.bucket,
       knowledgeBaseId: kb.knowledgeBaseId,
       bedrockModels: props!.bedrockModels,
       agentCoreMemoryId: this.sessionMemory.memoryId,
@@ -240,6 +269,7 @@ export class InfrastructureStack extends cdk.Stack {
       webAclId: props?.webAclId,
       resourceNamePrefix: resourcePrefix,
       transcribeWebSocketEndpoint: api.transcribeWebSocket.webSocketApiEndpoint,
+      avatarBucket: api.avatarStorage.bucket,
       agentCoreEnabled: true,
       npcConversationAgentArn: this.npcConversationAgent.runtimeArn,
       realtimeScoringAgentArn: this.realtimeScoringAgent.runtimeArn,
@@ -276,56 +306,6 @@ export class InfrastructureStack extends cdk.Stack {
       value: `https://${web.distribution.domainName}`,
       description: 'CloudFront URL for accessing the application',
       exportName: `${prefix}CloudFrontURL`
-    });
-
-    // Lexicon名をエクスポート
-    new cdk.CfnOutput(this, 'JapaneseLexiconName', {
-      value: `${resourcePrefix}JapaneseLexicon`,
-      description: 'Japanese Lexicon Name for Amazon Polly',
-      exportName: `${prefix}JapaneseLexiconName`
-    });
-
-    new cdk.CfnOutput(this, 'EnglishLexiconName', {
-      value: `${resourcePrefix}EnglishLexicon`,
-      description: 'English Lexicon Name for Amazon Polly',
-      exportName: `${prefix}EnglishLexiconName`
-    });
-
-    // AgentCore Runtime ARNs
-    new cdk.CfnOutput(this, 'NpcConversationAgentArn', {
-      value: this.npcConversationAgent.runtimeArn,
-      description: 'NPC Conversation AgentCore Runtime ARN',
-      exportName: `${prefix}NpcConversationAgentArn`
-    });
-
-    new cdk.CfnOutput(this, 'RealtimeScoringAgentArn', {
-      value: this.realtimeScoringAgent.runtimeArn,
-      description: 'Realtime Scoring AgentCore Runtime ARN',
-      exportName: `${prefix}RealtimeScoringAgentArn`
-    });
-
-    new cdk.CfnOutput(this, 'FeedbackAnalysisAgentArn', {
-      value: this.feedbackAnalysisAgent.runtimeArn,
-      description: 'Feedback Analysis AgentCore Runtime ARN',
-      exportName: `${prefix}FeedbackAnalysisAgentArn`
-    });
-
-    new cdk.CfnOutput(this, 'VideoAnalysisAgentArn', {
-      value: this.videoAnalysisAgent.runtimeArn,
-      description: 'Video Analysis AgentCore Runtime ARN',
-      exportName: `${prefix}VideoAnalysisAgentArn`
-    });
-
-    new cdk.CfnOutput(this, 'AudioAnalysisAgentArn', {
-      value: this.audioAnalysisAgent.runtimeArn,
-      description: 'Audio Analysis AgentCore Runtime ARN',
-      exportName: `${prefix}AudioAnalysisAgentArn`
-    });
-
-    new cdk.CfnOutput(this, 'SessionMemoryId', {
-      value: this.sessionMemory.memoryId,
-      description: 'AgentCore Memory ID for session management',
-      exportName: `${prefix}SessionMemoryId`
     });
 
     this.userPool = auth.userPool;

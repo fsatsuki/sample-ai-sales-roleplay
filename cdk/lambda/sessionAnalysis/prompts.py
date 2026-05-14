@@ -12,7 +12,9 @@ def build_feedback_prompt(
     metrics: Dict[str, Any],
     messages: List[Dict[str, Any]],
     scenario_goals: List[Dict[str, Any]],
-    language: str
+    language: str,
+    slide_history: List[Dict[str, Any]] = None,
+    realtime_goal_statuses: List[Dict[str, Any]] = None
 ) -> str:
     """
     フィードバック生成用プロンプトを構築
@@ -49,11 +51,80 @@ def build_feedback_prompt(
     # ゴール分析セクション
     goal_section = ""
     if scenario_goals:
-        goals_text = "\n".join([f"- {g.get('description', '')}" for g in scenario_goals])
+        # セッション中のゴール進捗をマップに変換
+        status_map = {}
+        if realtime_goal_statuses:
+            for s in realtime_goal_statuses:
+                status_map[s.get("goalId", "")] = s
+        
+        # ゴールIDのマッチング状況をログ出力（不一致の早期検出）
+        scenario_goal_ids = {g.get("id", "") for g in scenario_goals}
+        realtime_goal_ids = set(status_map.keys())
+        unmatched_ids = realtime_goal_ids - scenario_goal_ids
+        if unmatched_ids:
+            logger.warning("リアルタイム進捗にシナリオゴールと一致しないIDが存在します", extra={
+                "unmatched_goal_ids": list(unmatched_ids),
+                "scenario_goal_ids": list(scenario_goal_ids),
+            })
+        
+        goal_lines = []
+        for g in scenario_goals:
+            goal_id = g.get("id", "")
+            description = g.get("description", "")
+            status = status_map.get(goal_id, {})
+            achieved = status.get("achieved", False)
+            progress = status.get("progress", 0)
+            
+            if language == "en":
+                if achieved:
+                    goal_lines.append(f"- {description} [Achieved during session, progress: {progress}%]")
+                elif progress > 0:
+                    goal_lines.append(f"- {description} [Partially achieved during session, progress: {progress}%]")
+                else:
+                    goal_lines.append(f"- {description} [Not achieved during session]")
+            else:
+                if achieved:
+                    goal_lines.append(f"- {description} [セッション中に達成済み、進捗: {progress}%]")
+                elif progress > 0:
+                    goal_lines.append(f"- {description} [セッション中に部分達成、進捗: {progress}%]")
+                else:
+                    goal_lines.append(f"- {description} [セッション中に未達成]")
+        
+        goals_text = "\n".join(goal_lines)
         if language == "en":
-            goal_section = f"\n## Scenario Goals\n{goals_text}\n"
+            goal_section = f"\n## Scenario Goals (with realtime progress from session)\n{goals_text}\n"
         else:
-            goal_section = f"\n## シナリオのゴール\n{goals_text}\n"
+            goal_section = f"\n## シナリオのゴール（セッション中のリアルタイム進捗付き）\n{goals_text}\n"
+    
+    # スライド提示履歴セクション
+    slide_section = ""
+    if slide_history:
+        if language == "en":
+            slide_lines = ["\n## Slide Presentation History"]
+            slide_lines.append("The salesperson presented the following slides during the conversation:")
+            for entry in slide_history:
+                page = entry.get('pageNumber', '?')
+                timestamp = entry.get('timestamp', '')
+                msg_id = entry.get('messageId', '')
+                slide_lines.append(f"- Slide {page} (presented at message: {msg_id})")
+            slide_lines.append("\nEvaluate the slide usage:")
+            slide_lines.append("- Was the timing of each slide presentation appropriate?")
+            slide_lines.append("- Were the presented slides relevant to the conversation topic?")
+            slide_lines.append("- Was the presentation order logical?")
+            slide_section = "\n".join(slide_lines) + "\n"
+        else:
+            slide_lines = ["\n## スライド提示履歴"]
+            slide_lines.append("営業担当者は会話中に以下のスライドを提示しました:")
+            for entry in slide_history:
+                page = entry.get('pageNumber', '?')
+                timestamp = entry.get('timestamp', '')
+                msg_id = entry.get('messageId', '')
+                slide_lines.append(f"- スライド{page}（メッセージ: {msg_id}で提示）")
+            slide_lines.append("\nスライドの活用を評価してください:")
+            slide_lines.append("- 各スライドの提示タイミングは適切でしたか？")
+            slide_lines.append("- 提示されたスライドは会話のトピックに関連していましたか？")
+            slide_lines.append("- 提示順序は論理的でしたか？")
+            slide_section = "\n".join(slide_lines) + "\n"
     
     if language == "en":
         return f"""You are an expert sales trainer analyzing a sales roleplay session.
@@ -66,7 +137,7 @@ def build_feedback_prompt(
 ## Conversation (This is the COMPLETE and ONLY conversation that occurred)
 {conversation_text}
 {goal_section}
-
+{slide_section}
 **CRITICAL INSTRUCTIONS - READ CAREFULLY:**
 1. The conversation above is the COMPLETE record. There is NO other dialogue.
 2. Base your analysis ONLY on what the salesperson (User) actually said in the conversation above.
@@ -88,7 +159,7 @@ Analyze this sales conversation based STRICTLY on what actually happened."""
 ## 会話内容（これが発生した完全かつ唯一の会話です）
 {conversation_text}
 {goal_section}
-
+{slide_section}
 **重要な指示 - 注意深く読んでください:**
 1. 上記の会話が完全な記録です。他の会話は存在しません。
 2. 営業担当者（ユーザー）が上記の会話で実際に言ったことのみに基づいて分析してください。

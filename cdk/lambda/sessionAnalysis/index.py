@@ -60,11 +60,13 @@ def start_analysis(session_id: str):
         # リクエストボディから言語設定を取得
         body = app.current_event.json_body or {}
         language = body.get("language", "ja")
+        goal_statuses = body.get("goalStatuses", [])
         
         logger.info("セッション分析開始リクエスト", extra={
             "session_id": session_id,
             "user_id": user_id,
-            "language": language
+            "language": language,
+            "goal_statuses_count": len(goal_statuses)
         })
         
         # セッションの存在確認
@@ -105,7 +107,8 @@ def start_analysis(session_id: str):
             input=json.dumps({
                 "sessionId": session_id,
                 "userId": user_id,
-                "language": language
+                "language": language,
+                "realtimeGoalStatuses": goal_statuses
             })
         )
         

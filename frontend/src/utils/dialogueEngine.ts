@@ -120,9 +120,6 @@ export const shouldEndSession = (
   const currentTurns = calculateCurrentTurns(messageCount);
 
   if (currentTurns > maxTurns) {
-    if (process.env.NODE_ENV !== "test") {
-      console.log(`会話上限に到達しました: ${currentTurns}/${maxTurns}`);
-    }
     return true;
   }
 

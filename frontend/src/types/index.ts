@@ -9,6 +9,7 @@ export * from "./components";
 import type {
   DifficultyLevel,
   ComplianceViolation,
+  ComplianceCheck,
   NPCInfo,
   GoalInfo,
   MetricsInfo,
@@ -27,6 +28,7 @@ export interface Scenario {
   initialMetrics: ExtendedMetrics;
   goals: GoalInfo[]; // シナリオのゴール一覧
   maxTurns?: number; // 最大会話ターン数（指定しない場合はデフォルト値を使用）
+  enableAvatar?: boolean; // アバター表示On/Off（未設定時はfalse）
 }
 
 // 拡張メトリクス（詳細スコア付き）
@@ -56,18 +58,9 @@ export interface Message {
   content: string;
   timestamp: Date;
   metrics?: ExtendedMetrics;
-  compliance?: {
-    violations?: {
-      rule_id: string;
-      rule_name: string;
-      severity: "high" | "medium" | "low";
-      message: string;
-      context: string;
-      confidence: number;
-    }[];
-    score: number;
-    analysis: string;
-  };
+  compliance?: ComplianceCheck;
+  /** このメッセージ送信時に選択されていたスライドページ番号リスト */
+  presentedSlides?: number[];
 }
 
 // セッション情報

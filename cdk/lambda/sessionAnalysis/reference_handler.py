@@ -33,6 +33,35 @@ logger.info("Lambda初期化", extra={
 bedrock_agent_runtime = boto3.client("bedrock-agent-runtime")
 
 
+def extract_metadata_scenario_id(scenario_info: Optional[Dict[str, Any]]) -> Optional[str]:
+    """
+    シナリオ情報のpdfFilesからメタデータ用のscenarioIdを抽出する。
+    
+    pdfFilesのkeyは "scenarios/{scenarioId}/filename.pdf" の形式。
+    メタデータファイルのscenarioIdはこのパスのフォルダ名と一致する。
+    """
+    if not scenario_info:
+        return None
+    
+    pdf_files = scenario_info.get("pdfFiles", [])
+    if not pdf_files:
+        return None
+    
+    # 最初のPDFファイルのkeyからscenarioIdを抽出
+    first_key = pdf_files[0].get("key", "")
+    # "scenarios/AWS/filename.pdf" → "AWS"
+    parts = first_key.split("/")
+    if len(parts) >= 3 and parts[0] == "scenarios":
+        metadata_scenario_id = parts[1]
+        logger.info("メタデータscenarioId抽出", extra={
+            "pdf_key": first_key,
+            "metadata_scenario_id": metadata_scenario_id
+        })
+        return metadata_scenario_id
+    
+    return None
+
+
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
     参照資料評価ハンドラー
@@ -48,6 +77,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         has_knowledge_base = event.get("hasKnowledgeBase", False)
         messages = event.get("messages", [])
         scenario_id = event.get("scenarioId")
+        scenario_info = event.get("scenarioInfo")
         language = event.get("language", "ja")
         
         logger.info("参照資料評価開始", extra={
@@ -65,6 +95,9 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 "referenceChecked": False,
                 "referenceSkipReason": "no_knowledge_base"
             }
+        
+        # メタデータ用のscenarioIdを抽出（フィルタリングに使用）
+        metadata_scenario_id = extract_metadata_scenario_id(scenario_info)
         
         # ユーザーメッセージを抽出
         user_messages = [
@@ -87,7 +120,8 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             user_messages=user_messages,
             all_messages=messages,
             scenario_id=scenario_id,
-            language=language
+            language=language,
+            metadata_scenario_id=metadata_scenario_id
         )
         
         logger.info("参照資料評価完了", extra={
@@ -117,7 +151,8 @@ def evaluate_references(
     user_messages: List[Dict[str, Any]],
     all_messages: List[Dict[str, Any]],
     scenario_id: str,
-    language: str
+    language: str,
+    metadata_scenario_id: Optional[str] = None
 ) -> Dict[str, Any]:
     """参照資料に基づく評価を実行"""
     
@@ -138,7 +173,8 @@ def evaluate_references(
                 user_message=user_content,
                 context=context,
                 scenario_id=scenario_id,
-                language=language
+                language=language,
+                metadata_scenario_id=metadata_scenario_id
             )
             check_results.append(result)
         except Exception as e:
@@ -184,27 +220,44 @@ def check_single_message(
     user_message: str,
     context: str,
     scenario_id: str,
-    language: str
+    language: str,
+    metadata_scenario_id: Optional[str] = None
 ) -> Dict[str, Any]:
     """単一メッセージの参照資料チェック"""
     
     logger.info("Knowledge Base検索開始", extra={
         "knowledge_base_id": KNOWLEDGE_BASE_ID,
         "user_message": user_message[:100],
-        "scenario_id": scenario_id
+        "scenario_id": scenario_id,
+        "metadata_scenario_id": metadata_scenario_id
     })
     
     # Knowledge Baseから関連ドキュメントを検索
     try:
+        # 検索設定を構築
+        vector_search_config: Dict[str, Any] = {
+            "numberOfResults": 3
+        }
+        
+        # メタデータscenarioIdがある場合はフィルタを追加
+        if metadata_scenario_id:
+            vector_search_config["filter"] = {
+                "equals": {
+                    "key": "scenarioId",
+                    "value": metadata_scenario_id
+                }
+            }
+            logger.info("メタデータフィルタ適用", extra={
+                "filter_scenario_id": metadata_scenario_id
+            })
+        
         retrieve_response = bedrock_agent_runtime.retrieve(
             knowledgeBaseId=KNOWLEDGE_BASE_ID,
             retrievalQuery={
                 "text": user_message
             },
             retrievalConfiguration={
-                "vectorSearchConfiguration": {
-                    "numberOfResults": 3
-                }
+                "vectorSearchConfiguration": vector_search_config
             }
         )
         

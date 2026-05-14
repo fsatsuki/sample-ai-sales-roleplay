@@ -1,4 +1,4 @@
-import { render, screen} from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
 import { I18nextProvider } from "react-i18next";
 // テスト用のi18n設定
@@ -55,7 +55,6 @@ jest.mock("../../../../services/ApiService", () => {
               difficulty: "beginner",
               category: "Technology",
               language: "ja",
-              industry: "Technology",
               createdBy: "test-user-id",
             },
           ],
@@ -70,6 +69,15 @@ jest.mock("../../../../services/ApiService", () => {
     },
   };
 });
+
+// AuthServiceのモック
+jest.mock("../../../../services/AuthService", () => ({
+  AuthService: {
+    getInstance: jest.fn().mockReturnValue({
+      isAdmin: jest.fn().mockResolvedValue(false),
+    }),
+  },
+}));
 
 describe("ScenarioManagementPage Component", () => {
   beforeEach(() => {

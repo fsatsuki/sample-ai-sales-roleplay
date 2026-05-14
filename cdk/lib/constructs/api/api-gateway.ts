@@ -31,6 +31,8 @@ export interface ApiGatewayConstructProps {
   audioAnalysisFunction?: lambda.Function;
   /** セッション分析Lambda関数 */
   sessionAnalysisFunction?: lambda.Function;
+  /** アバター管理Lambda関数 */
+  avatarFunction?: lambda.Function;
 }
 
 export class ApiGatewayConstruct extends Construct {
@@ -358,6 +360,50 @@ export class ApiGatewayConstruct extends Construct {
       }
     );
 
+    // POST /scenarios/{scenario_id}/presentation-upload-url - 提案資料アップロード
+    const presentationUploadResource = scenarioDetailResource.addResource('presentation-upload-url');
+    presentationUploadResource.addMethod(
+      'POST',
+      new apigateway.LambdaIntegration(props.scenarioFunction),
+      {
+        authorizer: auth,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      }
+    );
+
+    // DELETE /scenarios/{scenario_id}/presentation - 提案資料削除
+    const presentationResource = scenarioDetailResource.addResource('presentation');
+    presentationResource.addMethod(
+      'DELETE',
+      new apigateway.LambdaIntegration(props.scenarioFunction),
+      {
+        authorizer: auth,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      }
+    );
+
+    // GET /scenarios/{scenario_id}/slides - スライド画像一覧取得
+    const slidesResource = scenarioDetailResource.addResource('slides');
+    slidesResource.addMethod(
+      'GET',
+      new apigateway.LambdaIntegration(props.scenarioFunction),
+      {
+        authorizer: auth,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      }
+    );
+
+    // POST /scenarios/{scenario_id}/convert-slides - スライド変換トリガー
+    const convertSlidesResource = scenarioDetailResource.addResource('convert-slides');
+    convertSlidesResource.addMethod(
+      'POST',
+      new apigateway.LambdaIntegration(props.scenarioFunction),
+      {
+        authorizer: auth,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      }
+    );
+
     // Guardrails API endpoints (ガードレールAPI)
     if (props.guardrailsFunction) {
       // ガードレールのルート
@@ -419,6 +465,74 @@ export class ApiGatewayConstruct extends Construct {
       resultsResource.addMethod(
         'GET',
         new apigateway.LambdaIntegration(props.audioAnalysisFunction),
+        {
+          authorizer: auth,
+          authorizationType: apigateway.AuthorizationType.COGNITO,
+        }
+      );
+    }
+
+    // Avatars API endpoints (アバター管理API)
+    if (props.avatarFunction) {
+      const avatarsResource = this.api.root.addResource('avatars');
+
+      // GET /avatars - アバター一覧取得
+      avatarsResource.addMethod(
+        'GET',
+        new apigateway.LambdaIntegration(props.avatarFunction),
+        {
+          authorizer: auth,
+          authorizationType: apigateway.AuthorizationType.COGNITO,
+        }
+      );
+
+      // POST /avatars - アバター作成（メタデータ登録 + アップロードURL生成）
+      avatarsResource.addMethod(
+        'POST',
+        new apigateway.LambdaIntegration(props.avatarFunction),
+        {
+          authorizer: auth,
+          authorizationType: apigateway.AuthorizationType.COGNITO,
+        }
+      );
+
+      // GET /avatars/{avatar_id} - アバター詳細取得
+      const avatarDetailResource = avatarsResource.addResource('{avatar_id}');
+      avatarDetailResource.addMethod(
+        'GET',
+        new apigateway.LambdaIntegration(props.avatarFunction),
+        {
+          authorizer: auth,
+          authorizationType: apigateway.AuthorizationType.COGNITO,
+        }
+      );
+
+      // DELETE /avatars/{avatar_id} - アバター削除
+      avatarDetailResource.addMethod(
+        'DELETE',
+        new apigateway.LambdaIntegration(props.avatarFunction),
+        {
+          authorizer: auth,
+          authorizationType: apigateway.AuthorizationType.COGNITO,
+        }
+      );
+
+      // GET /avatars/{avatar_id}/download-url - ダウンロード用署名付きURL
+      const downloadUrlResource = avatarDetailResource.addResource('download-url');
+      downloadUrlResource.addMethod(
+        'GET',
+        new apigateway.LambdaIntegration(props.avatarFunction),
+        {
+          authorizer: auth,
+          authorizationType: apigateway.AuthorizationType.COGNITO,
+        }
+      );
+
+      // PUT /avatars/{avatar_id}/confirm - アップロード完了確認
+      const confirmResource = avatarDetailResource.addResource('confirm');
+      confirmResource.addMethod(
+        'PUT',
+        new apigateway.LambdaIntegration(props.avatarFunction),
         {
           authorizer: auth,
           authorizationType: apigateway.AuthorizationType.COGNITO,

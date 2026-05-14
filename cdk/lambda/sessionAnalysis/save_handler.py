@@ -50,6 +50,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         final_metrics = feedback_result.get("finalMetrics", {})
         messages = feedback_result.get("messages", [])
         scenario_goals = feedback_result.get("scenarioGoals", [])
+        realtime_goal_statuses = feedback_result.get("realtimeGoalStatuses", [])
         language = feedback_result.get("language", "ja")
         
         logger.info("結果保存開始", extra={
@@ -62,10 +63,10 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # フィードバックデータを取得
         feedback_data = feedback_result.get("feedbackData")
         
-        # ゴール結果を生成
+        # ゴール結果を生成（セッション中の進捗を考慮）
         goal_results = None
         if feedback_data and scenario_goals:
-            goal_results = create_goal_results(feedback_data, scenario_goals, session_id)
+            goal_results = create_goal_results(feedback_data, scenario_goals, session_id, realtime_goal_statuses)
         
         # 動画分析結果を取得
         video_analysis = video_result.get("videoAnalysis")
@@ -247,9 +248,18 @@ def update_analysis_status(session_id: str, status: str, error_message: str = No
 def create_goal_results(
     feedback_data: Dict[str, Any],
     scenario_goals: List[Dict[str, Any]],
-    session_id: str
+    session_id: str,
+    realtime_goal_statuses: List[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
-    """フィードバックからゴール結果を生成"""
+    """フィードバックからゴール結果を生成（セッション中の進捗を考慮）
+    
+    マージポリシー:
+    - リアルタイム達成は不可逆: セッション中に達成済みのゴールは、AIフィードバックの
+      判定に関わらず達成状態を維持する
+    - AI判定は追加的: AIが達成と判定した場合、リアルタイムで未達成でも達成とする
+    - progressは下がらない: AIの判定値とリアルタイム進捗の大きい方を採用する
+    - 達成時刻はリアルタイム記録を優先: セッション中の達成時刻がある場合はそれを使用する
+    """
     
     if not scenario_goals:
         return {
@@ -265,6 +275,12 @@ def create_goal_results(
     partially_achieved = goal_feedback.get("partiallyAchievedGoals", [])
     missed_goals = goal_feedback.get("missedGoals", [])
     
+    # セッション中のゴール進捗をマップに変換
+    realtime_status_map = {}
+    if realtime_goal_statuses:
+        for s in realtime_goal_statuses:
+            realtime_status_map[s.get("goalId", "")] = s
+    
     goal_statuses = []
     total_progress = 0
     current_time = int(time.time() * 1000)
@@ -273,10 +289,16 @@ def create_goal_results(
         goal_id = goal.get("id")
         goal_description = goal.get("description", "")
         
+        # セッション中のリアルタイム進捗を取得
+        realtime_status = realtime_status_map.get(goal_id, {})
+        realtime_achieved = realtime_status.get("achieved", False)
+        realtime_progress = realtime_status.get("progress", 0)
+        realtime_achieved_at = realtime_status.get("achievedAt")
+        
         progress = 0
         achieved = False
         
-        # 達成判定
+        # AIフィードバックによる達成判定
         if any(goal_description in g for g in achieved_goals):
             progress = 100
             achieved = True
@@ -288,11 +310,24 @@ def create_goal_results(
             progress = max(0, min(100, goal_achievement_score * 10))
             achieved = progress >= 80
         
+        # セッション中に達成済みの場合は、その状態を尊重する
+        if realtime_achieved:
+            achieved = True
+            progress = 100
+        else:
+            # 未達成でもセッション中の進捗より下がらないようにする
+            progress = max(progress, realtime_progress)
+        
+        # 達成時刻はセッション中の記録を優先
+        achieved_at = current_time if achieved else None
+        if realtime_achieved and realtime_achieved_at:
+            achieved_at = realtime_achieved_at
+        
         goal_statuses.append({
             "goalId": goal_id,
             "progress": int(progress),
             "achieved": achieved,
-            "achievedAt": current_time if achieved else None
+            "achievedAt": achieved_at
         })
         
         total_progress += progress

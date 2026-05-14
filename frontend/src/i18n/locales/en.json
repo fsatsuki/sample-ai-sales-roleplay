@@ -1,11 +1,43 @@
 {
+  "avatar": {
+    "label": "3D Avatar Display Area",
+    "description": "Displaying current emotional state with 3D avatar",
+    "emotion": "Emotion",
+    "loading": "Loading avatar...",
+    "loadError": "Failed to load avatar",
+    "loadErrorDetail": "An error occurred. Please reload the page.",
+    "webglNotSupported": "Your browser does not support WebGL. Please use a WebGL-compatible browser to display the 3D avatar.",
+    "speaking": "Speaking",
+    "upload": {
+      "selectFile": "Select VRM File",
+      "start": "Start Upload",
+      "progress": "Upload Progress",
+      "uploading": "Uploading...",
+      "invalidFormat": "Only VRM files can be uploaded",
+      "tooLarge": "File size must be 50MB or less",
+      "success": "Avatar upload completed",
+      "error": "Upload failed"
+    },
+    "management": {
+      "title": "Avatar Management",
+      "upload": "Upload New Avatar",
+      "empty": "No uploaded avatars",
+      "loading": "Loading",
+      "select": "Select",
+      "selected": "Selected",
+      "delete": "Delete",
+      "deleteConfirmTitle": "Delete Avatar",
+      "deleteConfirmMessage": "Delete \"{{name}}\"? This action cannot be undone.",
+      "statusActive": "Available",
+      "statusUploading": "Uploading"
+    }
+  },
   "home": {
     "title": "AI Sales Role-Play",
     "subtitle": "Improve Your Sales Skills Through AI Conversations",
     "description": "Experience AI-driven simulations of real sales scenarios to enhance your skills in a safe environment. Engage with various industry clients with different personalities.",
     "startButton": "Start Sales Role-Play",
     "audioAnalysisButton": "Audio Analysis",
-    "demoGuideButton": "View Demo Guide",
     "recentScenarios": "Recent Scenarios",
     "noRecentScenarios": "No recent scenarios played",
     "viewAllScenarios": "View All Scenarios",
@@ -107,6 +139,18 @@
     },
     "metrics": {
       "angerLevel": "Anger Level"
+    },
+    "pdfUploader": {
+      "uploadPrompt": "Click to select a PDF file",
+      "uploadHint": "PDF format, max 100MB (up to {{max}} files)",
+      "uploadArea": "Upload PDF file",
+      "uploading": "Uploading...",
+      "maxFilesError": "Maximum {{max}} files can be uploaded",
+      "onlyPdfError": "Only PDF files can be uploaded",
+      "tooLargeError": "File size exceeds 100MB",
+      "uploadError": "Upload failed",
+      "deleteError": "Deletion failed",
+      "maxReached": "Maximum number of files ({{max}}) reached"
     }
   },
   "conversation": {
@@ -125,6 +169,28 @@
     "endSessionNo": "No, continue",
     "negotiationGoal": "Negotiation Goal",
     "negotiationObjective": "Negotiation Objective",
+    "slideTray": {
+      "label": "Presentation Slides",
+      "title": "Presentation",
+      "slide": "Slide",
+      "present": "Select this slide",
+      "presentBtn": "Select",
+      "presented": "Selected",
+      "alreadyPresented": "Already selected slide",
+      "unpresent": "Deselect slide",
+      "unpresentBtn": "Deselect",
+      "clearAll": "Clear all",
+      "selectedCount": "{{count}} selected",
+      "clickToToggle": "Click to select/deselect",
+      "zoom": "Zoom in"
+    },
+    "slideZoom": {
+      "title": "Slide {{current}} / {{total}}",
+      "slideAlt": "Slide {{page}}",
+      "noImage": "Unable to load image",
+      "prev": "Previous slide",
+      "next": "Next slide"
+    },
     "audioSettings": {
       "title": "Audio Settings",
       "outputOn": "Audio Output ON",
@@ -168,7 +234,22 @@
     "evaluationLabel": "Evaluation",
     "voiceOutput": "Voice Output",
     "npcVoicePlayback": "* NPC responses will be played as voice",
-    "expandSettings": "Expand to show settings"
+    "expandSettings": "Expand to show settings",
+    "chatLog": {
+      "expand": "Expand chat log",
+      "collapse": "Collapse chat log"
+    },
+    "header": {
+      "toggleRightPanels": "Toggle info panels",
+      "toggleMetrics": "Toggle metrics",
+      "openSettings": "Open settings",
+      "endSession": "End Session"
+    },
+    "settings": {
+      "title": "Settings",
+      "avatarOn": "3D Avatar ON",
+      "avatarOff": "3D Avatar OFF"
+    }
   },
   "metrics": {
     "realtimeEvaluation": "Realtime Evaluation",
@@ -183,7 +264,22 @@
     "progressLevelTooltip": "Higher values indicate that the conversation is progressing well",
     "analysis": "Analysis",
     "analysisResult": "Analysis Result",
-    "angerLevel": "Anger Level"
+    "angerLevel": "Anger Level",
+    "overlay": {
+      "title": "Realtime Evaluation"
+    },
+    "status": {
+      "anger": {
+        "veryHigh": "Very High (Danger)",
+        "moderate": "Moderate (Caution)",
+        "low": "Low (Good)"
+      },
+      "positive": {
+        "veryHigh": "Very High (Good)",
+        "moderate": "Moderate (Normal)",
+        "low": "Low (Needs Improvement)"
+      }
+    }
   },
   "speech": {
     "processing": "Processing audio...",
@@ -214,6 +310,17 @@
     "settingsNav": "Settings",
     "profileNav": "Profile",
     "rankings": "Rankings"
+  },
+  "rightPanels": {
+    "scenarioTitle": "Scenario",
+    "personaTitle": "Persona"
+  },
+  "coachingHint": {
+    "label": "Coaching Hint"
+  },
+  "avatarStage": {
+    "label": "Avatar display area",
+    "speakingIndicator": "NPC is speaking"
   },
   "sidebar": {
     "expand": "Expand",
@@ -306,7 +413,8 @@
         "basicInfo": "Basic Information",
         "npcInfo": "NPC Settings",
         "goals": "Goals Settings",
-        "pdfs": "Sales Materials & Evaluation",
+        "pdfs": "Evaluation Materials",
+        "presentation": "Presentation",
         "sharing": "Sharing Settings",
         "preview": "Preview & Save"
       },
@@ -315,6 +423,23 @@
       "goalsDescription": "Set goals for this scenario. You can adjust conditions and difficulty for goal achievement.",
       "sharingDescription": "Configure sharing settings for the scenario. You can specify visibility and sharing targets.",
       "previewDescription": "Review the content of the created scenario. Save if everything looks correct.",
+      "presentation": {
+        "title": "Presentation Materials",
+        "description": "Upload presentation materials (PDF) to use during roleplay. Upload is optional.",
+        "uploadPrompt": "Click to select a PDF file",
+        "uploadHint": "PDF format, max 100MB",
+        "uploadArea": "Upload presentation materials",
+        "uploading": "Uploading...",
+        "converting": "Converting slides...",
+        "ready": "Conversion complete",
+        "conversionError": "Conversion error",
+        "delete": "Delete presentation",
+        "errorNotPdf": "Only PDF files can be uploaded",
+        "errorTooLarge": "File size exceeds 100MB",
+        "errorUpload": "Upload failed",
+        "errorDelete": "Deletion failed",
+        "note": "* Presentation materials are optional. When uploaded, you can display slides during the conversation roleplay."
+      },
       "scenarioIdHelp": "Enter a unique identifier for the scenario (optional, alphanumeric characters and hyphens only)",
       "titleHelp": "Scenario title should be specific and easy to understand (within 50 characters)",
       "descriptionHelp": "Describe the scenario overview, background, purpose, etc. (within 300 characters)",
@@ -397,6 +522,25 @@
           }
         }
       },
+      "voice": {
+        "label": "Voice Model",
+        "help": "Select a voice for the NPC",
+        "required": "Please select a voice model",
+        "male": "Male",
+        "female": "Female",
+        "maleChild": "Male (Child)",
+        "femaleChild": "Female (Child)"
+      },
+      "avatar": {
+        "label": "VRM Avatar (Optional)",
+        "selectFile": "Select VRM File",
+        "remove": "Remove Avatar",
+        "help": "Upload a VRM avatar file (max 50MB)",
+        "invalidFormat": "Only VRM files can be uploaded (.vrm)",
+        "fileTooLarge": "File size exceeds 50MB limit",
+        "enableToggle": "3D Avatar Display",
+        "enableToggleHelp": "When enabled, a 3D avatar will be displayed on the conversation screen"
+      },
       "error": {
         "guardrailsLoad": "Failed to load guardrails",
         "unknown": "An unexpected error occurred"
@@ -475,6 +619,10 @@
       "mine": "My Scenarios"
     },
     "noMyScenarios": "No scenarios found",
+    "noMatchingScenarios": "No matching scenarios found",
+    "noMatchingScenariosHint": "Try changing your search criteria or filters",
+    "resetFilters": "Reset Filters",
+    "npcPartner": "Conversation Partner (NPC)",
     "error": {
       "loadFailed": "Failed to load scenarios",
       "saveFailed": "Failed to save scenario",
@@ -508,7 +656,8 @@
       "goalsRequired": "At least one goal is required",
       "goalsCriteriaRequired": "All goals must have at least one criteria",
       "sharedUsersRequired": "At least one user must be specified for shared scenarios",
-      "guardrailRequired": "Guardrail selection is required"
+      "guardrailRequired": "Guardrail selection is required",
+      "voiceIdRequired": "Voice model selection is required"
     },
     "visibility": {
       "private": "Private",
@@ -815,5 +964,26 @@
     "explanationTitle": "About Reference Check",
     "explanation1": "Reference check is a feature that verifies whether sales representatives' statements are consistent with the content of documents set in the scenario.",
     "explanation2": "By providing accurate information, you can build trust with customers and enhance sales effectiveness. If issues are found, please recheck the document content and strive to provide accurate information."
+  },
+  "emotion": {
+    "description": {
+      "angry": "Angry",
+      "annoyed": "Annoyed",
+      "neutral": "Neutral",
+      "satisfied": "Satisfied",
+      "happy": "Happy"
+    },
+    "detailedDescription": {
+      "angry": "The conversation partner is very angry. Immediate action is required.",
+      "annoyed": "The conversation partner is dissatisfied. Consider a different approach.",
+      "neutral": "The conversation partner is in a neutral state. No strong emotions are shown.",
+      "satisfied": "The conversation partner is satisfied. Things are going well.",
+      "happy": "The conversation partner is very happy. Keep up the good work."
+    },
+    "stateLabel": "Emotion State",
+    "stateWithValue": "Emotion state: {{state}}",
+    "changed": "Emotion state changed from {{from}} to {{to}}",
+    "currentState": "Current emotion state: {{state}}",
+    "feedbackLabel": "Emotion Feedback"
   }
 }

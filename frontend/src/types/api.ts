@@ -1,44 +1,49 @@
 /**
  * API関連の型定義
+ *
+ * 設計方針:
+ * - フロントエンドの型は常にパース済みの値を表現する（number型に統一）
+ * - DynamoDB由来の生データ（string型メトリクス等）はSessionCompleteDataResponseで表現し、
+ *   APIサービス層でフロントエンド用の型（number型等）に変換する
+ * - 共通の概念（ステータス、sender等）はtype aliasとして抽出し、重複を排除する
+ * - MetricsInfoを基本型として全メトリクス関連フィールドで再利用する
  */
 
-/**
- * Transcribe WebSocket関連の型定義
- */
-export interface TranscribeMessageEvent {
-  transcript?: string;
-  isPartial?: boolean; // true=途中認識、false=最終確定（AWS Transcribe APIの標準に準拠）
-  voiceActivity?: boolean;
-  error?: {
-    code: string;
-    message: string;
-  };
-}
+// ============================================================
+// 共通type alias
+// ============================================================
 
-export interface TranscribeRequest {
-  action: 'sendAudio';
-  audio: string; // Base64エンコードされた音声データ
-}
-
-export interface TranscribeResponse {
-  transcript?: string;
-  isPartial?: boolean; // true=途中認識、false=最終確定（AWS Transcribe APIの標準に準拠）
-  voiceActivity?: boolean;
-  error?: {
-    code: string;
-    message: string;
-  };
-}
-
-/**
- * 難易度レベルの型
- */
+/** 難易度レベル */
 export type DifficultyLevel = "easy" | "normal" | "hard" | "expert";
 
-/**
- * 公開設定の型
- */
+/** 公開設定 */
 export type VisibilityType = "public" | "private" | "shared";
+
+/** セッションステータス */
+export type SessionStatus = "active" | "completed" | "archived" | "abandoned";
+
+/** メッセージ送信者 */
+export type SenderType = "user" | "npc" | "system";
+
+/** コンプライアンス重大度 */
+export type ComplianceSeverity = "high" | "medium" | "low";
+
+/** ランキング期間 */
+export type RankingPeriod = "daily" | "weekly" | "monthly";
+
+/** 提案資料変換ステータス */
+export type PresentationStatus = "uploading" | "converting" | "ready" | "error";
+
+/** 許可されたファイルMIMEタイプ */
+export type AllowedContentType =
+  | "application/pdf"
+  | "image/png"
+  | "image/jpeg"
+  | "image/webp";
+
+// ============================================================
+// 基本型
+// ============================================================
 
 /**
  * NPC情報の基本型
@@ -51,6 +56,7 @@ export interface NPCInfo {
   personality: string[];
   avatar?: string;
   description: string;
+  voiceId?: string;
 }
 
 /**
@@ -59,7 +65,8 @@ export interface NPCInfo {
 export interface GoalInfo {
   id: string;
   description: string;
-  hint?: string;
+  /** ゴール達成のためのヒント（複数） */
+  hints?: string[];
   isRequired: boolean;
   priority: number;
   criteria: string[];
@@ -67,38 +74,55 @@ export interface GoalInfo {
 
 /**
  * メトリクス情報の基本型
+ * 全メトリクス関連フィールドの基底型として使用する
  */
 export interface MetricsInfo {
+  /** 怒りレベル（0-10の範囲） */
   angerLevel: number;
+  /** 信頼度（0-10の範囲） */
   trustLevel: number;
+  /** 進捗度（0-10の範囲） */
   progressLevel: number;
+}
+
+/**
+ * 分析テキスト付きメトリクス
+ */
+export interface MetricsWithAnalysis extends MetricsInfo {
+  analysis?: string;
 }
 
 /**
  * Guardrail情報の基本型
  */
 export interface GuardrailInfo {
-  arn: string;
   id: string;
   name: string;
   description: string;
 }
 
+// ============================================================
+// コンプライアンス関連
+// ============================================================
+
 /**
  * コンプライアンス違反の型
+ * フロントエンド型はcamelCaseに統一。
+ * APIクライアント層でバックエンド（Python snake_case）からの変換を実施する。
  */
 export interface ComplianceViolation {
-  rule_id: string;
-  rule_name: string;
-  severity: "high" | "medium" | "low";
+  ruleId: string;
+  ruleName: string;
+  severity: ComplianceSeverity;
   message: string;
+  /** @security ユーザー入力を含む。表示時はテキストノードとしてレンダリングし、innerHTML/href等への直接挿入を禁止 */
   context: string;
   confidence: number;
-  // Translation key support (added for i18n)
-  rule_name_key?: string;
-  rule_name_params?: Record<string, string | number>;
-  message_key?: string;
-  message_params?: Record<string, string | number>;
+  // i18n翻訳キーサポート
+  ruleNameKey?: string;
+  ruleNameParams?: Record<string, string | number>;
+  messageKey?: string;
+  messageParams?: Record<string, string | number>;
 }
 
 /**
@@ -106,80 +130,117 @@ export interface ComplianceViolation {
  */
 export interface ComplianceCheck {
   score: number;
+  passed?: boolean;
   violations: ComplianceViolation[];
+  riskLevel?: ComplianceSeverity;
   analysis: string;
+  recommendations?: string[];
   processingTimeMs?: number;
 }
 
+// ============================================================
+// ゴール達成状況
+// ============================================================
+
+/**
+ * APIレスポンス用ゴール達成状況
+ * RealtimeMetric、SessionCompleteDataResponse等で共通使用
+ */
+export interface ApiGoalStatus {
+  goalId: string;
+  achieved: boolean;
+  achievedAt?: string | null;
+  progress: number;
+}
+
+// ============================================================
+// リアルタイムメトリクス
+// ============================================================
+
 /**
  * リアルタイムメトリクス型
+ * フロントエンドでは常にnumber型として扱う
  */
-export interface RealtimeMetric {
-  angerLevel: string | number;
-  trustLevel: string | number;
-  progressLevel: string | number;
-  analysis?: string;
-  goalStatuses?: Array<{
-    goalId: string;
-    achieved: boolean;
-    achievedAt?: string | null;
-    progress: string | number;
-  }>;
-  goalScore?: string | number;
-  messageNumber?: string | number;
+export interface RealtimeMetric extends MetricsWithAnalysis {
+  goalStatuses?: ApiGoalStatus[];
+  goalScore?: number;
+  messageNumber?: number;
   timestamp?: string;
   userMessage?: string;
-  compliance?: ComplianceCheck; // コンプライアンスチェック結果
+  compliance?: ComplianceCheck;
+}
+
+// ============================================================
+// フィードバック分析
+// ============================================================
+
+/**
+ * フィードバックスコア
+ */
+export interface FeedbackScores {
+  overall: number;
+  communication: number;
+  needsAnalysis: number;
+  proposalQuality: number;
+  flexibility: number;
+  trustBuilding: number;
+  objectionHandling: number;
+  closingSkill: number;
+  listeningSkill: number;
+  productKnowledge: number;
+  customerFocus: number;
+  goalAchievement: number;
+}
+
+/**
+ * ゴールフィードバック
+ */
+export interface GoalFeedback {
+  achievedGoals: string[];
+  partiallyAchievedGoals: string[];
+  missedGoals: string[];
+  recommendations: string[];
+}
+
+/**
+ * 詳細分析
+ */
+export interface DetailedAnalysis {
+  communicationPatterns: {
+    questionFrequency: number;
+    responseQuality: number;
+    clarityOfExplanation: number;
+  };
+  customerInteraction: {
+    empathyLevel: number;
+    respectShown: number;
+    engagementQuality: number;
+  };
+  salesTechniques: {
+    valuePropositionClarity: number;
+    needsAlignment: number;
+    painPointIdentification: number;
+  };
 }
 
 /**
  * フィードバック分析のレスポンス型
  */
 export interface FeedbackAnalysisResult {
-  scores: {
-    overall: number;
-    communication: number;
-    needsAnalysis: number;
-    proposalQuality: number;
-    flexibility: number;
-    trustBuilding: number;
-    objectionHandling: number;
-    closingSkill: number;
-    listeningSkill: number;
-    productKnowledge: number;
-    customerFocus: number;
-    goalAchievement: number; // ゴール達成度
-  };
+  scores: FeedbackScores;
   strengths: string[];
   improvements: string[];
   keyInsights: string[];
   nextSteps: string;
-  videoAnalysis?: VideoAnalysisResult; // 動画分析結果
-  videoAnalysisCreatedAt?: string; // 動画分析実施日時
-  goalFeedback?: {
-    achievedGoals: string[];
-    partiallyAchievedGoals: string[];
-    missedGoals: string[];
-    recommendations: string[];
-  };
-  detailedAnalysis?: {
-    communicationPatterns: {
-      questionFrequency: number;
-      responseQuality: number;
-      clarityOfExplanation: number;
-    };
-    customerInteraction: {
-      empathyLevel: number;
-      respectShown: number;
-      engagementQuality: number;
-    };
-    salesTechniques: {
-      valuePropositionClarity: number;
-      needsAlignment: number;
-      painPointIdentification: number;
-    };
-  };
+  videoAnalysis?: VideoAnalysisResult;
+  videoAnalysisCreatedAt?: string;
+  goalFeedback?: GoalFeedback;
+  detailedAnalysis?: DetailedAnalysis;
 }
+
+// ============================================================
+// セッション関連
+// ============================================================
 
 /**
  * セッション情報の型
@@ -188,37 +249,35 @@ export interface SessionInfo {
   sessionId: string;
   userId: string;
   scenarioId: string;
-  scenarioName?: string; // シナリオ名
+  scenarioName?: string;
   title?: string;
-  status: "active" | "completed" | "archived" | "abandoned";
+  status: SessionStatus;
   createdAt?: string;
   updatedAt?: string;
-  startTime?: string; // 開始時刻（ISO形式文字列）
-  endTime?: string; // 終了時刻（ISO形式文字列、終了していない場合は未定義）
-  messageCount?: number; // メッセージ数
+  startTime?: string;
+  endTime?: string;
+  messageCount?: number;
   npcInfo?: {
     name: string;
     role: string;
     company: string;
     personality?: string[];
   };
-  metrics?: {
-    angerLevel: number;
-    trustLevel: number;
-    progressLevel: number;
-  };
+  metrics?: MetricsInfo;
   scores?: {
-    // スコア情報（フィードバックがある場合）
-    overall: number; // 総合スコア
-    communication: number; // コミュニケーション
-    trustBuilding: number; // 信頼構築
-    // 他のスコアは省略
+    overall: number;
+    communication: number;
+    trustBuilding: number;
   };
-  complianceViolations?: ComplianceViolation[]; // コンプライアンス違反のリスト
-  duration?: number; // セッション時間（秒）
-  lastActivityTime?: string; // 最終アクティビティ時間（ISO形式文字列）
-  expirationTime?: number; // TTL有効期限（UNIXタイムスタンプ）
+  complianceViolations?: ComplianceViolation[];
+  duration?: number;
+  lastActivityTime?: string;
+  expirationTime?: number;
 }
+
+// ============================================================
+// メッセージ関連
+// ============================================================
 
 /**
  * メッセージ情報の型
@@ -228,68 +287,101 @@ export interface MessageInfo {
   sessionId: string;
   userId?: string;
   timestamp: string;
-  sender: "user" | "npc" | "system";
+  sender: SenderType;
   content: string;
-  realtimeMetrics?: {
-    angerLevel: number;
-    trustLevel: number;
-    progressLevel: number;
-    analysis?: string;
-  };
-  metrics?: {
-    // メトリクス情報（オプション）
-    angerLevel: number; // 怒りレベル
-    trustLevel: number; // 信頼レベル
-    progressLevel: number; // 進捗レベル
-  };
-  compliance?: ComplianceCheck; // コンプライアンスチェック結果
+  realtimeMetrics?: MetricsWithAnalysis;
+  compliance?: ComplianceCheck;
   audioUrl?: string;
-  expirationTime?: number; // TTL有効期限（UNIXタイムスタンプ）
+  expirationTime?: number;
 }
+
+// ============================================================
+// ファイル関連
+// ============================================================
+
+/**
+ * ファイル情報の基底型
+ */
+export interface FileInfo {
+  key: string;
+  fileName: string;
+  contentType: AllowedContentType | string;
+  size?: number;
+}
+
+/**
+ * PDFファイル情報
+ */
+export type PdfFileInfo = FileInfo;
+
+/**
+ * スライド画像情報（PDF→画像変換後の各ページ）
+ */
+export interface SlideImageInfo {
+  pageNumber: number;
+  imageKey: string;
+  imageUrl?: string;
+  thumbnailUrl?: string;
+}
+
+/**
+ * 提案資料情報
+ */
+export interface PresentationFileInfo extends FileInfo {
+  totalPages?: number;
+  slides?: SlideImageInfo[];
+  status?: PresentationStatus;
+}
+
+// ============================================================
+// シナリオ関連
+// ============================================================
 
 /**
  * シナリオ情報の型
  */
-/**
- * PDFファイル情報
- */
-export interface PdfFileInfo {
-  key: string; // S3オブジェクトキー
-  fileName: string; // ファイル名
-  contentType: string; // MIMEタイプ（例: application/pdf）
-  size?: number; // ファイルサイズ（バイト）
-}
-
 export interface ScenarioInfo {
   scenarioId: string;
   title: string;
   description: string;
   difficulty: DifficultyLevel;
   category: string;
-  initialMessage?: string; // NPCの初期メッセージ
-  language?: string; // シナリオの言語 (ja|en)
-  estimatedDuration?: number; // 想定所要時間（分）
-  maxTurns?: number; // 最大会話ターン数（指定しない場合はデフォルト値を使用）
+  initialMessage?: string;
+  language?: string;
+  estimatedDuration?: number;
+  maxTurns?: number;
   goals?: GoalInfo[];
-  // npcInfoフィールド（旧APIとの互換性）
+  /** NPC情報（作成・更新時に使用） */
+  npc?: {
+    name: string;
+    role: string;
+    company: string;
+    personality?: string[];
+    description?: string;
+    voiceId?: string;
+    avatar?: string;
+    id?: string;
+  };
   npcInfo?: NPCInfo;
-  // npcフィールド（DynamoDBから直接返される場合）
-  npc?: NPCInfo;
-  initialMetrics?: Partial<MetricsInfo>; // 初期メトリクス
-  objectives?: string[]; // シナリオの目標
+  initialMetrics?: Partial<MetricsInfo>;
+  objectives?: string[];
   tags?: string[];
-  industry?: string; // categoryと同じ意味で使われる場合がある
-
-  // 新規追加フィールド
-  createdBy?: string; // 作成者のユーザーID
-  isCustom?: boolean; // カスタムシナリオかどうか
-  visibility?: VisibilityType; // 公開範囲設定
-  sharedWithUsers?: string[]; // 共有先ユーザーID配列
-  guardrail?: string; // 選択したGuardrailの名前
-  createdAt?: number; // 作成日時（タイムスタンプ）
-  updatedAt?: number; // 更新日時（タイムスタンプ）
-  pdfFiles?: PdfFileInfo[]; // PDF資料情報
+  createdBy?: string;
+  isCustom?: boolean;
+  visibility?: VisibilityType;
+  sharedWithUsers?: string[];
+  guardrail?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  pdfFiles?: PdfFileInfo[];
+  presentationFile?: PresentationFileInfo;
+  avatarId?: string;
+  enableAvatar?: boolean;
 }
+
+// ============================================================
+// リストレスポンス
+// ============================================================
 
 /**
  * セッション一覧のレスポンス型
@@ -315,95 +407,117 @@ export interface ScenarioListResponse {
   nextToken?: string;
 }
 
+// ============================================================
+// API共通レスポンス
+// ============================================================
+
 /**
  * API共通レスポンス型
+ * ※ feedbackフィールドは後方互換性のため残存。新規APIではdataを使用すること
  */
 export interface ApiResponse<T> {
   success: boolean;
+  message?: string;
+  data?: T;
   error?: string;
-  feedback?: T;
 }
+
+// ============================================================
+// ランキング関連
+// ============================================================
 
 /**
  * ランキング項目の型
  */
 export interface RankingEntry {
-  rank: number; // ランキング順位
-  username: string; // ユーザー名（preferred_username）
-  userDisplayName?: string; // ユーザー表示名
-  sessionId: string; // セッションID
-  score: number; // 総合スコア
-  scenarioId: string; // シナリオID
-  timestamp: string; // 記録日時
+  rank: number;
+  username: string;
+  userDisplayName?: string;
+  sessionId: string;
+  score: number;
+  scenarioId: string;
+  timestamp: string;
 }
 
 /**
  * ランキングAPIレスポンスの型
  */
 export interface RankingResponse {
-  scenarioId: string; // シナリオID
-  period: "daily" | "weekly" | "monthly"; // 期間
+  scenarioId: string;
+  period: RankingPeriod;
   rankings: RankingEntry[];
-  totalCount: number; // 総参加者数
+  totalCount: number;
+}
+
+// ============================================================
+// 動画分析
+// ============================================================
+
+/**
+ * 分析フィードバック項目（強み・改善点）
+ */
+export interface AnalysisFeedbackItem {
+  title: string;
+  description: string;
 }
 
 /**
  * ビデオ分析結果の型定義
+ * strengths/improvementsは構造化された型に統一。
+ * 旧形式（string[]）からの変換はAPIクライアント層で実施する。
  */
 export interface VideoAnalysisResult {
-  eyeContact: number; // 視線（1-10点）
-  facialExpression: number; // 表情（1-10点）
-  gesture: number; // 身振り（1-10点）
-  emotion: number; // 感情表現（1-10点）
-  overallScore: number; // 総合スコア（1-10点）
-  strengths:
-  | Array<{
-    title: string; // 強みのタイトル
-    description: string; // 強みの詳細説明
-  }>
-  | string[]; // 長所（自然言語） - 旧バージョンとの互換性のため両方の型をサポート
-  improvements:
-  | Array<{
-    title: string; // 改善点のタイトル
-    description: string; // 改善点の詳細説明
-  }>
-  | string[]; // 改善点（自然言語） - 旧バージョンとの互換性のため両方の型をサポート
-  analysis: string; // 詳細分析
-  videoUrl?: string; // 録画動画URL（オプション）
+  eyeContact: number;
+  facialExpression: number;
+  gesture: number;
+  emotion: number;
+  overallScore: number;
+  strengths: AnalysisFeedbackItem[];
+  improvements: AnalysisFeedbackItem[];
+  analysis: string;
+  videoUrl?: string;
 }
+
+// ============================================================
+// リファレンスチェック
+// ============================================================
 
 /**
  * リファレンスチェックのメッセージ情報
  */
 export interface ReferenceCheckMessage {
-  message: string; // ユーザーのメッセージ内容
-  relatedDocument?: string; // 関連するドキュメント内容（オプショナル）
-  reviewComment?: string; // レビューコメント（オプショナル）
-  related: boolean; // ドキュメントと関連があるかどうか
+  message: string;
+  relatedDocument?: string;
+  reviewComment?: string;
+  related: boolean;
 }
 
 /**
  * リファレンスチェックのサマリー情報
  */
 export interface ReferenceCheckSummary {
-  totalMessages: number; // 総メッセージ数
-  checkedMessages: number; // チェック済みメッセージ数
+  totalMessages: number;
+  checkedMessages: number;
 }
 
 /**
  * リファレンスチェック結果の型
  */
 export interface ReferenceCheckResult {
-  messages: ReferenceCheckMessage[]; // チェック結果のメッセージ一覧
-  summary: ReferenceCheckSummary; // サマリー情報
+  messages: ReferenceCheckMessage[];
+  summary: ReferenceCheckSummary;
 }
+
+// ============================================================
+// エクスポート/インポート
+// ============================================================
 
 /**
  * シナリオエクスポート/インポート用の型定義
  */
 export interface ScenarioExportData {
-  npcs: import("./index").NPC[];
-  scenarios: import("./index").Scenario[];
+  npcs: NPCInfo[];
+  scenarios: ScenarioInfo[];
   exportedAt?: string;
   exportedBy?: string;
   version?: string;
@@ -411,12 +525,14 @@ export interface ScenarioExportData {
 
 /**
  * インポート統計情報の型
+ * フロントエンド型はcamelCaseに統一。
+ * APIクライアント層でバックエンド（Python snake_case）からの変換を実施する。
  */
 export interface ImportStats {
-  imported_scenarios: number;
-  updated_scenarios: number;
-  imported_npcs: number;
-  updated_npcs: number;
+  importedScenarios: number;
+  updatedScenarios: number;
+  importedNpcs: number;
+  updatedNpcs: number;
   errors: number;
 }
 
@@ -426,9 +542,6 @@ export interface ImportStats {
 export interface ImportResponse {
   success: boolean;
   stats: ImportStats;
-  imported?: number;
-  skipped?: number;
-  errors?: number;
   details?: {
     importedScenarios: Array<{
       originalId?: string;
@@ -447,21 +560,43 @@ export interface ImportResponse {
   };
 }
 
+// ============================================================
+// セッション完全データ（DynamoDB生データ対応）
+// ============================================================
 
 /**
- * リアルタイム評価APIのレスポンス型定義
+ * DynamoDB生データ用メトリクス型（string版）
+ * DynamoDBのNumber型がDecimal→JSON変換時にstringになる場合があるため定義
  */
-export interface MetricsUpdate {
-  angerLevel: number; // 怒りレベル (1-10)
-  trustLevel: number; // 信頼レベル (1-10)
-  progressLevel: number; // 進捗レベル (1-10)
-  analysis?: string; // 簡潔な分析テキスト
-  goalStatuses?: import("./index").GoalStatus[]; // ゴール達成状況
-  timestamp?: number; // タイムスタンプ（ミリ秒）
+export interface RawMetricsInfo {
+  angerLevel: string;
+  trustLevel: string;
+  progressLevel: string;
+}
+
+/**
+ * DynamoDB生データ用メトリクス型（分析テキスト付き）
+ */
+export interface RawMetricsWithAnalysis extends RawMetricsInfo {
+  analysis: string;
+}
+
+/**
+ * DynamoDB生データ用ゴール達成状況
+ */
+export interface RawGoalStatus {
+  goalId: string;
+  achieved: boolean;
+  achievedAt: string | null;
+  progress: string;
 }
 
 /**
  * セッション完全データのAPIレスポンス型定義
+ *
+ * DynamoDBから返される生データを表現する型。
+ * メトリクス値はstring型で定義している。
+ * フロントエンドで使用する際はsafeParseMetric()で安全に変換すること。
  */
 export interface SessionCompleteDataResponse {
   success: boolean;
@@ -470,15 +605,11 @@ export interface SessionCompleteDataResponse {
     sessionId: string;
     userId: string;
     scenarioId: string;
-    status: "active" | "completed" | "archived" | "abandoned";
+    status: SessionStatus;
     createdAt: string;
     updatedAt: string;
-    expireAt: string;
     title?: string;
-    npcInfo?: {
-      name: string;
-      role: string;
-      company: string;
+    npcInfo?: Pick<NPCInfo, "name" | "role" | "company"> & {
       personality: string[];
     };
   };
@@ -486,47 +617,29 @@ export interface SessionCompleteDataResponse {
     messageId: string;
     sessionId: string;
     userId: string;
-    sender: "user" | "npc" | "system";
+    sender: SenderType;
     content: string;
     timestamp: string;
-    expireAt: string;
-    realtimeMetrics?: {
-      angerLevel: string;
-      trustLevel: string;
-      progressLevel: string;
-    };
+    realtimeMetrics?: RawMetricsInfo;
+    presentedSlides?: number[];
   }>;
   realtimeMetrics: Array<{
     sessionId: string;
     messageNumber: string;
     dataType: string;
     userMessage: string;
-    angerLevel: string;
-    trustLevel: string;
-    progressLevel: string;
     analysis: string;
     goalScore: string;
-    goalStatuses: Array<{
-      goalId: string;
-      achieved: boolean;
-      achievedAt: string | null;
-      progress: string;
-    }>;
+    goalStatuses: RawGoalStatus[];
     createdAt: string;
-    expireAt: string;
-  }>;
+  } & RawMetricsInfo>;
   complianceViolations: ComplianceViolation[];
   videoAnalysis?: VideoAnalysisResult;
   videoAnalysisCreatedAt?: string;
   videoUrl?: string;
   createdAt?: string;
   feedback?: FeedbackAnalysisResult;
-  finalMetrics?: {
-    angerLevel: string;
-    trustLevel: string;
-    progressLevel: string;
-    analysis: string;
-  };
+  finalMetrics?: RawMetricsWithAnalysis;
   feedbackCreatedAt?: string;
   goalResults?: {
     scenarioGoals: Array<{
@@ -536,12 +649,7 @@ export interface SessionCompleteDataResponse {
       priority: string;
       criteria: string[];
     }>;
-    goalStatuses: Array<{
-      goalId: string;
-      achieved: boolean;
-      achievedAt: string | null;
-      progress: string;
-    }>;
+    goalStatuses: RawGoalStatus[];
     goalScore: number;
   };
   referenceCheck?: ReferenceCheckResult;

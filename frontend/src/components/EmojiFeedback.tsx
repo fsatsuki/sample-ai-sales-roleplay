@@ -5,11 +5,9 @@ import React, {
   useRef,
   useMemo,
   useCallback,
+  useId,
 } from "react";
-import {
-  getPerformanceInfo,
-  optimizeAnimation,
-} from "../utils/performanceUtils";
+import { getPerformanceInfo } from "../utils/performanceUtils";
 import { Box, Typography } from "@mui/material";
 import { visuallyHidden } from "@mui/utils";
 import { EmotionState } from "../types/index";
@@ -17,10 +15,14 @@ import {
   calculateEmotionState,
   getEmojiForEmotion,
   validateAndCompleteEmojiMap,
-  EMOTION_DESCRIPTIONS,
-  EMOTION_DETAILED_DESCRIPTIONS,
+  EMOTION_DESCRIPTION_KEYS,
+  EMOTION_DETAILED_DESCRIPTION_KEYS,
   EMOTION_COLORS,
+  ANGER_THRESHOLD,
+  SATISFIED_TRUST_THRESHOLD,
+  HAPPY_TRUST_THRESHOLD,
 } from "../utils/emotionUtils";
+import { useTranslation } from "react-i18next";
 import { getFocusStyles } from "../utils/accessibilityUtils";
 
 /**
@@ -63,6 +65,29 @@ export interface EmojiFeedbackProps {
   announceStateChanges?: boolean;
 }
 
+// ---------------------------------------------------------------------------
+// コンポーネント外部の定数定義（SG-005: @keyframesの外部化）
+// ---------------------------------------------------------------------------
+
+/** アニメーション用@keyframes定義（レンダリングごとの再生成を防止） */
+const KEYFRAMES = {
+  "@keyframes pulse": {
+    "0%": { transform: "scale(1)" },
+    "50%": { transform: "scale(1.1)" },
+    "100%": { transform: "scale(1)" },
+  },
+  "@keyframes shake": {
+    "0%, 100%": { transform: "translateX(0)" },
+    "10%, 30%, 50%, 70%, 90%": { transform: "translateX(-5px)" },
+    "20%, 40%, 60%, 80%": { transform: "translateX(5px)" },
+  },
+  "@keyframes bounce": {
+    "0%, 20%, 50%, 80%, 100%": { transform: "translateY(0)" },
+    "40%": { transform: "translateY(-20px)" },
+    "60%": { transform: "translateY(-10px)" },
+  },
+} as const;
+
 /**
  * EmojiFeedbackコンポーネント
  *
@@ -87,29 +112,35 @@ const EmojiFeedback: React.FC<EmojiFeedbackProps> = ({
   tabIndex = -1,
   announceStateChanges = true,
 }) => {
+  const { t } = useTranslation();
+
+  // ユニークID生成（複数インスタンス時のID衝突防止）
+  const uniqueId = useId();
+
   // 感情状態の状態管理
   const [currentEmotion, setCurrentEmotion] = useState<EmotionState>("neutral");
-  // 前回の感情状態を記録
-  const [previousEmotion, setPreviousEmotion] = useState<EmotionState | null>(
-    null,
-  );
-  // 絵文字マッピングの状態管理
-  const [emojiMap, setEmojiMap] = useState(() =>
-    validateAndCompleteEmojiMap(customEmojis),
-  );
   // スクリーンリーダー用の通知メッセージ
   const [announcement, setAnnouncement] = useState<string>("");
   // コンポーネント参照
   const emojiRef = useRef<HTMLDivElement>(null);
+  // 前回の感情状態をrefで管理（循環依存の排除）
+  const currentEmotionRef = useRef<EmotionState>("neutral");
+  // onEmotionChangeをrefで安定化（無限ループ防止）
+  const onEmotionChangeRef = useRef(onEmotionChange);
+  useEffect(() => {
+    onEmotionChangeRef.current = onEmotionChange;
+  }, [onEmotionChange]);
 
-  // サイズに基づくフォントサイズの設定（メモ化）
-  const getFontSize = useMemo(() => {
-    // 数値の場合はそのままrem単位で返す
+  // WR-001: emojiMap は useMemo のみで管理（useState + useEffect の冗長管理を排除）
+  const emojiMap = useMemo(() => {
+    return validateAndCompleteEmojiMap(customEmojis);
+  }, [customEmojis]);
+
+  // SG-004: getFontSize → fontSize に改名（useMemoの戻り値として適切な命名）
+  const fontSize = useMemo(() => {
     if (typeof size === "number") {
       return `${size}rem`;
     }
-
-    // 文字列の場合はプリセットサイズを返す
     switch (size) {
       case "small":
         return "2rem";
@@ -134,21 +165,42 @@ const EmojiFeedback: React.FC<EmojiFeedbackProps> = ({
     }
   }, [position]);
 
-  // デバイスのパフォーマンス情報を取得（メモ化）
-  const performanceInfo = useMemo(() => {
+  // デバイスのパフォーマンス情報を取得（静的部分のみキャッシュ）
+  const staticPerformanceInfo = useMemo(() => {
     return getPerformanceInfo();
   }, []);
 
-  // アニメーションタイプの選択（メモ化）
-  const animationType = useMemo(() => {
-    if (!animationEnabled) return "none";
-
-    // ユーザーの設定でアニメーションを削減する場合はアニメーションを無効化
-    if (performanceInfo.prefersReducedMotion) {
-      return "none";
+  // prefers-reduced-motion の動的変更を監視
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(() => {
+    try {
+      return (
+        typeof window !== "undefined" &&
+        window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+      );
+    } catch {
+      return false;
     }
+  });
 
-    // デバイスの性能に基づいてアニメーションを最適化
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const handler = (e: MediaQueryListEvent) =>
+      setPrefersReducedMotion(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  // 動的な prefersReducedMotion を統合したパフォーマンス情報
+  const performanceInfo = useMemo(
+    () => ({ ...staticPerformanceInfo, prefersReducedMotion }),
+    [staticPerformanceInfo, prefersReducedMotion],
+  );
+
+  // WR-002: アニメーションタイプの選択（optimizeAnimation内部の二重呼び出しを排除）
+  const animationType = useMemo(() => {
+    if (!animationEnabled || performanceInfo.prefersReducedMotion) return "none";
+
     let baseAnimation = "none";
     switch (currentEmotion) {
       case "angry":
@@ -165,91 +217,45 @@ const EmojiFeedback: React.FC<EmojiFeedbackProps> = ({
         break;
       case "neutral":
       default:
-        baseAnimation = "none";
+        return "none";
     }
 
-    // デバイスの性能に基づいてアニメーションを最適化
-    return optimizeAnimation(baseAnimation);
+    // 低スペックデバイス向けの簡易アニメーション
+    if (performanceInfo.isLowEndDevice) {
+      return baseAnimation.replace(/[\d.]+s/, "1.5s");
+    }
+    return baseAnimation;
   }, [animationEnabled, currentEmotion, performanceInfo]);
 
-  // メトリクスの変更を検出するための前回値をstateで管理
-  const [prevMetrics, setPrevMetrics] = useState({ angerLevel, trustLevel, progressLevel });
-
-  // メトリクスが実際に変更されたかどうかを確認
-  const metricsChanged = useMemo(() => {
-    return (
-      prevMetrics.angerLevel !== angerLevel ||
-      prevMetrics.trustLevel !== trustLevel ||
-      prevMetrics.progressLevel !== progressLevel
-    );
-  }, [angerLevel, trustLevel, progressLevel, prevMetrics]);
-
-  // メトリクス参照値の更新
+  // メトリクス変更時の感情状態計算（onEmotionChangeRef で無限ループ防止）
   useEffect(() => {
-    setPrevMetrics({ angerLevel, trustLevel, progressLevel });
-  }, [angerLevel, trustLevel, progressLevel]);
+    const newEmotion = calculateEmotionState({
+      angerLevel,
+      trustLevel,
+      progressLevel,
+      previousEmotion: currentEmotionRef.current,
+    });
 
-  // 感情状態の計算をメモ化
-  const newEmotion = useMemo(() => {
-    // メトリクスが変更された場合のみ再計算
-    if (metricsChanged) {
-      const calculatedEmotion = calculateEmotionState({
-        angerLevel,
-        trustLevel,
-        progressLevel,
-        previousEmotion: currentEmotion,
-      });
+    if (newEmotion !== currentEmotionRef.current) {
+      const fromEmotion = currentEmotionRef.current;
+      currentEmotionRef.current = newEmotion;
+      setCurrentEmotion(newEmotion);
 
-      // 感情状態を計算
-
-      return calculatedEmotion;
-    }
-    return currentEmotion;
-  }, [angerLevel, trustLevel, progressLevel, currentEmotion, metricsChanged]);
-
-  // 感情状態の更新処理をコールバックとして定義
-  const updateEmotionState = useCallback(
-    (emotion: EmotionState) => {
-      // 前回の感情状態を保存
-      setPreviousEmotion(currentEmotion);
-      setCurrentEmotion(emotion);
-
-      // 感情状態変化時のコールバックを呼び出し
-      if (onEmotionChange) {
-        onEmotionChange(emotion);
-      }
+      // 感情状態変化時のコールバックを呼び出し（ref経由で安定化）
+      onEmotionChangeRef.current?.(newEmotion);
 
       // スクリーンリーダー用の通知メッセージを設定
       if (announceStateChanges) {
-        const fromText = previousEmotion
-          ? EMOTION_DESCRIPTIONS[previousEmotion]
-          : "";
-        const toText = EMOTION_DESCRIPTIONS[emotion];
-        const changeMessage = previousEmotion
-          ? `感情状態が${fromText}から${toText}に変化しました`
-          : `感情状態: ${toText}`;
+        const fromText = t(EMOTION_DESCRIPTION_KEYS[fromEmotion]);
+        const toText = t(EMOTION_DESCRIPTION_KEYS[newEmotion]);
+        const changeMessage = t("emotion.changed", {
+          from: fromText,
+          to: toText,
+        });
         setAnnouncement(changeMessage);
       }
-    },
-    [currentEmotion, onEmotionChange, previousEmotion, announceStateChanges],
-  );
-
-  // 感情状態の更新
-  useEffect(() => {
-    if (newEmotion !== currentEmotion) {
-      updateEmotionState(newEmotion);
     }
-  }, [newEmotion, currentEmotion, updateEmotionState]);
-
-  // カスタム絵文字マッピングの更新（メモ化）
-  const validatedEmojiMap = useMemo(() => {
-    return validateAndCompleteEmojiMap(customEmojis);
-  }, [customEmojis]);
-
-  // カスタム絵文字マッピングの更新
-  useEffect(() => {
-    setEmojiMap(validatedEmojiMap);
-  }, [validatedEmojiMap]);
+  }, [angerLevel, trustLevel, progressLevel, announceStateChanges, t]);
 
   // 現在の感情状態に対応する絵文字を取得（メモ化）
   const currentEmoji = useMemo(() => {
@@ -258,15 +264,39 @@ const EmojiFeedback: React.FC<EmojiFeedbackProps> = ({
 
   // 現在の感情状態の説明テキスト（メモ化）
   const emotionDescription = useMemo(() => {
-    return EMOTION_DESCRIPTIONS[currentEmotion];
-  }, [currentEmotion]);
+    return t(EMOTION_DESCRIPTION_KEYS[currentEmotion]);
+  }, [currentEmotion, t]);
 
-  // テーマと感情状態に基づくスタイルの設定（メモ化）
+  // WR-002: システムテーマをstateで管理し、変更を監視する
+  const [prefersDarkMode, setPrefersDarkMode] = useState(() => {
+    try {
+      return (
+        typeof window !== "undefined" &&
+        window.matchMedia?.("(prefers-color-scheme: dark)").matches
+      );
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    if (theme !== "auto") return;
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handler = (e: MediaQueryListEvent) => setPrefersDarkMode(e.matches);
+    mediaQuery.addEventListener("change", handler);
+    return () => mediaQuery.removeEventListener("change", handler);
+  }, [theme]);
+
+  // WR-010: テーマと感情状態に基づくスタイルの設定（DRY化）
   const themeStyle = useMemo(() => {
-    // 現在の感情状態に対応する色を取得
     const emotionColor = EMOTION_COLORS[currentEmotion];
+    const borderStyle =
+      currentEmotion === "angry" || currentEmotion === "annoyed"
+        ? "dashed"
+        : "solid";
 
-    // 高コントラストモードの場合は、テーマに関わらず高コントラスト設定を適用
+    // 高コントラストモードの場合
     if (highContrast) {
       return {
         backgroundColor: "#000000",
@@ -276,93 +306,56 @@ const EmojiFeedback: React.FC<EmojiFeedbackProps> = ({
         border: "2px solid #ffffff",
         boxShadow: "0 0 0 2px #000000",
         textShadow: "0 0 2px rgba(255, 255, 255, 0.5)",
-        outline: `4px ${currentEmotion === "angry" || currentEmotion === "annoyed" ? "dashed" : "solid"} #ffffff`,
+        outline: `4px ${borderStyle} #ffffff`,
         outlineOffset: "2px",
       };
     }
 
-    // テーマに応じたスタイルを設定
-    if (theme === "dark") {
-      return {
-        backgroundColor: "rgba(30, 30, 30, 0.9)",
-        color: emotionColor.dark,
-        borderRadius: "8px",
-        padding: "8px",
-        textShadow: "0 0 2px rgba(255, 255, 255, 0.3)",
-        border: `2px ${currentEmotion === "angry" || currentEmotion === "annoyed" ? "dashed" : "solid"} ${emotionColor.dark}`,
-      };
-    }
+    // dark/light判定を統合（auto時はprefersDarkMode stateを参照）
+    const isDark =
+      theme === "dark" || (theme === "auto" && prefersDarkMode);
+    const colorVariant = isDark ? "dark" : "light";
 
-    if (theme === "light") {
-      return {
-        backgroundColor: "rgba(255, 255, 255, 0.9)",
-        color: emotionColor.light,
-        borderRadius: "8px",
-        padding: "8px",
-        textShadow: "0 0 1px rgba(0, 0, 0, 0.3)",
-        border: `2px ${currentEmotion === "angry" || currentEmotion === "annoyed" ? "dashed" : "solid"} ${emotionColor.light}`,
-      };
-    }
-
-    // auto または default
-    // システムの設定を取得するロジック
-    const prefersDarkMode =
-      window.matchMedia &&
-      window.matchMedia("(prefers-color-scheme: dark)").matches;
-    if (prefersDarkMode) {
-      return {
-        backgroundColor: "rgba(30, 30, 30, 0.9)",
-        color: emotionColor.dark,
-        borderRadius: "8px",
-        padding: "8px",
-        textShadow: "0 0 2px rgba(255, 255, 255, 0.3)",
-        border: `2px ${currentEmotion === "angry" || currentEmotion === "annoyed" ? "dashed" : "solid"} ${emotionColor.dark}`,
-      };
-    } else {
-      return {
-        backgroundColor: "rgba(255, 255, 255, 0.9)",
-        color: emotionColor.light,
-        borderRadius: "8px",
-        padding: "8px",
-        textShadow: "0 0 1px rgba(0, 0, 0, 0.3)",
-        border: `2px ${currentEmotion === "angry" || currentEmotion === "annoyed" ? "dashed" : "solid"} ${emotionColor.light}`,
-      };
-    }
-  }, [currentEmotion, theme, highContrast]);
+    return {
+      backgroundColor: isDark
+        ? "rgba(30, 30, 30, 0.9)"
+        : "rgba(255, 255, 255, 0.9)",
+      color: emotionColor[colorVariant],
+      borderRadius: "8px",
+      padding: "8px",
+      textShadow: isDark
+        ? "0 0 2px rgba(255, 255, 255, 0.3)"
+        : "0 0 1px rgba(0, 0, 0, 0.3)",
+      border: `2px ${borderStyle} ${emotionColor[colorVariant]}`,
+    };
+  }, [currentEmotion, theme, highContrast, prefersDarkMode]);
 
   // キーボードイベントハンドラー（コールバックとしてメモ化）
+  // SG-002: setAnnouncementは安定した参照のため依存配列から除外
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
-      // スペースキーまたはEnterキーで詳細情報を表示
       if (event.key === " " || event.key === "Enter") {
         event.preventDefault();
-        // 詳細情報をスクリーンリーダーに通知
-        setAnnouncement(EMOTION_DETAILED_DESCRIPTIONS[currentEmotion]);
-      }
-
-      // 矢印キーでナビゲーションをサポート
-      if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
-        event.preventDefault();
-        // キーボードナビゲーションのサポートを追加する場合はここに実装
+        setAnnouncement(t(EMOTION_DETAILED_DESCRIPTION_KEYS[currentEmotion]));
       }
     },
-    [currentEmotion, setAnnouncement],
+    [currentEmotion, t],
   );
 
-  // フォーカススタイルの設定（メモ化）
+  // WR-009: aria-haspopup削除、aria-labelを維持
   const focusableProps = useMemo(() => {
     if (!focusable) return {};
 
     return {
       tabIndex: tabIndex,
       onKeyDown: handleKeyDown,
-      "aria-pressed": false, // 押下状態を設定
-      "aria-haspopup": true, // 詳細情報が利用可能であることを示す
-      "aria-label": `感情状態: ${EMOTION_DESCRIPTIONS[currentEmotion]}`, // アクセシビリティ用のラベル
+      "aria-label": t("emotion.stateWithValue", {
+        state: t(EMOTION_DESCRIPTION_KEYS[currentEmotion]),
+      }),
       sx: {
         "&:focus": getFocusStyles(),
         "&:focus-visible": getFocusStyles(),
-        cursor: "pointer", // ポインタを表示してクリック可能であることを示す
+        cursor: "pointer",
         "&:hover": {
           opacity: 0.9,
           transform: "scale(1.05)",
@@ -376,14 +369,19 @@ const EmojiFeedback: React.FC<EmojiFeedbackProps> = ({
         },
       },
     };
-  }, [focusable, tabIndex, handleKeyDown, currentEmotion]);
+  }, [focusable, tabIndex, handleKeyDown, currentEmotion, t]);
 
   // クリックハンドラー（メモ化）
   const handleClick = useCallback(() => {
     if (focusable) {
-      setAnnouncement(EMOTION_DETAILED_DESCRIPTIONS[currentEmotion]);
+      setAnnouncement(t(EMOTION_DETAILED_DESCRIPTION_KEYS[currentEmotion]));
     }
-  }, [focusable, currentEmotion, setAnnouncement]);
+  }, [focusable, currentEmotion, t]);
+
+  // ユニークIDでaria-describedby/labelledbyの衝突を防止
+  const labelId = ariaLabelledBy || `emoji-feedback-label-${uniqueId}`;
+  const descriptionId = ariaDescribedBy || `emoji-feedback-desc-${uniqueId}`;
+  const detailId = `${descriptionId}-detail`;
 
   return (
     <Box
@@ -394,10 +392,8 @@ const EmojiFeedback: React.FC<EmojiFeedbackProps> = ({
       height="100%"
       component="div"
       role={focusable ? "button" : "img"}
-      aria-labelledby={ariaLabelledBy || "emoji-feedback-label"}
-      aria-describedby={`${ariaDescribedBy || "emoji-feedback-description"} ${ariaDescribedBy ? `${ariaDescribedBy}-detail` : "emoji-feedback-description-detail"}`}
-      aria-live="polite"
-      aria-atomic="true"
+      aria-labelledby={labelId}
+      aria-describedby={`${descriptionId} ${detailId}`}
       className={className}
       ref={emojiRef}
       onClick={handleClick}
@@ -408,39 +404,23 @@ const EmojiFeedback: React.FC<EmojiFeedbackProps> = ({
       }}
       {...(focusable
         ? {
-            tabIndex: focusableProps.tabIndex,
-            onKeyDown: focusableProps.onKeyDown,
-            "aria-pressed": focusableProps["aria-pressed"],
-            "aria-haspopup": focusableProps["aria-haspopup"],
-            "aria-label": focusableProps["aria-label"],
-          }
+          tabIndex: focusableProps.tabIndex,
+          onKeyDown: focusableProps.onKeyDown,
+          "aria-label": focusableProps["aria-label"],
+        }
         : {})}
     >
       <Typography
         variant="h1"
         component="div"
-        aria-hidden="true" // スクリーンリーダーは絵文字自体を読み上げる必要はない
+        aria-hidden="true"
         sx={{
-          fontSize: getFontSize,
+          fontSize: fontSize,
           lineHeight: 1,
           textAlign: "center",
           transition: animationEnabled ? "transform 0.3s ease-in-out" : "none",
           animation: animationType,
-          "@keyframes pulse": {
-            "0%": { transform: "scale(1)" },
-            "50%": { transform: "scale(1.1)" },
-            "100%": { transform: "scale(1)" },
-          },
-          "@keyframes shake": {
-            "0%, 100%": { transform: "translateX(0)" },
-            "10%, 30%, 50%, 70%, 90%": { transform: "translateX(-5px)" },
-            "20%, 40%, 60%, 80%": { transform: "translateX(5px)" },
-          },
-          "@keyframes bounce": {
-            "0%, 20%, 50%, 80%, 100%": { transform: "translateY(0)" },
-            "40%": { transform: "translateY(-20px)" },
-            "60%": { transform: "translateY(-10px)" },
-          },
+          ...KEYFRAMES,
           "@media (prefers-reduced-motion: reduce)": {
             animation: "none",
             transition: "none",
@@ -459,24 +439,18 @@ const EmojiFeedback: React.FC<EmojiFeedbackProps> = ({
           // 低スペックデバイスの最適化
           ...(performanceInfo.isLowEndDevice
             ? {
-                // 低スペックデバイスではアニメーションを簡素化
-                animationDuration: "1.5s",
-                animationTimingFunction: "linear",
-              }
+              animationDuration: "1.5s",
+              animationTimingFunction: "linear",
+            }
             : {}),
-          // ハードウェアアクセラレーションの有効化
           willChange:
             animationEnabled && !performanceInfo.isLowEndDevice
               ? "transform"
               : "auto",
-          // レイヤー化によるパフォーマンス向上
           transform: "translateZ(0)",
           backfaceVisibility: "hidden",
-          // モバイルデバイスでのタッチ操作の最適化
           touchAction: "manipulation",
-          // テキストのレンダリング最適化
           textRendering: "optimizeSpeed",
-          // スムーススクロールの最適化
           WebkitOverflowScrolling: "touch",
         }}
       >
@@ -492,24 +466,23 @@ const EmojiFeedback: React.FC<EmojiFeedbackProps> = ({
           textAlign: "center",
           marginTop: "4px",
           fontWeight: "bold",
-          // 高コントラストモードでは表示、通常モードでは非表示
           display: highContrast ? "block" : "none",
         }}
       >
-        {EMOTION_DESCRIPTIONS[currentEmotion]}
+        {t(EMOTION_DESCRIPTION_KEYS[currentEmotion])}
       </Typography>
 
-      {/* スクリーンリーダー用の説明テキスト */}
-      <Typography id={ariaDescribedBy} sx={{ ...visuallyHidden }}>
-        現在の感情状態: {emotionDescription}
+      {/* スクリーンリーダー用の説明テキスト（WR-008: 統一されたID） */}
+      <Typography id={descriptionId} sx={{ ...visuallyHidden }}>
+        {t("emotion.currentState", { state: emotionDescription })}
       </Typography>
 
       {/* 詳細な説明テキスト */}
-      <Typography id={`${ariaDescribedBy}-detail`} sx={{ ...visuallyHidden }}>
-        {EMOTION_DETAILED_DESCRIPTIONS[currentEmotion]}
+      <Typography id={detailId} sx={{ ...visuallyHidden }}>
+        {t(EMOTION_DETAILED_DESCRIPTION_KEYS[currentEmotion])}
       </Typography>
 
-      {/* 状態変化通知用の領域 */}
+      {/* WR-007: 状態変化通知用の領域（aria-liveはここのみに設定） */}
       {announceStateChanges && (
         <div
           aria-live="polite"
@@ -521,27 +494,42 @@ const EmojiFeedback: React.FC<EmojiFeedbackProps> = ({
         </div>
       )}
 
-      {/* アクセシビリティテスト用の隠し要素 */}
+      {/* アクセシビリティ用の隠し要素（ユニークID） */}
       <span
-        id="emoji-feedback-label"
+        id={labelId}
         style={visuallyHidden as React.CSSProperties}
       >
-        感情フィードバック
+        {t("emotion.feedbackLabel")}
       </span>
       <span
-        id="emoji-feedback-description"
+        id={`${descriptionId}-extra`}
         style={visuallyHidden as React.CSSProperties}
       >
         {emotionDescription}
       </span>
       <span
-        id="emoji-feedback-description-detail"
+        id={`${detailId}-extra`}
         style={visuallyHidden as React.CSSProperties}
       >
-        {EMOTION_DETAILED_DESCRIPTIONS[currentEmotion]}
+        {t(EMOTION_DETAILED_DESCRIPTION_KEYS[currentEmotion])}
       </span>
     </Box>
   );
+};
+
+// ---------------------------------------------------------------------------
+// SG-003: スタイルオブジェクトの浅い比較（JSON.stringify を排除）
+// ---------------------------------------------------------------------------
+const shallowEqualStyle = (
+  a?: React.CSSProperties,
+  b?: React.CSSProperties,
+): boolean => {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  const keysA = Object.keys(a) as (keyof React.CSSProperties)[];
+  const keysB = Object.keys(b) as (keyof React.CSSProperties)[];
+  if (keysA.length !== keysB.length) return false;
+  return keysA.every((key) => a[key] === b[key]);
 };
 
 // パフォーマンス最適化のためにメモ化
@@ -550,15 +538,38 @@ const arePropsEqual = (
   prevProps: EmojiFeedbackProps,
   nextProps: EmojiFeedbackProps,
 ) => {
+  // 怒り閾値をまたぐ変化は即座に反映
+  const crossesAngerThreshold =
+    (prevProps.angerLevel < ANGER_THRESHOLD &&
+      nextProps.angerLevel >= ANGER_THRESHOLD) ||
+    (prevProps.angerLevel >= ANGER_THRESHOLD &&
+      nextProps.angerLevel < ANGER_THRESHOLD);
+  if (crossesAngerThreshold) {
+    return false;
+  }
+
+  // 信頼度の閾値をまたぐ変化も即座に反映（satisfied/happy状態への遷移を見逃さない）
+  const TRUST_THRESHOLDS = [SATISFIED_TRUST_THRESHOLD, HAPPY_TRUST_THRESHOLD];
+  const crossesTrustThreshold = TRUST_THRESHOLDS.some(
+    (threshold) =>
+      (prevProps.trustLevel < threshold &&
+        nextProps.trustLevel >= threshold) ||
+      (prevProps.trustLevel >= threshold &&
+        nextProps.trustLevel < threshold),
+  );
+  if (crossesTrustThreshold) {
+    return false;
+  }
+
   // メトリクス値の変更を確認（ヒステリシスを考慮）
-  const METRICS_THRESHOLD = 0.2; // この値以上の変化がある場合のみ再レンダリング
+  const METRICS_THRESHOLD = 0.2;
   if (
     Math.abs(prevProps.angerLevel - nextProps.angerLevel) > METRICS_THRESHOLD ||
     Math.abs(prevProps.trustLevel - nextProps.trustLevel) > METRICS_THRESHOLD ||
     Math.abs(prevProps.progressLevel - nextProps.progressLevel) >
-      METRICS_THRESHOLD
+    METRICS_THRESHOLD
   ) {
-    return false; // メトリクス値が変化した場合は再レンダリング
+    return false;
   }
 
   // サイズや位置などの表示設定の変更を確認
@@ -570,13 +581,11 @@ const arePropsEqual = (
     prevProps.highContrast !== nextProps.highContrast ||
     prevProps.focusable !== nextProps.focusable
   ) {
-    return false; // 表示設定が変化した場合は再レンダリング
+    return false;
   }
 
   // カスタム絵文字マッピングの変更を確認
-  // JSON.stringifyはパフォーマンスコストが高いため、カスタム絵文字が存在する場合のみ比較
   if (prevProps.customEmojis || nextProps.customEmojis) {
-    // 片方のみが存在する場合は変更あり
     if (
       (!prevProps.customEmojis && nextProps.customEmojis) ||
       (prevProps.customEmojis && !nextProps.customEmojis)
@@ -584,7 +593,6 @@ const arePropsEqual = (
       return false;
     }
 
-    // 両方存在する場合は内容を比較
     if (prevProps.customEmojis && nextProps.customEmojis) {
       const prevEmojis = prevProps.customEmojis;
       const nextEmojis = nextProps.customEmojis;
@@ -604,15 +612,29 @@ const arePropsEqual = (
     }
   }
 
-  // スタイルやクラス名の変更を確認
+  // SG-003: スタイルやクラス名の変更を確認（shallow comparison）
   if (
     prevProps.className !== nextProps.className ||
-    JSON.stringify(prevProps.style) !== JSON.stringify(nextProps.style)
+    !shallowEqualStyle(prevProps.style, nextProps.style)
   ) {
     return false;
   }
 
-  // その他のプロパティは再レンダリングに影響しないと判断
+  // コールバック以外のアクセシビリティpropsの変更を検出
+  // （onEmotionChangeはref化したため参照比較不要）
+  if (prevProps.announceStateChanges !== nextProps.announceStateChanges) {
+    return false;
+  }
+  if (
+    prevProps.ariaLabelledBy !== nextProps.ariaLabelledBy ||
+    prevProps.ariaDescribedBy !== nextProps.ariaDescribedBy
+  ) {
+    return false;
+  }
+  if (prevProps.tabIndex !== nextProps.tabIndex) {
+    return false;
+  }
+
   return true;
 };
 

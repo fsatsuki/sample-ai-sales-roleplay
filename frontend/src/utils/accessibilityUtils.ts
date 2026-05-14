@@ -105,18 +105,31 @@ export const getMetricsColor = (
 export const getMetricsStatus = (
   value: number,
   type: "anger" | "trust" | "progress",
+  t?: (key: string) => string,
 ): string => {
-  // 怒りメーターの場合
+  // t関数が提供されている場合はi18nキーを使用
+  if (t) {
+    if (type === "anger") {
+      if (value >= 8) return t("metrics.status.anger.veryHigh");
+      if (value >= 5) return t("metrics.status.anger.moderate");
+      return t("metrics.status.anger.low");
+    } else {
+      if (value >= 8) return t("metrics.status.positive.veryHigh");
+      if (value >= 5) return t("metrics.status.positive.moderate");
+      return t("metrics.status.positive.low");
+    }
+  }
+  // フォールバック: t関数なしの場合は英語テキスト
   if (type === "anger") {
-    if (value >= 8) return "非常に高い（危険）";
-    if (value >= 5) return "中程度（注意）";
-    return "低い（良好）";
+    if (value >= 8) return "Very High (Danger)";
+    if (value >= 5) return "Moderate (Caution)";
+    return "Low (Good)";
   }
   // 信頼度や進捗度の場合
   else {
-    if (value >= 8) return "非常に高い（良好）";
-    if (value >= 5) return "中程度（普通）";
-    return "低い（要改善）";
+    if (value >= 8) return "Very High (Good)";
+    if (value >= 5) return "Moderate (Normal)";
+    return "Low (Needs Improvement)";
   }
 };
 

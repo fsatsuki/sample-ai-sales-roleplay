@@ -10,6 +10,8 @@
 import { getCurrentUser, fetchAuthSession } from "aws-amplify/auth";
 import type { Message, NPC, Goal, GoalStatus } from "../types/index";
 import type { ComplianceCheck } from "../types/api";
+import { transformComplianceCheck } from "../utils/apiTransformers";
+import { mergeGoalStatus, serializeGoalStatus } from "../utils/goalUtils";
 
 // 環境変数からAgentCore Runtime設定を取得
 const AGENTCORE_ENABLED = import.meta.env.VITE_AGENTCORE_ENABLED === 'true';
@@ -92,12 +94,6 @@ export class AgentCoreService {
     // エンドポイント形式: /runtimes/{encodedArn}/invocations
     // 注意: qualifierパラメータは不要（エンドポイントが見つからないエラーの原因）
     const url = `${AGENTCORE_ENDPOINT}/runtimes/${encodedArn}/invocations`;
-
-    console.log('AgentCore Runtime呼び出し:', {
-      url,
-      runtimeArn,
-      sessionId,
-    });
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 120000); // 120秒タイムアウト
@@ -218,7 +214,8 @@ export class AgentCoreService {
       progressLevel?: number;
     },
     scenarioId?: string,
-    language?: string
+    language?: string,
+    presentedSlides?: Array<{ pageNumber: number; imageKey: string }>,
   ): Promise<{ response: string; sessionId: string; messageId: string }> {
     if (!this.isAvailable()) {
       throw new Error('AgentCore Runtimeが利用できません');
@@ -260,6 +257,7 @@ export class AgentCoreService {
         },
       } : {}),
       ...(language ? { language } : {}),
+      ...(presentedSlides && presentedSlides.length > 0 ? { presentedSlides } : {}),
     };
 
     try {
@@ -318,6 +316,9 @@ export class AgentCoreService {
     analysis?: string;
     goalStatuses?: GoalStatus[];
     compliance?: ComplianceCheck;
+    npcEmotion?: string;
+    npcEmotionIntensity?: number;
+    gesture?: string;
   }> {
     if (!this.isAvailable()) {
       throw new Error('AgentCore Runtimeが利用できません');
@@ -348,18 +349,7 @@ export class AgentCoreService {
       },
       sessionId: currentSessionId,
       ...(goalStatuses ? {
-        goalStatuses: goalStatuses.map(status => ({
-          goalId: status.goalId,
-          progress: typeof status.progress === "number" ? status.progress : 0,
-          achieved: Boolean(status.achieved),
-          ...(status.achievedAt ? {
-            achievedAt: status.achievedAt instanceof Date
-              ? status.achievedAt.toISOString()
-              : typeof status.achievedAt === "string"
-                ? status.achievedAt
-                : undefined
-          } : {})
-        }))
+        goalStatuses: goalStatuses.map(status => serializeGoalStatus(status))
       } : {}),
       ...(goals ? {
         goals: goals.map(goal => ({
@@ -398,6 +388,9 @@ export class AgentCoreService {
           reason?: string;
         }>;
         compliance?: ComplianceCheck;
+        npcEmotion?: string;
+        npcEmotionIntensity?: number;
+        gesture?: string;
         sessionId?: string;
         memoryEnabled?: boolean;
         error?: string;
@@ -411,12 +404,23 @@ export class AgentCoreService {
         // goalUpdatesをgoalStatusesに変換（AgentCore Runtime形式: { goalId, achieved, reason }）
         let convertedGoalStatuses: GoalStatus[] | undefined;
         if (result.goalUpdates && Array.isArray(result.goalUpdates)) {
-          convertedGoalStatuses = result.goalUpdates.map((update) => ({
-            goalId: update.goalId,
-            progress: update.achieved ? 100 : 0,
-            achieved: update.achieved,
-            reason: update.reason || '',
-          }));
+          // goalStatusesから現在のprogressを参照し、共通関数でマージする
+          const currentStatusMap = new Map(
+            (goalStatuses || []).map(s => [s.goalId, s])
+          );
+          convertedGoalStatuses = result.goalUpdates.map((update) => {
+            const currentStatus = currentStatusMap.get(update.goalId);
+            const updateStatus: GoalStatus = {
+              goalId: update.goalId,
+              progress: update.achieved ? 100 : 0,
+              achieved: update.achieved,
+              reason: update.reason || '',
+            };
+            if (currentStatus) {
+              return mergeGoalStatus(currentStatus, updateStatus);
+            }
+            return updateStatus;
+          });
         }
 
         return {
@@ -431,7 +435,10 @@ export class AgentCoreService {
           },
           analysis: result.analysis || "",
           goalStatuses: convertedGoalStatuses,
-          ...(result.compliance ? { compliance: result.compliance } : {}),
+          ...(result.compliance ? { compliance: transformComplianceCheck(result.compliance) } : {}),
+          npcEmotion: result.npcEmotion || 'neutral',
+          npcEmotionIntensity: result.npcEmotionIntensity ?? 0.5,
+          gesture: result.gesture || 'none',
         };
       }
 
