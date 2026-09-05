@@ -8,7 +8,7 @@ import tseslint from "typescript-eslint";
 const failOnWarning = process.env.ESLINT_FAIL_ON_WARNING === "true";
 
 export default tseslint.config(
-  { ignores: ["dist"] },
+  { ignores: ["dist", "coverage", "node_modules"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
