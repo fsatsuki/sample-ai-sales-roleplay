@@ -5,6 +5,27 @@ import "@testing-library/jest-dom";
 import SessionHistoryPage from "../../pages/history/SessionHistoryPage";
 import { ApiService } from "../../services/ApiService";
 
+/**
+ * NPC名と役職は SessionHistoryPage 内で
+ *   <Typography>{name}<Typography component="span"> ({role})</Typography></Typography>
+ * のように親要素とネストした span に分割してレンダリングされる。
+ * そのため getByText("テストNPC (銀行員)") では単一要素に一致せず失敗する。
+ * 要素の textContent（正規化後）で一致を判定するマッチャーを用意する。
+ */
+const combinedText = (expected: string) => {
+  const normalize = (s: string) => s.replace(/\s+/g, " ").trim();
+  return (_content: string, element: Element | null): boolean => {
+    if (!element) return false;
+    const own = normalize(element.textContent || "");
+    if (own !== expected) return false;
+    // 最も内側（子孫が同じテキストを持たない）要素のみに一致させ、重複ヒットを防ぐ
+    const childMatches = Array.from(element.children).some(
+      (child) => normalize(child.textContent || "") === expected,
+    );
+    return !childMatches;
+  };
+};
+
 // APIサービスのモック
 jest.mock("../../services/ApiService", () => {
   return {
@@ -131,8 +152,8 @@ describe("SessionHistoryPage コンポーネント", () => {
     });
 
     // セッション詳細の確認（NPC名は役職も含めて表示される）
-    expect(screen.getByText("テストNPC (銀行員)")).toBeInTheDocument();
-    expect(screen.getByText("山田太郎 (証券営業)")).toBeInTheDocument();
+    expect(screen.getByText(combinedText("テストNPC (銀行員)"))).toBeInTheDocument();
+    expect(screen.getByText(combinedText("山田太郎 (証券営業)"))).toBeInTheDocument();
 
     // ステータス表示の確認
     const completedChip = screen.getByText("完了");
@@ -170,8 +191,8 @@ describe("SessionHistoryPage コンポーネント", () => {
 
     // 全てのセッションが再表示されることを確認
     await waitFor(() => {
-      expect(screen.getByText("テストNPC (銀行員)")).toBeInTheDocument();
-      expect(screen.getByText("山田太郎 (証券営業)")).toBeInTheDocument();
+      expect(screen.getByText(combinedText("テストNPC (銀行員)"))).toBeInTheDocument();
+      expect(screen.getByText(combinedText("山田太郎 (証券営業)"))).toBeInTheDocument();
     });
   });
 

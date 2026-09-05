@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Typography } from "@mui/material";
+import { Box } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import { VRMAvatarContainer } from "../avatar";
 import type { EmotionState } from "../../types/index";
@@ -35,7 +35,8 @@ const AvatarStage: React.FC<AvatarStageProps> = ({
   directEmotion,
   gesture,
   onEmotionChange,
-  npcName,
+  // npcName はインターフェースに残す（呼び出し側が指定）が、
+  // NPC名ラベルが非表示のため本コンポーネント内では未使用
 }) => {
   const { t } = useTranslation();
 

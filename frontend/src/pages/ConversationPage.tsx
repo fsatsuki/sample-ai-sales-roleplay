@@ -56,18 +56,6 @@ import type { SlideImageInfo } from "../types/api";
 import { Dialog, DialogTitle, DialogContent } from "@mui/material";
 
 /**
- * 右パネル（ゴール・メトリクス等）の占有幅
- * RightPanelContainer の maxWidth(260px) + right(12px) + 余白(8px) = 280px
- */
-const RIGHT_PANEL_OFFSET = "280px";
-
-/**
- * 左側メトリクス・カメラ領域の占有幅
- * アバター非表示時にチャットログが重ならないための左パディング
- */
-const LEFT_METRICS_OFFSET = "200px";
-
-/**
  * NPC応答遅延設定（ミリ秒）
  * テスト環境では0に設定してテスタビリティを向上させる
  */
