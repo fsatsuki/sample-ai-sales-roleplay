@@ -397,7 +397,18 @@
       "deleteSuccess": "シナリオを削除しました",
       "exportSuccess": "シナリオをエクスポートしました",
       "importSuccess": "シナリオをインポートしました",
-      "importDuplicateError": "インポートに失敗しました: シナリオIDが既に存在します。インポート時に重複するIDは許可されていません。"
+      "importDuplicateError": "インポートに失敗しました: シナリオIDが既に存在します。インポート時に重複するIDは許可されていません。",
+      "importResultDialogTitle": "インポート結果",
+      "importResultSuccess": "{{count}}件のシナリオをインポートしました",
+      "importResultNone": "インポートされたシナリオはありません",
+      "importResultSkipped": "{{count}}件のシナリオをスキップしました",
+      "importResultErrors": "{{count}}件のシナリオでエラーが発生しました",
+      "importedScenariosTitle": "インポートされたシナリオ",
+      "importSkippedTitle": "スキップされたシナリオ",
+      "importErrorsTitle": "エラーが発生したシナリオ",
+      "importSkipReasonDuplicate": "シナリオIDが既に存在します",
+      "importNoteIdRegenerated": "インポート時、シナリオIDは常に新しく採番されます。JSON内のscenarioIdは既存シナリオとの重複チェックにのみ使用されます。",
+      "importResultClose": "閉じる"
     },
     "sort": {
       "byDifficulty": "難易度順",

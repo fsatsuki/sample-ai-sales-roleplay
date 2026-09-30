@@ -561,27 +561,60 @@ export interface ImportStats {
 }
 
 /**
+ * インポートされたシナリオの明細
+ */
+export interface ImportedScenarioDetail {
+  originalId?: string;
+  newId: string;
+  title: string;
+}
+
+/**
+ * スキップされたシナリオの明細
+ */
+export interface SkippedScenarioDetail {
+  originalId?: string;
+  title?: string;
+  /** スキップ理由（バックエンドが返す日本語メッセージ） */
+  reason: string;
+  /** スキップ理由の機械可読コード（ローカライズ用） */
+  reasonCode?: "DUPLICATE_ID";
+}
+
+/**
+ * インポートエラーの明細
+ */
+export interface ImportErrorDetail {
+  scenario: string;
+  error: string;
+}
+
+/**
+ * インポート結果の明細
+ */
+export interface ImportDetails {
+  importedScenarios: ImportedScenarioDetail[];
+  skippedScenarios: SkippedScenarioDetail[];
+  errors: ImportErrorDetail[];
+}
+
+/**
  * インポートレスポンスの型
+ *
+ * バックエンド（POST /scenarios/import）は件数（imported/skipped/errors）と
+ * 明細（details）を返す。互換のためレガシーな stats 形式も保持する。
  */
 export interface ImportResponse {
   success: boolean;
+  message?: string;
+  /** インポート成功件数 */
+  imported: number;
+  /** スキップ件数（ID重複など） */
+  skipped: number;
+  /** エラー件数 */
+  errorCount: number;
   stats: ImportStats;
-  details?: {
-    importedScenarios: Array<{
-      originalId?: string;
-      newId: string;
-      title: string;
-    }>;
-    skippedScenarios: Array<{
-      originalId?: string;
-      title?: string;
-      reason: string;
-    }>;
-    errors: Array<{
-      scenario: string;
-      error: string;
-    }>;
-  };
+  details: ImportDetails;
 }
 
 // ============================================================

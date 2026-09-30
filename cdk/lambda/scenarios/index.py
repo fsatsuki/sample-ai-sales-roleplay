@@ -1609,7 +1609,10 @@ def import_scenarios():
                             skipped_scenarios.append({
                                 'originalId': original_scenario_id,
                                 'title': scenario_data.get('title'),
-                                'reason': 'シナリオが既に存在します'
+                                'reason': 'シナリオが既に存在します',
+                                # フロントエンドがローカライズ済みメッセージを
+                                # 選択できるようにするための機械可読コード
+                                'reasonCode': 'DUPLICATE_ID'
                             })
                             continue
                     
@@ -1671,6 +1674,7 @@ def import_scenarios():
             # インポート結果
             result = {
                 'message': 'シナリオインポートが完了しました',
+                'success': len(errors) == 0,
                 'imported': len(imported_scenarios),
                 'skipped': len(skipped_scenarios),
                 'errors': len(errors),
