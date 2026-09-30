@@ -10,6 +10,9 @@ import type {
   ComplianceCheck,
   ImportStats,
   ImportResponse,
+  ImportedScenarioDetail,
+  SkippedScenarioDetail,
+  ImportErrorDetail,
   AnalysisFeedbackItem,
   VideoAnalysisResult,
 } from "../types/api";
@@ -53,10 +56,20 @@ interface RawComplianceCheck {
 
 /** バックエンドから返されるImportResponseの生データ型 */
 interface RawImportResponse {
-  success: boolean;
+  success?: boolean;
   message?: string;
   stats?: RawImportStats;
-  errors?: string[];
+  /** インポート成功件数（現行バックエンド） */
+  imported?: number;
+  /** スキップ件数（現行バックエンド） */
+  skipped?: number;
+  /** エラー件数（現行バックエンド）。レガシー形式では文字列配列の場合がある */
+  errors?: number | string[];
+  details?: {
+    importedScenarios?: ImportedScenarioDetail[];
+    skippedScenarios?: SkippedScenarioDetail[];
+    errors?: ImportErrorDetail[];
+  };
   importedScenarios?: number;
   updatedScenarios?: number;
 }
@@ -139,22 +152,74 @@ export function transformImportStats(raw: RawImportStats): ImportStats {
 }
 
 /**
- * ImportResponse内のstatsを変換
- * バックエンドのsnake_case形式またはフロントエンド形式のどちらも受け付ける
+ * インポートレスポンスを正規化する
+ *
+ * 現行バックエンドは `imported` / `skipped` / `errors`（件数）と `details`
+ * （明細）を返す。レガシーな `stats` 形式のレスポンスも受け付ける。
+ * どちらの形式でもUIが件数と明細を参照できるように正規化する。
  */
 export function transformImportResponse(
   raw: RawImportResponse | ImportResponse,
 ): ImportResponse {
-  // 既にフロントエンド型の場合はそのまま返す
-  if (raw.stats && 'importedScenarios' in raw.stats) {
-    return raw as ImportResponse;
-  }
+  const rawResp = (raw ?? {}) as RawImportResponse;
 
-  // バックエンド型の場合は変換
-  const rawResp = raw as RawImportResponse;
+  const details = rawResp.details ?? {};
+  const importedScenarios: ImportedScenarioDetail[] = Array.isArray(
+    details.importedScenarios,
+  )
+    ? details.importedScenarios
+    : [];
+  const skippedScenarios: SkippedScenarioDetail[] = Array.isArray(
+    details.skippedScenarios,
+  )
+    ? details.skippedScenarios
+    : [];
+  const errorDetails: ImportErrorDetail[] = Array.isArray(details.errors)
+    ? details.errors
+    : [];
+
+  // レガシーなstats形式（snake_case / camelCase）も受け付ける
+  const stats: ImportStats = rawResp.stats
+    ? "importedScenarios" in rawResp.stats
+      ? (rawResp.stats as unknown as ImportStats)
+      : transformImportStats(rawResp.stats)
+    : {
+        importedScenarios: 0,
+        updatedScenarios: 0,
+        importedNpcs: 0,
+        updatedNpcs: 0,
+        errors: 0,
+      };
+
+  // 件数はトップレベルの値を優先し、無い場合は明細・statsから導出する
+  const imported =
+    typeof rawResp.imported === "number"
+      ? rawResp.imported
+      : importedScenarios.length || stats.importedScenarios;
+  const skipped =
+    typeof rawResp.skipped === "number"
+      ? rawResp.skipped
+      : skippedScenarios.length;
+  const errorCount =
+    typeof rawResp.errors === "number"
+      ? rawResp.errors
+      : Array.isArray(rawResp.errors)
+        ? rawResp.errors.length
+        : errorDetails.length || stats.errors;
+
   return {
-    success: rawResp.success,
-    stats: rawResp.stats ? transformImportStats(rawResp.stats) : { importedScenarios: 0, updatedScenarios: 0, importedNpcs: 0, updatedNpcs: 0, errors: 0 },
+    // バックエンドはsuccessを返さないため、エラー0件を成功とみなす
+    success: rawResp.success ?? errorCount === 0,
+    message: rawResp.message,
+    imported,
+    skipped,
+    errorCount,
+    stats: { ...stats, importedScenarios: imported, errors: errorCount },
+    details: {
+      importedScenarios,
+      skippedScenarios,
+      errors: errorDetails,
+    },
   };
 }
 
